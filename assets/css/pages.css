@@ -1,0 +1,219 @@
+/* Watchlists Page */
+.user-main-card {
+    background: var(--bg-surface);
+    border-radius: 24px;
+    padding: 40px;
+    margin-bottom: 40px;
+    border: 1px solid var(--glass-border);
+}
+
+.user-main-header {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    margin-bottom: 30px;
+}
+
+.avatar-large {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: linear-gradient(135deg, var(--accent-gold), #c95c3e);
+}
+
+.avatar-large img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.user-main-info h2 {
+    font-size: 32px;
+    margin-bottom: 4px;
+}
+
+.user-main-info p {
+    color: var(--text-muted);
+    font-size: 18px;
+}
+
+.user-main-stats {
+    display: flex;
+    align-items: center;
+    gap: 40px;
+    padding-top: 30px;
+    border-top: 1px solid var(--glass-border);
+}
+
+/* Movies Page - Filter Bar & Panel */
+.filter-bar {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    margin: 30px 0;
+}
+
+.btn-filter {
+    background: var(--bg-surface-2);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    color: white;
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: var(--transition-smooth);
+}
+
+.filter-search {
+    flex: 1;
+    background: var(--bg-surface-2);
+    border: 1px solid var(--glass-border);
+    border-radius: 50px;
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.filter-search input {
+    background: none;
+    border: none;
+    color: white;
+    width: 100%;
+    outline: none;
+    font-size: 14px;
+}
+
+.filter-panel {
+    display: none;
+    background: var(--bg-surface);
+    border: 1px solid var(--glass-border);
+    border-radius: 24px;
+    padding: 30px;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 30px;
+    margin-bottom: 40px;
+}
+
+.filter-panel.active {
+    display: grid;
+}
+
+.filter-group h3 {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 18px;
+    margin-bottom: 15px;
+    color: white;
+}
+
+/* Detail Page Hero */
+.detail-hero {
+    position: relative;
+    height: 600px;
+    border-radius: 32px;
+    overflow: hidden;
+    margin-bottom: 40px;
+    background: #000;
+}
+
+.detail-hero-content {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 60px;
+    background: linear-gradient(transparent, rgba(0,0,0,0.9));
+    z-index: 2;
+}
+
+.detail-title {
+    font-size: 56px;
+    margin-bottom: 16px;
+    letter-spacing: -1px;
+}
+
+/* Player Styles */
+.video-player-container {
+    width: 100%;
+    aspect-ratio: 16/9;
+    background: #000;
+    border-radius: 24px;
+    overflow: hidden;
+    margin-bottom: 30px;
+    position: relative;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    max-height: 85vh;
+}
+
+.player-bottom-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(transparent, rgba(0,0,0,0.8));
+    padding: 20px 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    transform: translateY(20px);
+    opacity: 0;
+    transition: var(--transition-smooth);
+    z-index: 10;
+}
+
+.video-player-container:hover .player-bottom-bar {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+.progress-container {
+    width: 100%;
+}
+
+.progress-bar-bg {
+    height: 6px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 3px;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.progress-bar-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background: var(--accent-gold);
+}
+
+.player-controls-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.controls-left, .controls-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.player-btn {
+    background: none;
+    border: none;
+    color: white;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+}
+
+.player-btn:hover {
+    color: var(--accent-gold);
+    transform: scale(1.1);
+}

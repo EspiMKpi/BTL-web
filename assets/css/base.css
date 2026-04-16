@@ -1,0 +1,93 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap');
+
+:root {
+    --bg-main: #0d0d10;
+    --bg-surface: #16161c;
+    --bg-surface-2: #1e1e27;
+    --accent-gold: #e8c170;
+    --text-primary: #f0ede8;
+    --text-muted: #7a7880;
+    --glass-bg: rgba(255, 255, 255, 0.05);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'DM Sans', sans-serif;
+}
+
+img {
+    max-width: 100%;
+    display: block;
+}
+
+.icon-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.icon-wrapper img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+body {
+    background-color: var(--bg-main);
+    color: var(--text-primary);
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+h1, h2, h3, .logo-text {
+    font-family: 'Playfair Display', serif;
+}
+
+/* Layout */
+.app-container {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.main-layout {
+    display: block;
+    padding: 0 0 40px;
+    width: 100%;
+    max-width: 100%; 
+    margin: 0 auto;
+    min-height: calc(100vh - 200px);
+}
+
+.hide {
+    display: none !important;
+}
+
+.page-content {
+    display: none !important;
+    padding: 0 60px;
+    width: 100%;
+    max-width: 1500px;
+    margin: 0 auto;
+}
+
+#page-watching.page-content {
+    max-width: 94vw; 
+    padding: 0;
+    margin: 0 auto;
+}
+
+.page-content.active {
+    display: block !important;
+}
+
+.layout-grid {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 40px;
+}
