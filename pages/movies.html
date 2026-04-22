@@ -1,0 +1,80 @@
+<div id="page-movies" class="page-content">
+    <div class="filter-bar">
+        <button class="btn-filter" id="filter-dropdown-toggle">
+            <div class="icon-wrapper" style="width: 18px; height: 18px; color: white;">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>
+            </div>
+            <span>Filters</span>
+        </button>
+
+        <div class="filter-search">
+            <input type="text" placeholder="...Movie Name, Director">
+            <div class="icon-wrapper" style="width: 14px; height: 14px; color: rgba(255,255,255,0.3);">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            </div>
+        </div>
+
+        <button class="btn btn-primary" style="height: 40px; border-radius: 12px;">
+            <div class="icon-wrapper" style="width: 18px; height: 18px; color: black;">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            </div>
+            Search
+        </button>
+
+    </div>
+
+    <div class="filter-panel" id="filter-panel">
+        <div class="filter-group">
+            <h3>Year</h3>
+            <label class="custom-checkbox"><input type="checkbox"> 2023</label>
+            <label class="custom-checkbox"><input type="checkbox" checked> 2022</label>
+            <label class="custom-checkbox"><input type="checkbox" checked> 2021</label>
+            <label class="custom-checkbox"><input type="checkbox" checked> 2020</label>
+            <label class="custom-checkbox"><input type="checkbox"> 2019 - 2010</label>
+        </div>
+        <div class="filter-group">
+            <h3>Genre</h3>
+            <label class="custom-checkbox"><input type="checkbox"> Action</label>
+            <label class="custom-checkbox"><input type="checkbox"> Historical</label>
+            <label class="custom-checkbox"><input type="checkbox"> Horror</label>
+            <label class="custom-checkbox"><input type="checkbox" checked> Drama</label>
+            <label class="custom-checkbox"><input type="checkbox" checked> Romance</label>
+            <label class="custom-checkbox"><input type="checkbox" checked> Sci-fi</label>
+        </div>
+        <div class="filter-group">
+            <h3>Type</h3>
+            <label class="custom-checkbox"><input type="checkbox" checked> TV series</label>
+            <label class="custom-checkbox"><input type="checkbox"> Mini Series</label>
+            <label class="custom-checkbox"><input type="checkbox"> Movie</label>
+        </div>
+        <div class="filter-group">
+            <h3>Length</h3>
+            <label class="custom-checkbox"><input type="checkbox" checked> Under 10 min</label>
+            <label class="custom-checkbox"><input type="checkbox"> 10 - 30 min</label>
+            <label class="custom-checkbox"><input type="checkbox"> 1 - 2h</label>
+        </div>
+        <div class="filter-group">
+            <h3>Score</h3>
+            <label class="custom-checkbox"><input type="checkbox" checked> 10</label>
+            <label class="custom-checkbox"><input type="checkbox"> 9</label>
+            <label class="custom-checkbox"><input type="checkbox"> 8</label>
+        </div>
+    </div>
+
+    <section class="movie-section" style="margin-top: 40px;">
+        <div class="section-header">
+            <h2 class="section-title">New Movie</h2>
+        </div>
+        <div class="movie-grid" id="search-results-grid">
+            <!-- Repeated Cards from Design -->
+            <div class="movie-card"><div class="poster-container"><img src="https://images.unsplash.com/photo-1510827220565-c6a086ff31c8?q=80&w=600&auto=format&fit=crop" alt="Kingdom of Heaven"><span class="rating-badge">8.7</span><div class="bookmark-btn"><div class="icon-wrapper" style="width: 14px; height: 14px;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg></div></div></div><div class="card-info"><span class="card-title">Kingdom of Heaven</span><span class="card-status">Filter Result</span></div></div>
+
+            <div class="movie-card"><div class="poster-container"><img src="https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=600&auto=format&fit=crop" alt="Project Hail Mary"><span class="rating-badge">9.2</span><div class="bookmark-btn"><div class="icon-wrapper" style="width: 14px; height: 14px;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg></div></div></div><div class="card-info"><span class="card-title">Project Hail Mary</span><span class="card-status">Sci-Fi</span></div></div>
+
+
+            <div class="movie-card"><div class="poster-container"><img src="https://images.unsplash.com/photo-1545156521-77bd85671d30?q=80&w=600&auto=format&fit=crop" alt="Blade Runner"><span class="rating-badge">7.5</span><div class="bookmark-btn"><div class="icon-wrapper" style="width: 14px; height: 14px;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg></div></div></div><div class="card-info"><span class="card-title">Blade Runner</span><span class="card-status">Classic Sci-Fi</span></div></div>
+
+
+        </div>
+    </section>
+</div>

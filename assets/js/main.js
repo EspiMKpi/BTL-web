@@ -4,22 +4,28 @@
  */
 
 document.addEventListener('DOMContentLoaded', () => {
-    
-    // Initialize specific modules
-    if (window.initSearch) window.initSearch();
-    if (window.initFilters) window.initFilters();
+    window.onPageRendered = () => {
+        if (window.initSearch) window.initSearch();
+        if (window.initFilters) window.initFilters();
+    };
 
-    const navLinks = document.querySelectorAll('.nav-link');
-    navLinks.forEach(link => {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            const targetPage = link.getAttribute('data-page');
-            if (targetPage && window.switchPage) window.switchPage(targetPage);
-        });
-    });
+    if (window.bootstrapRouter) {
+        window.bootstrapRouter();
+    }
 
     // --- Global Click Interactivity ---
     document.addEventListener('click', (e) => {
+        // 0. Navigation links -> Route to page
+        const navLink = e.target.closest('.nav-link');
+        if (navLink) {
+            e.preventDefault();
+            const targetPage = navLink.getAttribute('data-page');
+            if (targetPage && window.switchPage) {
+                window.switchPage(targetPage);
+            }
+            return;
+        }
+
         // 1. Movie Card Click -> Go to Detail
         const movieCard = e.target.closest('.movie-card');
         if (movieCard && !e.target.closest('.bookmark-btn') && !e.target.closest('.episode-card')) {
@@ -33,13 +39,15 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (watchBtn) {
             if (epCard) {
-                // Update Metadata for Player
+                window.appState = window.appState || {};
                 const epTitle = epCard.querySelector('h3').innerText;
                 const epDesc = epCard.querySelector('p').innerText;
-                const playerTitle = document.querySelector('.player-title');
-                const playerDesc = document.querySelector('#page-watching .detail-desc');
-                if (playerTitle) playerTitle.innerText = epTitle;
-                if (playerDesc) playerDesc.innerText = epDesc;
+                window.appState.playerOverride = {
+                    title: epTitle,
+                    description: epDesc
+                };
+            } else if (window.appState) {
+                window.appState.playerOverride = null;
             }
             window.switchPage('watching');
             return;
@@ -48,9 +56,25 @@ document.addEventListener('DOMContentLoaded', () => {
         // 3. Login Button -> Go to Discover
         const loginBtn = e.target.closest('#btn-login-continue');
         if (loginBtn) {
+            if (window.appState) window.appState.playerOverride = null;
             window.switchPage('discover');
             return;
         }
+
+        // 3b. Register Button -> Go to Discover
+        const registerBtn = e.target.closest('#btn-register-continue');
+        if (registerBtn) {
+            if (window.appState) window.appState.playerOverride = null;
+            window.switchPage('discover');
+            return;
+        }
+
+        // 3c. Auth navigation (Login <-> Register)
+        const toRegister = e.target.closest('#link-to-register');
+        if (toRegister) { e.preventDefault(); window.switchPage('register'); return; }
+
+        const toLogin = e.target.closest('#link-to-login');
+        if (toLogin) { e.preventDefault(); window.switchPage('login'); return; }
 
         // 4. Avatar Toggle -> Open Dropdown
         const avatarToggle = e.target.closest('#avatar-toggle');

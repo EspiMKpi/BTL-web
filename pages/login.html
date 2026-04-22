@@ -1,0 +1,39 @@
+<div id="page-login" class="page-content active login-page">
+    <!-- Auth Nav (logo only) -->
+    <nav class="auth-nav">
+        <div class="logo" style="font-size: 36px;">
+            <span class="logo-text">Cine</span><span class="logo-text">Drop</span>
+        </div>
+    </nav>
+
+    <!-- Main Area -->
+    <div class="auth-container">
+        <div class="auth-card">
+            <h1 class="auth-title">Log in</h1>
+
+            <form class="auth-form" id="login-form" onsubmit="return false;">
+                <div class="auth-input-group">
+                    <input type="text" id="login-email" placeholder="Email or mobile number" autocomplete="email">
+                </div>
+                <div class="auth-input-group">
+                    <input type="password" id="login-password" placeholder="Password" autocomplete="current-password">
+                </div>
+                <button type="submit" class="auth-btn" id="btn-login-continue">Continue</button>
+            </form>
+
+            <div class="auth-divider">
+                <span>or sign in with</span>
+            </div>
+
+            <div class="auth-social">
+                <button class="social-google" id="btn-google-login" aria-label="Sign in with Google">
+                    <span>G</span>
+                </button>
+            </div>
+
+            <div class="auth-switch">
+                <p>Don't have an account? <a href="#register" id="link-to-register">Sign up</a></p>
+            </div>
+        </div>
+    </div>
+</div>

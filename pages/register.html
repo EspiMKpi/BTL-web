@@ -1,0 +1,32 @@
+<div id="page-register" class="page-content active login-page">
+    <!-- Auth Nav (logo only) -->
+    <nav class="auth-nav">
+        <div class="logo" style="font-size: 36px;">
+            <span class="logo-text">Cine</span><span class="logo-text">Drop</span>
+        </div>
+    </nav>
+
+    <!-- Main Area -->
+    <div class="auth-container">
+        <div class="auth-card">
+            <h1 class="auth-title">Register</h1>
+
+            <form class="auth-form" id="register-form" onsubmit="return false;">
+                <div class="auth-input-group">
+                    <input type="text" id="register-email" placeholder="Email or mobile number" autocomplete="email">
+                </div>
+                <div class="auth-input-group">
+                    <input type="password" id="register-password" placeholder="Password" autocomplete="new-password">
+                </div>
+                <div class="auth-input-group">
+                    <input type="password" id="register-confirm" placeholder="Confirm Password" autocomplete="new-password">
+                </div>
+                <button type="submit" class="auth-btn" id="btn-register-continue">Continue</button>
+            </form>
+
+            <div class="auth-switch">
+                <p>Already have an account? <a href="#login" id="link-to-login">Log in</a></p>
+            </div>
+        </div>
+    </div>
+</div>
