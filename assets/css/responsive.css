@@ -1,7 +1,9 @@
 /* ==========================================================================
-   MOBILE RESPONSIVENESS
+    RESPONSIVE  –  VozFlix
+   Mobile-first breakpoints:  480 → 768 → 1024 → 1280
    ========================================================================== */
 
+/* ---------- Mobile Menu Button (hidden by default, shown ≤768) ---------- */
 .mobile-menu-btn {
     display: none;
     background: none;
@@ -16,7 +18,49 @@
     background: rgba(255, 255, 255, 0.05);
 }
 
+/* ==========================================================================
+   ≤ 1280 px  –  Large tablets / small laptops
+   ========================================================================== */
+@media (max-width: 1280px) {
+    .hero {
+        margin: 36px 30px;
+    }
+
+    .hero-poster {
+        width: 340px;
+    }
+
+    .search-box {
+        width: 220px;
+    }
+
+    .landing-hero {
+        padding: 42px;
+    }
+
+    .landing-trending-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .catalog-title {
+        font-size: clamp(30px, 4vw, 52px);
+    }
+
+    .nf-hero-content {
+        padding: 100px 40px 60px;
+    }
+
+    .nf-reasons-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+/* ==========================================================================
+   ≤ 1024 px  –  Tablets landscape
+   ========================================================================== */
 @media (max-width: 1024px) {
+
+    /* --- Layout --- */
     .layout-grid {
         grid-template-columns: 1fr;
         gap: 30px;
@@ -29,12 +73,199 @@
         padding-top: 32px;
     }
 
+    /* --- Nav --- */
     .nav-bar {
         padding: 18px 30px;
     }
+
+    /* --- Hero --- */
+    .hero {
+        height: 440px;
+        margin: 24px 30px;
+    }
+
+    .hero-poster {
+        width: 300px;
+    }
+
+    .hero-content {
+        padding: 40px 30px;
+        max-width: 60%;
+    }
+
+    .hero-title {
+        font-size: 40px;
+    }
+
+    .hero-desc {
+        font-size: 15px;
+        line-clamp: 3;
+        -webkit-line-clamp: 3;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    /* --- Page padding --- */
+    .page-content {
+        padding: 0 30px;
+    }
+
+    /* --- Detail hero --- */
+    .detail-hero {
+        height: 450px;
+        border-radius: 24px;
+    }
+
+    .detail-hero-content {
+        padding: 40px;
+    }
+
+    .detail-title {
+        font-size: 40px;
+    }
+
+    /* --- Detail CTA row --- */
+    .detail-cta-row {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    /* --- Episodes --- */
+    .episode-grid {
+        grid-template-columns: 1fr;
+    }
+
+    /* --- Filter panel --- */
+    .filter-panel {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 20px;
+        padding: 20px;
+    }
+
+    /* --- Watchlists stats --- */
+    .user-main-stats {
+        flex-wrap: wrap;
+        gap: 20px 30px;
+    }
+
+    /* --- Watchlist tabs --- */
+    .list-tabs {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        flex-wrap: nowrap;
+    }
+
+    .list-tabs::-webkit-scrollbar {
+        display: none;
+    }
+
+    /* --- Player --- */
+    .player-bottom-bar {
+        padding: 15px 24px;
+    }
+
+    .player-metadata {
+        padding: 20px 10px;
+    }
+
+    .player-title {
+        font-size: 28px;
+    }
+
+    .landing-page {
+        gap: 34px;
+    }
+
+    .landing-hero {
+        padding: 36px;
+        grid-template-columns: 1fr;
+        gap: 24px;
+    }
+
+    .landing-title {
+        max-width: 100%;
+    }
+
+    .landing-trending-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .landing-mood-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .landing-feature-split {
+        grid-template-columns: 1fr;
+    }
+
+    .landing-plan-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .catalog-hero {
+        grid-template-columns: 1fr;
+        gap: 18px;
+        padding: 28px;
+    }
+
+    .detail-info-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .watching-next-up {
+        margin-top: 36px;
+    }
+
+    .nf-landing {
+        gap: 34px;
+    }
+
+    .nf-hero {
+        min-height: 64vh;
+    }
+
+    .nf-title {
+        max-width: 100%;
+    }
+
+    .nf-copy {
+        font-size: 16px;
+    }
+
+    .nf-email-row {
+        flex-direction: column;
+        max-width: 480px;
+    }
+
+    .nf-email-input {
+        max-width: 100%;
+    }
+
+    .nf-top10-grid {
+        grid-auto-columns: minmax(220px, 220px);
+    }
+
+    .nf-row-grid {
+        grid-auto-columns: minmax(160px, 160px);
+    }
+
+    .nf-faq-question {
+        font-size: 19px;
+    }
+
+    .nf-faq-answer p {
+        font-size: 17px;
+    }
 }
 
+/* ==========================================================================
+   ≤ 768 px  –  Tablets portrait / large phones
+   ========================================================================== */
 @media (max-width: 768px) {
+
+    /* --- Mobile hamburger visible --- */
     .mobile-menu-btn {
         display: flex;
         order: 3;
@@ -50,13 +281,14 @@
         margin-right: 15px;
     }
 
+    /* --- Slide-out nav --- */
     .nav-links {
         position: fixed;
         top: 80px;
         left: 0;
         right: 0;
         bottom: 0;
-        background: rgba(13, 13, 16, 0.98);
+        background: rgba(34, 24, 9, 0.98);
         backdrop-filter: blur(20px);
         flex-direction: column;
         padding: 40px;
@@ -80,6 +312,7 @@
         display: none !important;
     }
 
+    /* --- Page padding --- */
     .page-content {
         padding: 0 20px;
     }
@@ -89,17 +322,37 @@
         padding: 0 10px;
     }
 
+    /* --- Hero --- */
+    .hero {
+        height: auto;
+        min-height: 380px;
+        margin: 16px 0;
+        border-radius: 16px;
+    }
+
+    .hero-poster {
+        width: 100%;
+        height: 100%;
+        opacity: 0.35;
+    }
+
     .hero-content {
-        padding: 40px 20px;
+        padding: 32px 24px;
+        max-width: 100%;
     }
 
     .hero-title {
         font-size: 32px;
     }
 
-    .movie-grid {
-        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-        gap: 15px;
+    .hero-desc {
+        font-size: 14px;
+        margin-bottom: 20px;
+    }
+
+    .hero-meta {
+        gap: 12px;
+        font-size: 14px;
     }
 
     .hero-btns {
@@ -110,17 +363,827 @@
         width: 100%;
         justify-content: center;
     }
+
+    /* --- Movie grids --- */
+    .movie-grid {
+        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+        gap: 14px;
+    }
+
+    /* --- Section headers --- */
+    .section-header {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .section-title {
+        font-size: 22px;
+    }
+
+    /* --- Detail hero --- */
+    .detail-hero {
+        height: 360px;
+        border-radius: 16px;
+        margin-bottom: 24px;
+    }
+
+    .detail-hero-content {
+        padding: 24px;
+    }
+
+    .detail-title {
+        font-size: 28px;
+        letter-spacing: 0;
+    }
+
+    .detail-meta-row {
+        flex-wrap: wrap;
+        gap: 8px;
+        font-size: 13px;
+    }
+
+    .detail-cta-row {
+        flex-direction: column;
+    }
+
+    .detail-cta-row .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .detail-desc {
+        font-size: 14px;
+        line-height: 1.5;
+    }
+
+    /* --- Episodes --- */
+    .episode-card {
+        flex-direction: column;
+    }
+
+    .ep-thumbnail {
+        width: 100%;
+        aspect-ratio: 16/9;
+    }
+
+    .season-tabs {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        flex-wrap: nowrap;
+        gap: 8px;
+    }
+
+    .season-tabs::-webkit-scrollbar {
+        display: none;
+    }
+
+    /* --- Filter bar (Movies) --- */
+    .filter-bar {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .filter-search {
+        order: -1;
+        flex: 1 1 100%;
+    }
+
+    .filter-panel {
+        grid-template-columns: repeat(2, 1fr);
+        padding: 16px;
+        gap: 16px;
+    }
+
+    /* --- Player --- */
+    .video-player-container {
+        border-radius: 12px;
+    }
+
+    .player-bottom-bar {
+        padding: 12px 16px;
+    }
+
+    .player-time {
+        font-size: 12px;
+    }
+
+    .player-title {
+        font-size: 24px;
+    }
+
+    /* --- Watchlist page --- */
+    .user-main-card {
+        padding: 24px;
+        border-radius: 16px;
+    }
+
+    .user-main-info h2 {
+        font-size: 24px;
+    }
+
+    .list-tabs {
+        gap: 8px;
+    }
+
+    .list-tab {
+        font-size: 13px;
+        padding: 8px 14px;
+        white-space: nowrap;
+    }
+
+    /* --- Sidebar cards (when stacked) --- */
+    .sidebar-card {
+        border-radius: 16px;
+        padding: 16px;
+    }
+
+    /* --- Footer --- */
+    .main-footer {
+        padding: 20px;
+    }
+
+    .footer-content {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .footer-links {
+        gap: 10px 14px;
+    }
+
+    .copyright {
+        font-size: 12px;
+    }
+
+    /* --- Auth pages --- */
+    .auth-nav {
+        padding: 14px 20px;
+        height: 64px;
+    }
+
+    .auth-nav .logo {
+        font-size: 28px !important;
+    }
+
+    .auth-container {
+        height: calc(100vh - 64px);
+        padding: 20px;
+    }
+
+    .auth-card {
+        width: 100%;
+        max-width: 400px;
+    }
+
+    .auth-title {
+        font-size: 28px;
+    }
+
+    /* --- Filters overflow scrolling --- */
+    .filters {
+        padding-bottom: 6px;
+    }
+
+    .landing-page {
+        padding-top: 14px;
+        gap: 24px;
+    }
+
+    .landing-hero {
+        padding: 24px;
+        border-radius: 20px;
+    }
+
+    .landing-subtitle {
+        font-size: 14px;
+    }
+
+    .landing-cta {
+        flex-direction: column;
+        margin: 24px 0 22px;
+    }
+
+    .landing-cta .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .landing-kpi-row {
+        grid-template-columns: 1fr;
+    }
+
+    .landing-trending-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .landing-section-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .landing-mood-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .landing-copy-card,
+    .landing-device-card {
+        padding: 20px;
+        border-radius: 18px;
+    }
+
+    .landing-device-card h3 {
+        font-size: 28px;
+    }
+
+    .landing-plan-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .catalog-hero {
+        border-radius: 16px;
+        padding: 22px;
+        margin-bottom: 18px;
+    }
+
+    .catalog-copy {
+        font-size: 14px;
+    }
+
+    .catalog-hero-metrics {
+        grid-template-columns: 1fr;
+    }
+
+    .auth-logo {
+        font-size: 30px;
+    }
+
+    .auth-card-rich {
+        padding: 18px;
+    }
+
+    .detail-info-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .detail-info-card {
+        padding: 16px;
+    }
+
+    .nf-hero {
+        min-height: 56vh;
+    }
+
+    .nf-hero-content {
+        width: 100%;
+        padding: 88px 20px 50px;
+    }
+
+    .nf-title {
+        font-size: clamp(36px, 9vw, 54px);
+    }
+
+    .nf-copy {
+        font-size: 14px;
+    }
+
+    .nf-top10-grid {
+        grid-auto-columns: minmax(196px, 196px);
+        gap: 12px;
+    }
+
+    .nf-rank {
+        font-size: 74px;
+        width: 52px;
+    }
+
+    .nf-top10-item .movie-card {
+        width: 136px;
+    }
+
+    .nf-row-grid {
+        grid-auto-columns: minmax(140px, 140px);
+        gap: 10px;
+    }
+
+    .nf-reasons {
+        padding: 30px 0;
+    }
+
+    .nf-reasons-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .nf-reason-card h3 {
+        font-size: 20px;
+    }
+
+    .nf-faq-question {
+        font-size: 18px;
+        padding: 16px 18px;
+    }
+
+    .nf-faq-answer p {
+        padding: 14px 18px 18px;
+        font-size: 15px;
+    }
 }
 
+/* ==========================================================================
+   ≤ 480 px  –  Small phones
+   ========================================================================== */
 @media (max-width: 480px) {
+
+    /* --- Nav --- */
+    .nav-bar {
+        padding: 14px 16px;
+    }
+
+    .logo {
+        font-size: 20px;
+    }
+
+    .avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 10px;
+    }
+
+    /* --- Page padding --- */
+    .page-content {
+        padding: 0 14px;
+    }
+
+    /* --- Hero --- */
+    .hero {
+        min-height: 320px;
+        border-radius: 12px;
+    }
+
+    .hero-content {
+        padding: 24px 16px;
+    }
+
+    .hero-title {
+        font-size: 26px;
+        margin-bottom: 12px;
+    }
+
+    .hero-meta {
+        gap: 8px;
+        font-size: 12px;
+        margin-bottom: 8px;
+    }
+
+    .hero-desc {
+        font-size: 13px;
+        margin-bottom: 16px;
+        line-clamp: 2;
+        -webkit-line-clamp: 2;
+    }
+
+    .btn {
+        padding: 10px 16px;
+        font-size: 14px;
+        height: 40px;
+    }
+
+    /* --- Grids --- */
+    .movie-grid {
+        grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+        gap: 10px;
+    }
+
+    .poster-container {
+        border-radius: 12px;
+    }
+
+    .card-title {
+        font-size: 12px;
+    }
+
+    .card-status {
+        font-size: 10px;
+    }
+
+    .rating-badge {
+        font-size: 10px;
+        padding: 2px 6px;
+    }
+
+    /* --- Section --- */
+    .section-title {
+        font-size: 20px;
+    }
+
+    /* --- Detail hero --- */
+    .detail-hero {
+        height: 300px;
+        border-radius: 12px;
+        margin-bottom: 16px;
+    }
+
+    .detail-hero-content {
+        padding: 16px;
+    }
+
+    .detail-title {
+        font-size: 22px;
+    }
+
+    /* --- Episodes --- */
+    .ep-info h3 {
+        font-size: 15px;
+    }
+
+    .ep-info p {
+        font-size: 13px;
+    }
+
+    .ep-number {
+        font-size: 14px;
+        width: 28px;
+        height: 28px;
+    }
+
+    /* --- Filter --- */
+    .filter-bar {
+        gap: 8px;
+    }
+
+    .btn-filter {
+        padding: 8px 14px;
+        font-size: 13px;
+        border-radius: 12px;
+    }
+
+    .filter-panel {
+        grid-template-columns: 1fr;
+    }
+
+    .custom-checkbox {
+        font-size: 14px;
+        padding: 5px 8px;
+    }
+
+    /* --- Watchlist profile --- */
+    .user-main-card {
+        padding: 16px;
+    }
+
     .user-main-header {
         flex-direction: column;
         text-align: center;
     }
 
+    .avatar-large {
+        width: 72px;
+        height: 72px;
+    }
+
+    .user-main-info h2 {
+        font-size: 20px;
+    }
+
+    .user-main-info p {
+        font-size: 14px;
+    }
+
     .user-main-stats {
-        flex-wrap: wrap;
         justify-content: center;
-        gap: 20px;
+        gap: 16px;
+    }
+
+    .stat-divider {
+        display: none;
+    }
+
+    .main-stat {
+        text-align: center;
+    }
+
+    /* --- Watchlist tabs --- */
+    .list-tabs {
+        gap: 6px;
+    }
+
+    .list-tab {
+        font-size: 12px;
+        padding: 7px 10px;
+    }
+
+    .add-list-btn {
+        font-size: 16px;
+        width: 32px;
+        height: 32px;
+    }
+
+    /* --- Player --- */
+    .video-player-container {
+        border-radius: 8px;
+    }
+
+    .player-bottom-bar {
+        padding: 10px 12px;
+        gap: 8px;
+    }
+
+    .controls-left,
+    .controls-right {
+        gap: 10px;
+    }
+
+    .player-btn {
+        width: 20px;
+        height: 20px;
+    }
+
+    .player-title {
+        font-size: 20px;
+    }
+
+    .detail-meta-row {
+        font-size: 12px;
+    }
+
+    /* --- Auth pages --- */
+    .auth-nav {
+        padding: 12px 16px;
+        height: 56px;
+    }
+
+    .auth-nav .logo {
+        font-size: 24px !important;
+    }
+
+    .auth-container {
+        height: calc(100vh - 56px);
+        padding: 16px;
+    }
+
+    .auth-title {
+        font-size: 24px;
+    }
+
+    .auth-input-group input {
+        font-size: 14px;
+        padding: 9px;
+        border-radius: 10px;
+    }
+
+    .auth-btn {
+        font-size: 17px;
+        padding: 9px;
+    }
+
+    .social-google {
+        width: 42px;
+        height: 42px;
+    }
+
+    .social-google span {
+        font-size: 17px;
+    }
+
+    /* --- Footer --- */
+    .main-footer {
+        padding: 16px;
+    }
+
+    .footer-links a {
+        font-size: 12px;
+    }
+
+    .copyright {
+        font-size: 11px;
+    }
+
+    /* --- Profile dropdown --- */
+    .profile-dropdown {
+        width: 190px;
+        padding: 10px;
+        border-radius: 12px;
+    }
+
+    .landing-hero {
+        padding: 18px;
+        border-radius: 14px;
+    }
+
+    .landing-title {
+        font-size: 34px;
+        margin-bottom: 12px;
+    }
+
+    .landing-subtitle {
+        font-size: 13px;
+    }
+
+    .landing-kpi-value {
+        font-size: 24px;
+    }
+
+    .landing-kpi-label {
+        font-size: 11px;
+    }
+
+    .landing-feature-title {
+        font-size: 28px;
+    }
+
+    .landing-mood-card {
+        min-height: 112px;
+        padding: 14px;
+        font-size: 15px;
+    }
+
+    .landing-copy-card h2 {
+        font-size: 26px;
+    }
+
+    .landing-plan-card {
+        padding: 18px;
+    }
+
+    .landing-plan-price {
+        font-size: 36px;
+    }
+
+    .catalog-hero {
+        padding: 16px;
+        border-radius: 12px;
+    }
+
+    .catalog-title {
+        font-size: 30px;
+    }
+
+    .catalog-metric span {
+        font-size: 20px;
+    }
+
+    .auth-logo {
+        font-size: 26px;
+    }
+
+    .auth-card-rich {
+        padding: 14px;
+    }
+
+    .auth-helper {
+        font-size: 12px;
+    }
+
+    .nf-landing {
+        gap: 24px;
+    }
+
+    .nf-hero {
+        min-height: 52vh;
+    }
+
+    .nf-hero-content {
+        padding: 78px 14px 40px;
+    }
+
+    .nf-kicker {
+        font-size: 10px;
+    }
+
+    .nf-title {
+        font-size: 34px;
+    }
+
+    .nf-copy {
+        font-size: 13px;
+    }
+
+    .nf-email-input {
+        min-width: 0;
+        padding: 12px 14px;
+        font-size: 14px;
+    }
+
+    .nf-top10-grid {
+        grid-auto-columns: minmax(174px, 174px);
+    }
+
+    .nf-rank {
+        font-size: 62px;
+        width: 44px;
+    }
+
+    .nf-top10-item .movie-card {
+        width: 122px;
+    }
+
+    .nf-row-grid {
+        grid-auto-columns: minmax(122px, 122px);
+    }
+
+    .nf-faq-question {
+        font-size: 16px;
+    }
+}
+
+/* ==========================================================================
+   ≤ 360 px  –  Extra small phones
+   ========================================================================== */
+@media (max-width: 360px) {
+    .movie-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+
+    .hero-title {
+        font-size: 22px;
+    }
+
+    .hero-desc {
+        display: none;
+    }
+
+    .detail-title {
+        font-size: 20px;
+    }
+
+    .auth-title {
+        font-size: 22px;
+    }
+
+    .nav-link {
+        font-size: 20px;
+    }
+}
+
+/* ==========================================================================
+   Touch & Interaction Helpers
+   ========================================================================== */
+@media (hover: none) and (pointer: coarse) {
+
+    /* Always show player controls on touch devices */
+    .player-bottom-bar {
+        transform: translateY(0);
+        opacity: 1;
+    }
+
+    /* Disable hover lifts on touch */
+    .movie-card:hover {
+        transform: none;
+    }
+
+    .btn-primary:hover,
+    .btn-secondary:hover {
+        transform: none;
+        box-shadow: none;
+    }
+
+    /* Larger tap targets */
+    .bookmark-btn {
+        padding: 8px;
+        min-width: 36px;
+        min-height: 36px;
+    }
+
+    .filter-chip {
+        padding: 10px 18px;
+    }
+}
+
+/* ==========================================================================
+   Landscape phones
+   ========================================================================== */
+@media (max-height: 500px) and (orientation: landscape) {
+    .hero {
+        min-height: 260px;
+    }
+
+    .hero-desc {
+        display: none;
+    }
+
+    .auth-container {
+        height: auto;
+        min-height: calc(100vh - 64px);
+        padding: 16px;
+    }
+
+    .video-player-container {
+        max-height: 75vh;
+    }
+}
+
+/* ==========================================================================
+   Reduced Motion
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
     }
 }
