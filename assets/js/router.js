@@ -1,5 +1,5 @@
 /**
- * CineDrop Router
+ * VozFlix Router
  * Loads page fragments and handles navigation state
  */
 const PAGE_FILES = {
@@ -14,7 +14,7 @@ const PAGE_FILES = {
 };
 
 const PAGE_CACHE = {};
-const DEFAULT_PAGE = 'login';
+const DEFAULT_PAGE = 'discover';
 
 window.appState = window.appState || {
     currentPage: null,

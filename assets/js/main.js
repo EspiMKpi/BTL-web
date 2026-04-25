@@ -1,5 +1,5 @@
 /**
- * CineDrop Main
+ * VozFlix Main
  * Application entry point and event delegation
  */
 
@@ -132,18 +132,41 @@ document.addEventListener('DOMContentLoaded', () => {
             tab.classList.add('active');
             
             // Trigger specific action if list tab
-            const tabName = tab.innerText.toLowerCase();
             const watchlistGrid = document.querySelector('.watchlist-grid');
             if (tab.classList.contains('list-tab') && watchlistGrid) {
+                const filterValue = (tab.dataset.filter || tab.innerText || '').toLowerCase().trim();
                 const cards = watchlistGrid.querySelectorAll('.movie-card');
                 cards.forEach(card => {
-                    const status = card.querySelector('.card-status')?.innerText.toLowerCase();
-                    if (tabName === 'all' || (status && status.includes(tabName)) || (tabName === 'continue watching' && status && status.includes('result'))) {
-                        card.style.display = 'block';
+                    const status = (card.dataset.status || card.querySelector('.card-status')?.innerText || '').toLowerCase();
+                    const isMatch = filterValue === 'all' || status.includes(filterValue);
+                    card.dataset.listMatch = isMatch ? 'true' : 'false';
+
+                    if (window.updateCardVisibility) {
+                        window.updateCardVisibility(card);
                     } else {
-                        card.style.display = 'none';
+                        card.style.display = isMatch ? '' : 'none';
                     }
                 });
+            }
+        }
+
+        // 9. Discover FAQ accordion toggle
+        const faqQuestion = e.target.closest('.nf-faq-question');
+        if (faqQuestion) {
+            const faqItem = faqQuestion.closest('.nf-faq-item');
+            if (!faqItem) return;
+
+            const isOpen = faqItem.classList.contains('open');
+            const allFaqItems = document.querySelectorAll('.nf-faq-item');
+            allFaqItems.forEach(item => {
+                item.classList.remove('open');
+                const button = item.querySelector('.nf-faq-question');
+                if (button) button.setAttribute('aria-expanded', 'false');
+            });
+
+            if (!isOpen) {
+                faqItem.classList.add('open');
+                faqQuestion.setAttribute('aria-expanded', 'true');
             }
         }
     });

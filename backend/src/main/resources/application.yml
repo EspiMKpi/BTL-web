@@ -1,0 +1,51 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: vozflix-backend
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:movie_db}?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=UTF8
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD:root}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:update}
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: true
+    open-in-view: false
+
+# TMDB API Configuration
+tmdb:
+  api:
+    key: ${TMDB_API_KEY:your_api_key_here}
+    base-url: ${TMDB_BASE_URL:https://api.themoviedb.org/3}
+    image-base-url: ${TMDB_IMAGE_BASE_URL:https://image.tmdb.org/t/p}
+
+# Search Cache Configuration
+search:
+  cache:
+    ttl: ${SEARCH_CACHE_TTL:3600}
+
+# JWT Configuration
+jwt:
+  secret: ${JWT_SECRET:VozFlixSecretKey2024ThatIsLongEnoughForHS256Algorithm}
+  expiration: ${JWT_EXPIRATION:86400000}
+
+# Session Configuration
+session:
+  ttl: ${SESSION_TTL:86400}
+
+# Logging
+logging:
+  level:
+    root: INFO
+    com.vozflix: DEBUG

@@ -8,3 +8,18 @@ __pycache__/
 
 # Local GitHub Copilot prompt packs
 .github/prompts/
+
+# Java/Maven build output
+backend/target/
+
+# Environment variables (secrets)
+.env
+.env.local
+.env.*.local
+
+# IDE settings
+.idea/
+.vscode/
+
+# Log files
+*.log
