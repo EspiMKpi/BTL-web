@@ -1,50 +1,25 @@
 /**
  * CineDrop Router
- * Handles page switching and navigation state
+ * Handles page switching between standalone HTML files.
  */
 
+const ROUTE_MAP = {
+    landing: 'landing.html',
+    login: 'auth-login.html',
+    register: 'register.html',
+    discover: 'discover.html',
+    movies: 'movies.html',
+    series: 'series.html',
+    watchlists: 'watchlists.html',
+    detail: 'detail.html',
+    watching: 'watching.html'
+};
+
 window.switchPage = function(pageId) {
-    const navLinks = document.querySelectorAll('.nav-link');
-    const pages = document.querySelectorAll('.page-content');
-    const nav = document.getElementById('main-nav');
-    const footer = document.querySelector('.main-footer');
-    const dropdown = document.getElementById('profile-dropdown');
-    const navLinksContainer = document.querySelector('.nav-links');
+    const routeKey = String(pageId || '').toLowerCase();
+    const targetPath = ROUTE_MAP[routeKey] || ROUTE_MAP.landing;
+    const currentPath = window.location.pathname.split('/').pop().toLowerCase();
 
-    // Update visible page
-    pages.forEach(page => {
-        page.classList.remove('active');
-        if (page.id === `page-${pageId}`) {
-            page.classList.add('active');
-        }
-    });
-
-    // Toggle Navbar/Footer for Login Page
-    if (pageId === 'login') {
-        if (nav) nav.classList.add('hide');
-        if (footer) footer.classList.add('hide');
-    } else {
-        if (nav) nav.classList.remove('hide');
-        if (footer) footer.classList.remove('hide');
-    }
-
-    // Update active nav links
-    navLinks.forEach(link => {
-        link.classList.remove('active');
-        if (link.getAttribute('data-page') === pageId) {
-            link.classList.add('active');
-        }
-    });
-
-    // Handle Series special case
-    if (pageId === 'series') {
-        const seriesPage = document.getElementById('page-series');
-        if (seriesPage) seriesPage.classList.add('active');
-    }
-
-    // UI Cleanup
-    if (dropdown) dropdown.classList.remove('show');
-    if (navLinksContainer) navLinksContainer.classList.remove('active');
-    
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (currentPath === targetPath.toLowerCase()) return;
+    window.location.href = targetPath;
 };

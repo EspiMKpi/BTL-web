@@ -12,9 +12,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const navLinks = document.querySelectorAll('.nav-link');
     navLinks.forEach(link => {
         link.addEventListener('click', (e) => {
-            e.preventDefault();
             const targetPage = link.getAttribute('data-page');
+            if (!targetPage) return;
+
+            e.preventDefault();
             if (targetPage && window.switchPage) window.switchPage(targetPage);
+        });
+    });
+
+    ['login-form', 'register-form'].forEach((formId) => {
+        const form = document.getElementById(formId);
+        if (!form) return;
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (window.switchPage) window.switchPage('discover');
         });
     });
 
@@ -52,6 +64,19 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // 3b. Landing Page Buttons -> Go to Discover
+        const landingBtn = e.target.closest('#btn-login-goto') || e.target.closest('#btn-signup-goto') || e.target.closest('#btn-start-watching') || e.target.closest('#btn-feature-tour') || e.target.closest('#btn-cta-signup');
+        if (landingBtn) {
+            if (e.target.closest('#btn-signup-goto')) {
+                window.switchPage('register');
+            } else if (e.target.closest('#btn-login-goto')) {
+                window.switchPage('auth-login');
+            } else {
+                window.switchPage('discover');
+            }
+            return;
+        }
+
         // 4. Avatar Toggle -> Open Dropdown
         const avatarToggle = e.target.closest('#avatar-toggle');
         const dropdown = document.getElementById('profile-dropdown');
@@ -60,10 +85,10 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // 5. Logout Button -> Go to Login
+        // 5. Logout Button -> Go to Auth Login
         const logoutBtn = e.target.closest('#logout-btn');
         if (logoutBtn) {
-            window.switchPage('login');
+            window.switchPage('auth-login');
             return;
         }
 

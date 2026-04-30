@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CineDrop | Discover</title>
+    <link rel="stylesheet" href="assets/css/base.css">
+    <link rel="stylesheet" href="assets/css/components.css">
+    <link rel="stylesheet" href="assets/css/pages.css">
+    <link rel="stylesheet" href="assets/css/responsive.css">
+</head>
+<body>
+    <div class="app-container">
+        <nav class="nav-bar" id="main-nav">
+            <div class="logo">
+                <span class="logo-text">Cine</span><span class="logo-text">Drop</span>
+            </div>
+            <div class="nav-links">
+                <a href="discover.html" class="nav-link active" data-page="discover">Discover</a>
+                <a href="movies.html" class="nav-link" data-page="movies">Movies</a>
+                <a href="series.html" class="nav-link" data-page="series">Series</a>
+                <a href="watchlists.html" class="nav-link" data-page="watchlists">Watchlists</a>
+            </div>
+            <div class="search-box hide-mobile">
+                <div class="icon-wrapper" style="width: 14px; height: 14px; flex-shrink: 0; color: rgba(255,255,255,0.3);">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                </div>
+                <input type="text" placeholder="Search films, series...">
+            </div>
+
+            <button class="mobile-menu-btn" id="mobile-menu-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
+
+            <div class="avatar-wrapper" style="flex-shrink: 0; position: relative;">
+                <div class="avatar" id="avatar-toggle">
+                    <img src="https://i.pravatar.cc/150?u=marcuslee" alt="User Avatar" style="width: 100%; height: 100%; object-fit: cover; border-radius: 12px;">
+                </div>
+
+                <div class="profile-dropdown" id="profile-dropdown">
+                    <div class="dropdown-header">
+                        <p class="dropdown-name">Marcus Lee</p>
+                        <p class="dropdown-handle">@marcuslee</p>
+                    </div>
+                    <div class="dropdown-divider"></div>
+                    <a href="#" class="dropdown-item">Profile</a>
+                    <a href="#" class="dropdown-item">Settings</a>
+                    <div class="dropdown-divider"></div>
+                    <a href="auth-login.html" class="dropdown-item logout" id="logout-btn">
+                        <div class="icon-wrapper" style="width: 16px; height: 16px; color: currentColor;">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                        </div>
+                        Logout
+                    </a>
+                </div>
+            </div>
+        </nav>
+
+        <main class="main-layout">
+            <div id="page-discover" class="page-content active">
+                <div class="layout-grid">
+                    <div class="content-area">
+                        <section class="hero">
+                            <div class="hero-poster">
+                                <img src="https://images.unsplash.com/photo-1510827220565-c6a086ff31c8?q=80&w=1920&auto=format&fit=crop" alt="Kingdom of Heaven Poster">
+                            </div>
+
+                            <div class="hero-scrim"></div>
+                            <div class="hero-content">
+                                <h1 class="hero-title">Kingdom of Heaven</h1>
+                                <div class="hero-meta">
+                                    <span class="rating">&#9733; 8.7</span>
+                                    <span>2004</span>
+                                    <span>2h 18m</span>
+                                </div>
+                                <p class="hero-desc">
+                                    Balian of Ibelin travels to Jerusalem during the Crusades of the 12th century, and there he finds himself as the defender of the city and its people.
+                                </p>
+                                <div class="hero-btns">
+                                    <button class="btn btn-primary">
+                                        <div class="icon-wrapper" style="width: 20px; height: 20px; color: black;">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="m7 3 14 9-14 9V3z"/></svg>
+                                        </div>
+                                        Watch Now
+                                    </button>
+                                    <button class="btn btn-secondary">
+                                        <div class="icon-wrapper" style="width: 20px; height: 20px;">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>
+                                        </div>
+                                        Add to list
+                                    </button>
+                                </div>
+                            </div>
+                        </section>
+
+                        <div class="filters">
+                            <button class="filter-chip active">All</button>
+                            <button class="filter-chip">Action</button>
+                            <button class="filter-chip">Drama</button>
+                            <button class="filter-chip">Sci-fi</button>
+                            <button class="filter-chip">Horror</button>
+                            <button class="filter-chip">Comedy</button>
+                            <button class="filter-chip">Romance</button>
+                            <button class="filter-chip">Documentary</button>
+                        </div>
+
+                        <section class="movie-section">
+                            <div class="section-header">
+                                <h2 class="section-title">Continue Watching</h2>
+                                <a href="#" class="see-all">See all</a>
+                            </div>
+                            <div class="movie-grid">
+                                <div class="movie-card">
+                                    <div class="poster-container">
+                                        <img src="https://images.unsplash.com/photo-1478720568477-152d9b164e26?q=80&w=600&auto=format&fit=crop" alt="Akira">
+                                        <span class="rating-badge">8.4</span>
+                                        <div class="bookmark-btn">
+                                            <div class="icon-wrapper" style="width: 14px; height: 14px;">
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-info">
+                                        <span class="card-title">Akira</span>
+                                        <span class="card-status">On the List</span>
+                                    </div>
+                                </div>
+
+                                <div class="movie-card">
+                                    <div class="poster-container" style="background: #1a1a24">
+                                        <img src="https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=600&auto=format&fit=crop" alt="Inception">
+                                        <span class="rating-badge">9.1</span>
+                                        <div class="bookmark-btn">
+                                            <div class="icon-wrapper" style="width: 14px; height: 14px;">
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-info">
+                                        <span class="card-title">Inception</span>
+                                        <span class="card-status">Mind-Bending</span>
+                                    </div>
+                                </div>
+
+                                <div class="movie-card">
+                                    <div class="poster-container">
+                                        <img src="https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=600&auto=format&fit=crop" alt="Parasite">
+                                        <span class="rating-badge">9.2</span>
+                                        <div class="bookmark-btn">
+                                            <div class="icon-wrapper" style="width: 14px; height: 14px;">
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-info"><span class="card-title">Parasite</span><span class="card-status">Award Winner</span></div>
+                                </div>
+
+                                <div class="movie-card">
+                                    <div class="poster-container">
+                                        <img src="https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?q=80&w=600&auto=format&fit=crop" alt="Interstellar">
+                                        <span class="rating-badge">8.1</span>
+                                        <div class="bookmark-btn">
+                                            <div class="icon-wrapper" style="width: 14px; height: 14px;">
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-info"><span class="card-title">Interstellar</span><span class="card-status">Space Odyssey</span></div>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+
+                    <aside class="sidebar">
+                        <div class="sidebar-card resuming-card">
+                            <p class="sidebar-label">Resuming</p>
+                            <div class="resuming-content">
+                                <img src="https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=600&auto=format&fit=crop" alt="Project Hail Mary" class="resuming-poster">
+                                <div class="resuming-info">
+                                    <p>Project Hail Mary</p>
+                                    <div class="progress-track">
+                                        <div class="progress-fill" style="width: 72%;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="sidebar-card">
+                            <div class="profile-card">
+                                <div class="profile-header">
+                                    <img src="https://i.pravatar.cc/150?u=marcuslee" alt="Marcus Lee" class="profile-avatar">
+                                    <div>
+                                        <p class="profile-name">Marcus Lee</p>
+                                        <p class="profile-handle">@marcuslee</p>
+                                    </div>
+                                </div>
+                                <div class="stats-row">
+                                    <div class="stat-item"><span class="stat-value">147</span><span class="stat-label">Watched</span></div>
+                                    <div class="stat-item"><span class="stat-value">34</span><span class="stat-label">Review</span></div>
+                                    <div class="stat-item"><span class="stat-value">18</span><span class="stat-label">Lists</span></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="sidebar-card">
+                            <p class="sidebar-label">My Watchlist</p>
+                            <div class="watchlist-item">
+                                <div class="wl-poster" style="background: linear-gradient(#1e3a4a, #0d2030)">TV</div>
+                                <div class="wl-info">
+                                    <p class="wl-title">Tide Break</p>
+                                    <p class="wl-meta">Series - 2024</p>
+                                </div>
+                                <div class="wl-status">Done</div>
+                            </div>
+                            <div class="watchlist-item">
+                                <div class="wl-poster" style="background: linear-gradient(#2a1e4a, #1a0d30)">SF</div>
+                                <div class="wl-info">
+                                    <p class="wl-title">Neon Dreams</p>
+                                    <p class="wl-meta">Movie - 2023</p>
+                                </div>
+                                <div class="wl-status"></div>
+                            </div>
+                        </div>
+                    </aside>
+                </div>
+            </div>
+        </main>
+
+        <footer class="main-footer">
+
+            <div class="footer-content">
+                <div class="logo">
+                    <span class="logo-text">Cine</span><span class="logo-text">Drop</span>
+                </div>
+                <div class="footer-links">
+                    <a href="javascript:void(0)">About</a>
+                    <a href="javascript:void(0)">Contact</a>
+                    <a href="javascript:void(0)">Privacy Policy</a>
+                    <a href="javascript:void(0)">Terms of Service</a>
+                </div>
+                <div class="copyright">┬⌐ 2024 CineDrop. All rights reserved.</div>
+            </div>
+        </footer>
+    </div>
+    <script src="assets/js/router.js"></script>
+    <script src="assets/js/actions.js"></script>
+    <script src="assets/js/main.js"></script>
+</body>
+</html>

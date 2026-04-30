@@ -84,6 +84,11 @@
         padding: 0 20px;
     }
 
+    /* Auth Pages Mobile */
+    .auth-page .auth-nav-bar {
+        justify-content: center;
+    }
+
     #page-watching.page-content {
         max-width: 100%;
         padding: 0 10px;
@@ -110,6 +115,16 @@
         width: 100%;
         justify-content: center;
     }
+
+    /* Auth Pages Tablet */
+    .auth-content-wrapper {
+        padding: 80px 40px;
+    }
+
+    .auth-form-container {
+        width: 100%;
+        max-width: 380px;
+    }
 }
 
 @media (max-width: 480px) {
@@ -122,5 +137,170 @@
         flex-wrap: wrap;
         justify-content: center;
         gap: 20px;
+    }
+
+    /* Landing Page Responsive */
+    .landing-nav {
+        padding: 20px 24px;
+    }
+
+    .landing-nav-links,
+    .landing-nav-cta .btn-link {
+        display: none;
+    }
+
+    .hero-main {
+        grid-template-columns: 1fr;
+        padding: 40px 24px;
+        min-height: auto;
+    }
+
+    .hero-heading {
+        font-size: 42px;
+    }
+
+    .hero-subheading {
+        font-size: 16px;
+        max-width: 100%;
+    }
+
+    .hero-actions {
+        flex-direction: column;
+    }
+
+    .btn-lg {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .hero-stats {
+        gap: 20px;
+    }
+
+    .stat-number {
+        font-size: 22px;
+    }
+
+    .hero-visual {
+        display: none;
+    }
+
+    .features-section {
+        padding: 80px 24px;
+    }
+
+    .features-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+    }
+
+    .feature-card {
+        padding: 24px 16px;
+    }
+
+    .feature-icon {
+        width: 48px;
+        height: 48px;
+    }
+
+    .feature-icon svg {
+        width: 22px;
+        height: 22px;
+    }
+
+    .feature-title {
+        font-size: 16px;
+    }
+
+    .feature-desc {
+        font-size: 12px;
+    }
+
+    .content-showcase {
+        padding: 80px 24px;
+    }
+
+    .showcase-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+
+    .cta-section {
+        padding: 0 24px 80px;
+    }
+
+    .cta-card {
+        padding: 40px 24px;
+    }
+
+    .cta-title {
+        font-size: 32px;
+    }
+
+    .cta-desc {
+        font-size: 16px;
+    }
+
+    .landing-footer {
+        padding: 60px 24px 30px;
+    }
+
+    .footer-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 30px;
+    }
+
+    .footer-brand {
+        grid-column: span 2;
+    }
+
+    .footer-bottom {
+        flex-direction: column;
+        gap: 20px;
+        text-align: center;
+    }
+
+    /* Auth Pages Mobile */
+    .auth-nav-bar {
+        padding: 18px 24px;
+    }
+
+    .auth-nav-bar .logo {
+        font-size: 24px;
+    }
+
+    .auth-content-wrapper {
+        padding: 60px 24px;
+    }
+
+    .auth-form-container {
+        width: 100%;
+        max-width: 400px;
+    }
+
+    .auth-title {
+        font-size: 28px;
+    }
+
+    .auth-input-group {
+        padding: 12px;
+    }
+
+    .auth-input-group input {
+        font-size: 14px;
+    }
+
+    .btn-auth-primary {
+        font-size: 16px;
+        padding: 12px;
+    }
+
+    .auth-divider-text {
+        font-size: 10px;
+    }
+
+    .google-icon-wrapper {
+        width: 40px;
+        height: 40px;
     }
 }
