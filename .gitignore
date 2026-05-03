@@ -27,6 +27,10 @@ backend/target/
 # AI / Implementation logs
 IMPLEMENTATION*.md
 *_CHANGES.md
+implementation*.md
+changes*.md
+task.md
+walkthrough.md
 
 # Ignore opencode workspace directory
 .opencode/
