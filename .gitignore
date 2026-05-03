@@ -23,3 +23,10 @@ backend/target/
 
 # Log files
 *.log
+
+# AI / Implementation logs
+IMPLEMENTATION*.md
+*_CHANGES.md
+
+# Ignore opencode workspace directory
+.opencode/

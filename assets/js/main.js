@@ -4,9 +4,18 @@
  */
 
 document.addEventListener('DOMContentLoaded', () => {
-    window.onPageRendered = () => {
+    window.onPageRendered = (pageId) => {
         if (window.initSearch) window.initSearch();
         if (window.initFilters) window.initFilters();
+        if (pageId === 'discover' || pageId === 'movies' || pageId === 'series') {
+            if (window.initCatalogPage) window.initCatalogPage(pageId);
+        } else if (pageId === 'detail') {
+            if (window.initDetailPage) window.initDetailPage();
+        } else if (pageId === 'watchlists') {
+            if (window.initWatchlistsPage) window.initWatchlistsPage();
+        } else if (pageId === 'watching') {
+            if (window.initWatchingPage) window.initWatchingPage();
+        }
     };
 
     if (window.bootstrapRouter) {
@@ -29,6 +38,27 @@ document.addEventListener('DOMContentLoaded', () => {
         // 1. Movie Card Click -> Go to Detail
         const movieCard = e.target.closest('.movie-card');
         if (movieCard && !e.target.closest('.bookmark-btn') && !e.target.closest('.episode-card')) {
+            const contentId = movieCard.getAttribute('data-content-id') || movieCard.getAttribute('data-movie-id');
+            const contentType = movieCard.getAttribute('data-content-type') || movieCard.getAttribute('data-type') || 'movie';
+            const title = movieCard.querySelector('.card-title')?.innerText || 'Untitled';
+            const overview = movieCard.querySelector('.card-status')?.innerText || '';
+
+            window.appState = window.appState || {};
+            window.appState.selectedContent = {
+                id: contentId ? Number(contentId) : null,
+                type: contentType,
+                title,
+                overview,
+                year: movieCard.getAttribute('data-year') || '',
+                genreText: movieCard.getAttribute('data-genre') || '',
+                rating: movieCard.querySelector('.rating-badge')?.innerText || '',
+                posterUrl: movieCard.querySelector('img')?.src || '',
+                backdropUrl: movieCard.querySelector('img')?.src || ''
+            };
+            window.appState.playerOverride = {
+                title,
+                description: overview
+            };
             window.switchPage('detail');
             return;
         }
@@ -107,11 +137,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const bookmarkBtn = e.target.closest('.bookmark-btn');
         if (bookmarkBtn) {
             bookmarkBtn.classList.toggle('active');
+            const card = bookmarkBtn.closest('.movie-card');
+            const contentId = card?.getAttribute('data-content-id');
+            const contentType = card?.getAttribute('data-content-type') || 'movie';
             const icon = bookmarkBtn.querySelector('svg');
             if (bookmarkBtn.classList.contains('active')) {
                 bookmarkBtn.style.background = 'var(--accent-gold)';
                 if (icon) icon.style.fill = 'black';
                 window.showNotification("Added to Watchlist!");
+                if (contentId && typeof window.toggleBookmark === 'function') {
+                    window.toggleBookmark(contentId, contentType);
+                }
             } else {
                 bookmarkBtn.style.background = 'rgba(122, 120, 128, 0.5)';
                 if (icon) icon.style.fill = 'none';
@@ -119,11 +155,89 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // 8. Generic Tab/Chip Switching
+        // 8. Generic Tab/Chip Switching (filter-chip on series page)
         const chip = e.target.closest('.filter-chip');
         if (chip) {
             chip.parentElement.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
             chip.classList.add('active');
+
+            // Series page genre filter - fetch from TMDB
+            const genreId = chip.dataset.genreId;
+            const seriesGrids = document.querySelectorAll('#page-series .movie-grid');
+            if (seriesGrids.length > 0) {
+                const targetGrid = seriesGrids[0];
+                if (!genreId || chip.textContent.trim() === 'All') {
+                    // Restore original catalog
+                    if (window._seriesCatalogData && typeof window.renderMovieCards === 'function') {
+                        const catalog = window._seriesCatalogData;
+                        const allSeries = (catalog.popular.length > 0 ? catalog.popular : catalog.topRated).slice(0, 15);
+                        const TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
+                        const normalized = allSeries.map(s => ({
+                            id: s.id, title: s.name || s.title || 'Untitled', overview: s.overview || '',
+                            year: (s.first_air_date || '').slice(0, 4), genres: [], genreText: '',
+                            rating: Number.isFinite(Number(s.vote_average)) ? Number(s.vote_average).toFixed(1) : 'N/A',
+                            posterUrl: (s.poster_path || s.backdrop_path) ? TMDB_IMAGE_BASE_URL + '/w500' + (s.poster_path || s.backdrop_path) : '',
+                            backdropUrl: (s.backdrop_path || s.poster_path) ? TMDB_IMAGE_BASE_URL + '/w1280' + (s.backdrop_path || s.poster_path) : '',
+                            status: (s.first_air_date || '').slice(0, 4)
+                        }));
+                        window.renderMovieCards(targetGrid, normalized, { showBookmark: true, type: 'series' });
+                    }
+                } else if (typeof window.fetchSeriesByGenre === 'function') {
+                    targetGrid.innerHTML = '<div class="vf-loading"><div class="vf-spinner"></div><p>Loading series...</p></div>';
+                    window.fetchSeriesByGenre(genreId, 1).then(series => {
+                        const TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
+                        const normalized = series.slice(0, 50).map(s => ({
+                            id: s.id, title: s.name || s.title || 'Untitled', overview: s.overview || '',
+                            year: (s.first_air_date || '').slice(0, 4), genres: [], genreText: '',
+                            rating: Number.isFinite(Number(s.vote_average)) ? Number(s.vote_average).toFixed(1) : 'N/A',
+                            posterUrl: (s.poster_path || s.backdrop_path) ? TMDB_IMAGE_BASE_URL + '/w500' + (s.poster_path || s.backdrop_path) : '',
+                            backdropUrl: (s.backdrop_path || s.poster_path) ? TMDB_IMAGE_BASE_URL + '/w1280' + (s.backdrop_path || s.poster_path) : '',
+                            status: (s.first_air_date || '').slice(0, 4)
+                        }));
+                        if (typeof window.renderMovieCards === 'function') window.renderMovieCards(targetGrid, normalized, { showBookmark: true, type: 'series' });
+                    }).catch(() => {
+                        targetGrid.innerHTML = '<div class="vf-error"><h3>Failed to load</h3><p>Could not fetch series for this genre.</p></div>';
+                    });
+                }
+            }
+        }
+
+        // 8b. Discover genre chip click
+        const genreChip = e.target.closest('.genre-chip');
+        if (genreChip && document.getElementById('discover-genre-chips')?.contains(genreChip)) {
+            document.querySelectorAll('#discover-genre-chips .genre-chip').forEach(c => c.classList.remove('active'));
+            genreChip.classList.add('active');
+            const genreId = genreChip.dataset.genreId;
+            const resultsGrid = document.getElementById('discover-genre-results');
+            if (genreId === 'all' || !genreId) {
+                if (resultsGrid) resultsGrid.style.display = 'none';
+            } else if (resultsGrid && typeof window.fetchMoviesByGenre === 'function') {
+                resultsGrid.style.display = '';
+                resultsGrid.innerHTML = '<div class="vf-loading"><div class="vf-spinner"></div><p>Fetching movies...</p></div>';
+                window.fetchMoviesByGenre(genreId, 1).then(movies => {
+                    const state = window._discoverState;
+                    const genreMap = state?.movieCatalog?.genreMap || new Map();
+                    const normalized = movies.slice(0, 50).map(m => {
+                        const rd = m.release_date || '';
+                        const year = rd ? rd.slice(0, 4) : '';
+                        const posterPath = m.poster_path || m.backdrop_path || '';
+                        const backdropPath = m.backdrop_path || m.poster_path || '';
+                        const TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
+                        return {
+                            id: m.id, title: m.title || 'Untitled', overview: m.overview || '',
+                            year, genres: [], genreText: '',
+                            rating: Number.isFinite(Number(m.vote_average)) ? Number(m.vote_average).toFixed(1) : 'N/A',
+                            posterUrl: posterPath ? TMDB_IMAGE_BASE_URL + '/w500' + posterPath : '',
+                            backdropUrl: backdropPath ? TMDB_IMAGE_BASE_URL + '/w1280' + backdropPath : '',
+                            status: year
+                        };
+                    });
+                    if (typeof window.renderMovieCards === 'function') window.renderMovieCards(resultsGrid, normalized, { showBookmark: true });
+                }).catch(err => {
+                    console.error('Genre fetch failed', err);
+                    resultsGrid.innerHTML = '<div class="vf-error"><h3>Failed to load</h3><p>Could not fetch movies for this genre.</p></div>';
+                });
+            }
         }
 
         const tab = e.target.closest('.list-tab, .season-tab');
@@ -148,6 +262,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 });
             }
+
+            if (tab.classList.contains('season-tab') && typeof window.loadSeasonEpisodes === 'function') {
+                const seasonNumber = Number.parseInt(tab.getAttribute('data-season-number') || tab.innerText.replace(/[^0-9]/g, ''), 10);
+                if (Number.isFinite(seasonNumber)) {
+                    window.loadSeasonEpisodes(seasonNumber);
+                }
+            }
         }
 
         // 9. Discover FAQ accordion toggle
@@ -171,4 +292,64 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // Sort dropdown handler for Movies page
+    document.addEventListener('change', (e) => {
+        const sortSelect = e.target.closest('#movies-sort-select');
+        if (!sortSelect) return;
+        const sortValue = sortSelect.value;
+        const cards = window._moviesAllCards;
+        if (!cards) return;
+
+        let sorted = [...cards];
+        if (sortValue === 'rating') {
+            sorted.sort((a, b) => parseFloat(b.rating) - parseFloat(a.rating));
+        } else if (sortValue === 'title') {
+            sorted.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+        } else if (sortValue === 'year-desc') {
+            sorted.sort((a, b) => (b.year || '').localeCompare(a.year || ''));
+        } else if (sortValue === 'year-asc') {
+            sorted.sort((a, b) => (a.year || '').localeCompare(b.year || ''));
+        } else {
+            // popularity (default order)
+        }
+
+        // Apply genre filter on top of sort
+        const checkedGenres = Array.from(document.querySelectorAll('#movies-filter-genres input:checked')).map(i => i.value);
+        if (checkedGenres.length > 0) {
+            sorted = sorted.filter(m => {
+                const movieGenres = (m.genres || []).map(g => g.toLowerCase());
+                return checkedGenres.some(cg => movieGenres.includes(cg));
+            });
+        }
+
+        const grid = document.querySelector('#page-movies #search-results-grid');
+        if (grid && typeof window.renderMovieCards === 'function') {
+            window.renderMovieCards(grid, sorted, { showBookmark: true });
+        }
+    });
+
+    // Genre checkbox filter for Movies page
+    document.addEventListener('change', (e) => {
+        if (!e.target.closest('#movies-filter-genres input')) return;
+        const sortSelect = document.getElementById('movies-sort-select');
+        if (sortSelect) {
+            sortSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        } else {
+            // No sort select, just filter
+            const cards = window._moviesAllCards;
+            if (!cards) return;
+            const checkedGenres = Array.from(document.querySelectorAll('#movies-filter-genres input:checked')).map(i => i.value);
+            let filtered = [...cards];
+            if (checkedGenres.length > 0) {
+                filtered = filtered.filter(m => {
+                    const movieGenres = (m.genres || []).map(g => g.toLowerCase());
+                    return checkedGenres.some(cg => movieGenres.includes(cg));
+                });
+            }
+            const grid = document.querySelector('#page-movies #search-results-grid');
+            if (grid && typeof window.renderMovieCards === 'function') {
+                window.renderMovieCards(grid, filtered, { showBookmark: true });
+            }
+        }
+    });
 });

@@ -67,6 +67,28 @@ public class SeriesDao {
                 series.getSpokenLanguagesJson(), series.getNumberOfSeasons(), series.getNumberOfEpisodes());
     }
 
+        public int update(Series series) {
+        String sql = "UPDATE series SET name = ?, original_name = ?, tagline = ?, overview = ?, poster_path = ?, backdrop_path = ?, " +
+            "first_air_date = ?, last_air_date = ?, original_language = ?, popularity = ?, vote_average = ?, vote_count = ?, " +
+            "adult = ?, episode_run_time_json = ?, type = ?, status = ?, imdb_id = ?, homepage = ?, genres_json = ?, " +
+            "networks_json = ?, production_countries_json = ?, spoken_languages_json = ?, number_of_seasons = ?, number_of_episodes = ? " +
+            "WHERE series_id = ?";
+        return jdbcTemplate.update(sql, series.getName(), series.getOriginalName(), series.getTagline(), series.getOverview(),
+            series.getPosterPath(), series.getBackdropPath(), series.getFirstAirDate(), series.getLastAirDate(),
+            series.getOriginalLanguage(), series.getPopularity(), series.getVoteAverage(), series.getVoteCount(),
+            series.getAdult(), series.getEpisodeRunTimeJson(), series.getType(), series.getStatus(), series.getImdbId(),
+            series.getHomepage(), series.getGenresJson(), series.getNetworksJson(), series.getProductionCountriesJson(),
+            series.getSpokenLanguagesJson(), series.getNumberOfSeasons(), series.getNumberOfEpisodes(), series.getSeriesId());
+        }
+
+    public int saveOrUpdate(Series series) {
+        if (existsById(series.getSeriesId())) {
+            return update(series);
+        }
+
+        return insert(series);
+    }
+
     public Optional<Series> findById(Integer seriesId) {
         String sql = "SELECT * FROM series WHERE series_id = ?";
         List<Series> seriesList = jdbcTemplate.query(sql, seriesRowMapper, seriesId);
@@ -87,5 +109,20 @@ public class SeriesDao {
     public int count() {
         String sql = "SELECT COUNT(*) FROM series";
         return jdbcTemplate.queryForObject(sql, Integer.class);
+    }
+
+    public List<Series> findByNameContaining(String name, int limit, int offset) {
+        String sql = "SELECT * FROM series WHERE LOWER(name) LIKE LOWER(CONCAT('%', ?, '%')) ORDER BY popularity DESC LIMIT ? OFFSET ?";
+        return jdbcTemplate.query(sql, seriesRowMapper, name, limit, offset);
+    }
+
+    public List<Series> findTopRated(int limit, int offset) {
+        String sql = "SELECT * FROM series ORDER BY vote_average DESC LIMIT ? OFFSET ?";
+        return jdbcTemplate.query(sql, seriesRowMapper, limit, offset);
+    }
+
+    public int deleteById(Integer seriesId) {
+        String sql = "DELETE FROM series WHERE series_id = ?";
+        return jdbcTemplate.update(sql, seriesId);
     }
 }

@@ -1,22 +1,13 @@
 <div id="page-detail" class="page-content">
-    <section class="detail-hero">
-        <div class="detail-hero-poster">
-            <img src="https://images.unsplash.com/photo-1510827220565-c6a086ff31c8?q=80&w=1920&auto=format&fit=crop" alt="Glass Kingdom key art">
+    <section class="detail-hero" id="detail-hero">
+        <div class="detail-hero-poster" id="detail-poster">
+            <img src="" alt="" id="detail-poster-img" style="display:none;">
         </div>
-
         <div class="detail-hero-scrim"></div>
         <div class="detail-hero-content">
-            <p class="landing-eyebrow">VozFlix Original</p>
-            <h1 class="detail-title">Glass Kingdom</h1>
-            <div class="detail-meta-row">
-                <span class="rating">★ 8.9</span>
-                <span>2026</span>
-                <span>2h 11m</span>
-                <span>Thriller, Sci-fi, Mystery</span>
-            </div>
-            <p class="detail-desc">
-                In a city suspended over a dead ocean, an architect uncovers an algorithm that can rewrite memory itself. To save her family, she must destroy the machine she once designed.
-            </p>
+            <h1 class="detail-title" id="detail-title"></h1>
+            <div class="detail-meta-row" id="detail-meta"></div>
+            <p class="detail-desc" id="detail-desc"></p>
             <div class="detail-cta-row">
                 <button class="btn btn-primary" id="btn-watch-now">
                     <div class="icon-wrapper" style="width: 18px; height: 18px; color: black;">
@@ -24,11 +15,11 @@
                     </div>
                     Watch Now
                 </button>
-                <button class="btn btn-secondary">
+                <button class="btn btn-secondary" id="btn-add-watchlist">
                     <div class="icon-wrapper" style="width: 18px; height: 18px;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg></div>
                     Add to List
                 </button>
-                <button class="btn btn-secondary">
+                <button class="btn btn-secondary" id="btn-view-episodes" style="display:none;">
                     <div class="icon-wrapper" style="width: 18px; height: 18px;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></div>
                     View Episodes
                 </button>
@@ -36,74 +27,23 @@
         </div>
     </section>
 
-    <section class="detail-info-grid">
+    <section class="detail-info-grid" id="detail-info-grid">
         <article class="detail-info-card">
             <p class="sidebar-label">Synopsis</p>
-            <p>A whistleblower leaks proof that Glass Kingdom's citizens are living edited lives. As riots spread through the vertical city, the truth becomes the most dangerous weapon of all.</p>
+            <p id="detail-synopsis"></p>
         </article>
         <article class="detail-info-card">
             <p class="sidebar-label">Cast</p>
-            <p>Nina Zhao · Mateo Rios · Kareem Voss · Anya Takahashi · Pavel Dobrev</p>
-        </article>
-        <article class="detail-info-card">
-            <p class="sidebar-label">Audio & Subtitles</p>
-            <p>English, Vietnamese, Korean, Spanish · Dolby Atmos · 4K HDR</p>
+            <p id="detail-cast"></p>
         </article>
     </section>
 
-    <section class="episode-section">
+    <section class="episode-section" id="detail-episodes-section" style="display:none;">
         <div class="section-header">
             <h2 class="section-title">Episodes</h2>
             <a href="#watching" class="see-all">Open Player</a>
         </div>
-        <div class="season-tabs">
-            <button class="season-tab active">Season 1</button>
-            <button class="season-tab">Season 2</button>
-        </div>
-        <div class="episode-grid">
-            <div class="episode-card">
-                <div class="ep-thumbnail">
-                    <img src="https://images.unsplash.com/photo-1497015289639-54688650d173?q=80&w=600&auto=format&fit=crop" alt="Episode 1">
-                    <div class="ep-number">1</div>
-                </div>
-                <div class="ep-info">
-                    <h3>Blueprints</h3>
-                    <p>The first fracture appears in the city's memory network after a suspicious construction collapse.</p>
-                </div>
-            </div>
-
-            <div class="episode-card">
-                <div class="ep-thumbnail">
-                    <img src="https://images.unsplash.com/photo-1542204172-3f240e3eb9fb?q=80&w=600&auto=format&fit=crop" alt="Episode 2">
-                    <div class="ep-number">2</div>
-                </div>
-                <div class="ep-info">
-                    <h3>Ghost Archive</h3>
-                    <p>An underground archivist reveals thousands of lives erased from the city's records.</p>
-                </div>
-            </div>
-
-            <div class="episode-card">
-                <div class="ep-thumbnail">
-                    <img src="https://images.unsplash.com/photo-1540324155974-7523202daa3f?q=80&w=600&auto=format&fit=crop" alt="Episode 3">
-                    <div class="ep-number">3</div>
-                </div>
-                <div class="ep-info">
-                    <h3>The Last Elevator</h3>
-                    <p>Escaping to the lower decks becomes impossible as the city seals all vertical routes.</p>
-                </div>
-            </div>
-
-            <div class="episode-card">
-                <div class="ep-thumbnail">
-                    <img src="https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?q=80&w=600&auto=format&fit=crop" alt="Episode 4">
-                    <div class="ep-number">4</div>
-                </div>
-                <div class="ep-info">
-                    <h3>Signal Fire</h3>
-                    <p>A forbidden broadcast ignites unrest as the city learns who controls their memories.</p>
-                </div>
-            </div>
-        </div>
+        <div class="season-tabs" id="detail-season-tabs"></div>
+        <div class="episode-grid" id="detail-episode-grid"></div>
     </section>
 </div>

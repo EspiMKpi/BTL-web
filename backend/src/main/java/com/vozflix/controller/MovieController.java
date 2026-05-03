@@ -1,6 +1,7 @@
 package com.vozflix.controller;
 
 import com.vozflix.api.TmdbApiService;
+import com.vozflix.dao.GenreDao;
 import com.vozflix.dto.MovieResponse;
 import com.vozflix.service.TmdbMovieService;
 import lombok.RequiredArgsConstructor;
@@ -9,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -20,6 +22,7 @@ public class MovieController {
 
     private final TmdbMovieService tmdbMovieService;
     private final TmdbApiService tmdbApiService;
+    private final GenreDao genreDao;
 
     @GetMapping("/popular")
     public ResponseEntity<Map<String, Object>> getPopularMovies(
@@ -83,7 +86,7 @@ public class MovieController {
             @RequestParam(required = false) Integer primaryReleaseYear) {
         log.info("Discovering movies with filters - page: {}, sortBy: {}, genres: {}", page, sortBy, withGenres);
         try {
-            Map<String, Object> response = tmdbApiService.discoverMovies(page, "en-US", sortBy, withGenres, primaryReleaseYear);
+            Map<String, Object> response = tmdbMovieService.discoverMovies(page, sortBy, withGenres, primaryReleaseYear);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.error("Error discovering movies", e);
@@ -103,14 +106,72 @@ public class MovieController {
         }
     }
 
+    @PostMapping("/sync/all")
+    public ResponseEntity<String> syncAll() {
+        log.info("Starting full TMDB sync");
+        try {
+            tmdbMovieService.syncMovieGenres();
+            tmdbMovieService.getPopularMovies(1);
+            tmdbMovieService.getTopRatedMovies(1);
+            tmdbMovieService.getNowPlayingMovies(1);
+            return ResponseEntity.ok("Full sync completed successfully");
+        } catch (Exception e) {
+            log.error("Error during full sync", e);
+            return ResponseEntity.internalServerError().body("Failed to sync: " + e.getMessage());
+        }
+    }
+
     @GetMapping("/genres")
     public ResponseEntity<Map<String, Object>> getGenres() {
-        log.info("Fetching movie genres");
+        log.info("Fetching movie genres from MySQL");
         try {
-            Map<String, Object> response = tmdbApiService.getMovieGenres("en-US");
+            List<com.vozflix.entity.Genre> genres = genreDao.findAll();
+            if (genres.isEmpty()) {
+                Map<String, Object> response = tmdbApiService.getMovieGenres("en-US").execute().body();
+                return ResponseEntity.ok(response);
+            }
+            List<Map<String, Object>> genreList = new ArrayList<>();
+            for (com.vozflix.entity.Genre g : genres) {
+                Map<String, Object> map = new HashMap<>();
+                map.put("id", g.getGenreId());
+                map.put("name", g.getName());
+                genreList.add(map);
+            }
+            Map<String, Object> response = new HashMap<>();
+            response.put("genres", genreList);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.error("Error fetching genres", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @GetMapping("/cached")
+    public ResponseEntity<Map<String, Object>> getCachedMovies(
+            @RequestParam(required = false, defaultValue = "20") Integer limit,
+            @RequestParam(required = false, defaultValue = "0") Integer offset) {
+        log.info("Fetching cached movies, limit: {}, offset: {}", limit, offset);
+        try {
+            List<com.vozflix.entity.Movie> movies = tmdbMovieService.getCachedMovies(limit, offset);
+            List<Map<String, Object>> results = new ArrayList<>();
+            for (com.vozflix.entity.Movie m : movies) {
+                Map<String, Object> map = new HashMap<>();
+                map.put("id", m.getMovieId());
+                map.put("title", m.getTitle());
+                map.put("overview", m.getOverview());
+                map.put("poster_path", m.getPosterPath());
+                map.put("backdrop_path", m.getBackdropPath());
+                map.put("release_date", m.getReleaseDate());
+                map.put("vote_average", m.getVoteAverage());
+                map.put("popularity", m.getPopularity());
+                results.add(map);
+            }
+            Map<String, Object> response = new HashMap<>();
+            response.put("results", results);
+            response.put("total", tmdbMovieService.getCachedMovies(Integer.MAX_VALUE, 0).size());
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Error fetching cached movies", e);
             return ResponseEntity.internalServerError().build();
         }
     }

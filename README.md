@@ -1,6 +1,6 @@
 # VozFlix
 
-A streaming platform web application inspired by Netflix, built with HTML/CSS/JS frontend and Spring Boot backend.
+A streaming platform web application inspired by Netflix. The frontend is built with HTML/CSS/JS and directly consumes The Movie Database (TMDB) API for content browsing, while the Spring Boot backend manages user authentication, sessions, and watchlists.
 
 ## Tech Stack
 
@@ -38,6 +38,9 @@ BTL-web/
 │   ├── Dockerfile
 │   ├── .env.example
 │   └── requirements.txt
+├── frontend/                   # Frontend Docker setup
+│   ├── Dockerfile              # Nginx container
+│   └── nginx.conf              # Nginx configuration
 ├── database/
 │   └── schema.sql             # MySQL schema
 ├── pages/                    # HTML pages
@@ -62,7 +65,7 @@ BTL-web/
 - **Watchlist** - Save movies to Continue Watching, Wishlist, Favorites, Completed
 - **Filtering** - Filter by year, genre, type
 - **User Profiles** - User account pages with stats
-- **TMDB Integration** - Real movie data from The Movie Database API
+- **TMDB Integration** - Frontend directly consumes The Movie Database API for real-time movie/series data without backend overhead.
 
 ## Pages
 
@@ -107,14 +110,23 @@ cp .env.example .env
 mvn spring-boot:run
 ```
 
-**Docker:**
+**Docker (full stack):**
 ```bash
 docker-compose up --build
 ```
 
-The API runs on `http://localhost:8080`
+This starts all services:
 
-### Frontend
+| Service | URL |
+|---------|-----|
+| Frontend (Nginx) | `http://localhost:3000` |
+| Backend API | `http://localhost:8080` |
+| MySQL | `localhost:3306` |
+| Redis | `localhost:6379` |
+
+The Nginx frontend automatically proxies `/api/` requests to the backend.
+
+### Frontend (local dev without Docker)
 
 Open `index.html` in a browser, or serve with a local server:
 

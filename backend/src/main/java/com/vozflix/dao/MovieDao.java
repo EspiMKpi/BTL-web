@@ -55,13 +55,21 @@ public class MovieDao {
                 "release_date, original_language, popularity, vote_average, vote_count, adult, video, " +
                 "runtime, budget, revenue, status, imdb_id, homepage, genres_json, " +
                 "production_countries_json, spoken_languages_json) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         return jdbcTemplate.update(sql, movie.getMovieId(), movie.getTitle(), movie.getOriginalTitle(), movie.getTagline(),
                 movie.getOverview(), movie.getPosterPath(), movie.getBackdropPath(), movie.getReleaseDate(),
                 movie.getOriginalLanguage(), movie.getPopularity(), movie.getVoteAverage(), movie.getVoteCount(),
                 movie.getAdult(), movie.getVideo(), movie.getRuntime(), movie.getBudget(), movie.getRevenue(),
                 movie.getStatus(), movie.getImdbId(), movie.getHomepage(), movie.getGenresJson(),
                 movie.getProductionCountriesJson(), movie.getSpokenLanguagesJson());
+    }
+
+    public int saveOrUpdate(Movie movie) {
+        if (existsById(movie.getMovieId())) {
+            return update(movie);
+        }
+
+        return insert(movie);
     }
 
     public int update(Movie movie) {

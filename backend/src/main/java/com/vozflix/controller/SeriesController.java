@@ -1,12 +1,16 @@
 package com.vozflix.controller;
 
 import com.vozflix.api.TmdbApiService;
+import com.vozflix.dao.GenreDao;
 import com.vozflix.service.TmdbSeriesService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -17,6 +21,7 @@ public class SeriesController {
 
     private final TmdbSeriesService tmdbSeriesService;
     private final TmdbApiService tmdbApiService;
+    private final GenreDao genreDao;
 
     @GetMapping("/popular")
     public ResponseEntity<Map<String, Object>> getPopularTvShows(
@@ -73,7 +78,7 @@ public class SeriesController {
             @RequestParam(required = false) String withGenres) {
         log.info("Discovering TV shows with filters - page: {}, sortBy: {}, genres: {}", page, sortBy, withGenres);
         try {
-            Map<String, Object> response = tmdbApiService.discoverTvShows(page, "en-US", sortBy, withGenres);
+            Map<String, Object> response = tmdbSeriesService.discoverTvShows(page, sortBy, withGenres);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.error("Error discovering TV shows", e);
@@ -93,14 +98,73 @@ public class SeriesController {
         }
     }
 
+    @PostMapping("/sync/all")
+    public ResponseEntity<String> syncAll() {
+        log.info("Starting full TV sync");
+        try {
+            tmdbSeriesService.syncTvGenres();
+            tmdbSeriesService.getPopularTvShows(1);
+            tmdbSeriesService.getTopRatedTvShows(1);
+            return ResponseEntity.ok("Full TV sync completed successfully");
+        } catch (Exception e) {
+            log.error("Error during full TV sync", e);
+            return ResponseEntity.internalServerError().body("Failed to sync: " + e.getMessage());
+        }
+    }
+
     @GetMapping("/genres")
     public ResponseEntity<Map<String, Object>> getGenres() {
-        log.info("Fetching TV genres");
+        log.info("Fetching TV genres from MySQL");
         try {
-            Map<String, Object> response = tmdbApiService.getTvGenres("en-US");
+            List<com.vozflix.entity.Genre> genres = genreDao.findAll();
+            if (genres.isEmpty()) {
+                Map<String, Object> response = tmdbApiService.getTvGenres("en-US").execute().body();
+                return ResponseEntity.ok(response);
+            }
+            List<Map<String, Object>> genreList = new ArrayList<>();
+            for (com.vozflix.entity.Genre g : genres) {
+                Map<String, Object> map = new HashMap<>();
+                map.put("id", g.getGenreId());
+                map.put("name", g.getName());
+                genreList.add(map);
+            }
+            Map<String, Object> response = new HashMap<>();
+            response.put("genres", genreList);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.error("Error fetching genres", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @GetMapping("/cached")
+    public ResponseEntity<Map<String, Object>> getCachedSeries(
+            @RequestParam(required = false, defaultValue = "20") Integer limit,
+            @RequestParam(required = false, defaultValue = "0") Integer offset) {
+        log.info("Fetching cached series, limit: {}, offset: {}", limit, offset);
+        try {
+            List<com.vozflix.entity.Series> series = tmdbSeriesService.getCachedSeries(limit, offset);
+            List<Map<String, Object>> results = new ArrayList<>();
+            for (com.vozflix.entity.Series s : series) {
+                Map<String, Object> map = new HashMap<>();
+                map.put("id", s.getSeriesId());
+                map.put("name", s.getName());
+                map.put("overview", s.getOverview());
+                map.put("poster_path", s.getPosterPath());
+                map.put("backdrop_path", s.getBackdropPath());
+                map.put("first_air_date", s.getFirstAirDate());
+                map.put("vote_average", s.getVoteAverage());
+                map.put("popularity", s.getPopularity());
+                map.put("number_of_seasons", s.getNumberOfSeasons());
+                map.put("number_of_episodes", s.getNumberOfEpisodes());
+                results.add(map);
+            }
+            Map<String, Object> response = new HashMap<>();
+            response.put("results", results);
+            response.put("total", tmdbSeriesService.getCachedSeries(Integer.MAX_VALUE, 0).size());
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Error fetching cached series", e);
             return ResponseEntity.internalServerError().build();
         }
     }
