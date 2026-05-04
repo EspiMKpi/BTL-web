@@ -1,0 +1,83 @@
+<div id="page-profile" class="page-content">
+    <section class="catalog-hero profile-hero">
+        <div>
+            <p class="landing-eyebrow">Account</p>
+            <h1 class="catalog-title">Profile &amp; Settings</h1>
+            <p class="catalog-copy">Manage your account details, security, and public profile.</p>
+        </div>
+        <div class="catalog-hero-metrics">
+            <div class="catalog-metric">
+                <span id="profile-role-badge">-</span>
+                <p>Role</p>
+            </div>
+            <div class="catalog-metric">
+                <span id="profile-status-badge">Active</span>
+                <p>Status</p>
+            </div>
+        </div>
+    </section>
+
+    <div class="profile-layout">
+        <aside class="sidebar-card profile-summary">
+            <div class="profile-card">
+                <div class="profile-header">
+                    <img class="profile-avatar" id="profile-avatar-img" src="" alt="">
+                    <div>
+                        <div class="profile-name" id="profile-display-name">Guest</div>
+                        <div class="profile-handle" id="profile-display-handle">@guest</div>
+                    </div>
+                </div>
+                <div class="profile-meta-list">
+                    <div class="profile-meta-row">
+                        <span>Email</span>
+                        <strong id="profile-display-email">-</strong>
+                    </div>
+                    <div class="profile-meta-row">
+                        <span>User ID</span>
+                        <strong id="profile-display-id">-</strong>
+                    </div>
+                </div>
+            </div>
+            <button class="btn btn-secondary" id="profile-logout-btn">Log out</button>
+        </aside>
+
+        <section class="sidebar-card profile-form-card">
+            <div class="section-header">
+                <h2 class="section-title">Account information</h2>
+                <p class="profile-form-note">Update your details. Leave password fields blank to keep your current password.</p>
+            </div>
+            <form class="auth-form" id="profile-form" autocomplete="off">
+                <div class="profile-form-grid">
+                    <div class="auth-input-group">
+                        <input type="text" id="profile-username-input" placeholder="Username" required>
+                    </div>
+                    <div class="auth-input-group">
+                        <input type="email" id="profile-email-input" placeholder="Email address" required>
+                    </div>
+                    <div class="auth-input-group profile-form-full">
+                        <input type="url" id="profile-avatar-input" placeholder="Avatar URL (optional)">
+                    </div>
+                </div>
+
+                <div class="profile-form-divider"></div>
+
+                <div class="profile-form-grid">
+                    <div class="auth-input-group">
+                        <input type="password" id="profile-current-password" placeholder="Current password">
+                    </div>
+                    <div class="auth-input-group">
+                        <input type="password" id="profile-new-password" placeholder="New password">
+                    </div>
+                    <div class="auth-input-group profile-form-full">
+                        <input type="password" id="profile-confirm-password" placeholder="Confirm new password">
+                    </div>
+                </div>
+
+                <div class="profile-form-actions">
+                    <button type="submit" class="btn btn-primary" id="profile-save-btn">Save changes</button>
+                    <button type="button" class="btn btn-secondary" id="profile-reset-btn">Reset</button>
+                </div>
+            </form>
+        </section>
+    </div>
+</div>

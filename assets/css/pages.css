@@ -331,6 +331,88 @@
     margin-bottom: 10px;
 }
 
+/* Profile Page */
+.profile-hero {
+    background:
+        radial-gradient(circle at 14% 20%, rgba(244, 200, 74, 0.22), transparent 45%),
+        radial-gradient(circle at 86% 18%, rgba(255, 221, 122, 0.18), transparent 40%),
+        linear-gradient(125deg, #2f2109 0%, #4c3510 55%, #1d1507 100%);
+}
+
+.profile-layout {
+    display: grid;
+    grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+    gap: 24px;
+    align-items: start;
+}
+
+.profile-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.profile-meta-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.profile-meta-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.profile-meta-row strong {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.profile-form-card .section-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.profile-form-note {
+    color: var(--text-muted);
+    font-size: 13px;
+    margin: 0;
+}
+
+.profile-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.profile-form-full {
+    grid-column: 1 / -1;
+}
+
+.profile-form-divider {
+    height: 1px;
+    background: var(--glass-border);
+    margin: 16px 0;
+}
+
+.profile-form-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+}
+
+.profile-form-actions .btn {
+    height: 42px;
+    border-radius: 12px;
+}
+
 .watchlist-hero-card {
     background:
         radial-gradient(circle at 16% 18%, rgba(232, 193, 112, 0.14), transparent 44%),
@@ -1115,6 +1197,18 @@
 .user-main-info p {
     color: var(--text-muted);
     font-size: 18px;
+}
+
+.watchlist-guest-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.watchlist-guest-actions .btn {
+    height: 40px;
+    padding: 8px 20px;
 }
 
 .user-main-stats {

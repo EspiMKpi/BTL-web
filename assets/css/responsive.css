@@ -863,6 +863,15 @@
         text-align: center;
     }
 
+    /* --- Profile page --- */
+    .profile-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .profile-form-grid {
+        grid-template-columns: 1fr;
+    }
+
     /* --- Watchlist tabs --- */
     .list-tabs {
         gap: 6px;

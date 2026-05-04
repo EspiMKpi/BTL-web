@@ -1,0 +1,55 @@
+<div id="page-settings" class="page-content">
+    <section class="catalog-hero profile-hero">
+        <div>
+            <p class="landing-eyebrow">Account</p>
+            <h1 class="catalog-title">Settings</h1>
+            <p class="catalog-copy">Manage your preferences, notifications, and application settings.</p>
+        </div>
+    </section>
+
+    <div class="profile-layout">
+        <aside class="sidebar-card profile-summary">
+            <div class="section-header">
+                <h3 class="section-title" style="margin-bottom: 10px;">Preferences</h3>
+                <ul style="list-style: none; padding: 0;">
+                    <li style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.1);"><a href="#profile" class="nav-link" style="color: var(--accent-gold); text-decoration: none;">Account Info</a></li>
+                    <li style="padding: 10px 0;"><a href="#settings" class="nav-link" style="color: white; text-decoration: none;">General Settings</a></li>
+                </ul>
+            </div>
+        </aside>
+
+        <section class="sidebar-card profile-form-card">
+            <div class="section-header">
+                <h2 class="section-title">General Settings</h2>
+                <p class="profile-form-note">Customize your experience on VozFlix.</p>
+            </div>
+            <form class="auth-form" id="settings-form" autocomplete="off">
+                <div class="profile-form-grid">
+                    <div class="auth-input-group profile-form-full">
+                        <label style="color: #ccc; display: block; margin-bottom: 8px;">Theme</label>
+                        <select id="settings-theme" class="auth-input" style="width: 100%; padding: 12px; border-radius: 8px; background: rgba(255, 255, 255, 0.1); color: white; border: 1px solid rgba(255, 255, 255, 0.2);">
+                            <option value="dark">Dark Theme (Default)</option>
+                            <option value="light">Light Theme</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="profile-form-divider"></div>
+
+                <div class="profile-form-grid">
+                    <div class="auth-input-group profile-form-full">
+                        <label style="color: #ccc; display: block; margin-bottom: 8px;">Email Notifications</label>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <input type="checkbox" id="settings-notify-new" checked>
+                            <label for="settings-notify-new" style="color: white;">New arrivals and recommendations</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="profile-form-actions" style="margin-top: 30px;">
+                    <button type="submit" class="btn btn-primary" id="settings-save-btn">Save preferences</button>
+                </div>
+            </form>
+        </section>
+    </div>
+</div>

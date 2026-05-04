@@ -9,6 +9,8 @@ const PAGE_FILES = {
     movies: 'movies.html',
     series: 'series.html',
     watchlists: 'watchlists.html',
+    profile: 'profile.html',
+    settings: 'settings.html',
     detail: 'detail.html',
     watching: 'watching.html'
 };
@@ -76,7 +78,17 @@ function applyWatchingOverride() {
 
 window.switchPage = async function(pageId, options = {}) {
     const { pushHash = true } = options;
-    const targetPage = PAGE_FILES[pageId] ? pageId : DEFAULT_PAGE;
+    let targetPage = PAGE_FILES[pageId] ? pageId : DEFAULT_PAGE;
+
+    const token = localStorage.getItem('jwt_token');
+    const isAuthRoute = targetPage === 'login' || targetPage === 'register';
+    
+    if (!token && targetPage !== 'discover' && !isAuthRoute) {
+        window.appState.redirectAfterLogin = targetPage;
+        targetPage = 'login';
+    } else if (token && isAuthRoute) {
+        targetPage = 'discover';
+    }
 
     try {
         await loadPageMarkup(targetPage);
@@ -106,6 +118,9 @@ window.switchPage = async function(pageId, options = {}) {
 };
 
 window.bootstrapRouter = function() {
+    if (typeof window.updateProfileDisplay === 'function') {
+        window.updateProfileDisplay();
+    }
     const initialPage = window.location.hash.replace('#', '') || DEFAULT_PAGE;
     window.switchPage(initialPage, { pushHash: false });
 };

@@ -77,6 +77,27 @@ function deriveCardType(card) {
 window.initSearch = function() {
     const searchInputs = document.querySelectorAll('.search-box input, .filter-search input');
     let searchTimeout = null;
+    const SEARCH_PAGE_LIMIT = 3;
+
+    const fetchSearchResults = async (endpoint, query) => {
+        const requests = [];
+        for (let page = 1; page <= SEARCH_PAGE_LIMIT; page += 1) {
+            requests.push(fetchJson(buildApiUrl(endpoint, { query, page })));
+        }
+        const responses = await Promise.all(requests);
+        const results = responses.flatMap(response => Array.isArray(response?.results) ? response.results : []);
+        const seen = new Set();
+
+        return results.filter(item => {
+            const id = item?.id;
+            if (id == null) return false;
+            const typeKey = item?.media_type || endpoint;
+            const key = `${typeKey}:${id}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+    };
 
     const applySearch = async (rawQuery) => {
         const query = (rawQuery || '').toLowerCase().trim();
@@ -109,8 +130,7 @@ window.initSearch = function() {
                 if (isSeriesPage) endpoint = '/api/search/series';
                 else if (isMoviesPage) endpoint = '/api/search/movies';
 
-                const result = await fetchJson(buildApiUrl(endpoint, { query }));
-                const rawResults = result?.results || [];
+                const rawResults = await fetchSearchResults(endpoint, query);
                 const genreLookup = new Map(); // Search results don't strictly need precise genres for standard rendering
                 
                 if (isSeriesPage) {
@@ -510,13 +530,294 @@ function applySeriesHero(series) {
     }
 }
 
-async function fetchJson(url) {
-    const response = await fetch(url);
+async function fetchJson(url, options = {}) {
+    const token = localStorage.getItem('jwt_token');
+    const headers = options.headers || {};
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    const response = await fetch(url, { ...options, headers });
     if (!response.ok) {
+        if (response.status === 401) {
+            window.logout();
+            throw new Error('Unauthorized');
+        }
         throw new Error(`Request failed: ${response.status}`);
     }
     return response.json();
 }
+
+window.updateProfileDisplay = function() {
+    const avatarImg = document.querySelector('#avatar-toggle img');
+    const dropdownName = document.querySelector('#profile-dropdown .dropdown-name');
+    const dropdownHandle = document.querySelector('#profile-dropdown .dropdown-handle');
+    const navAuthActions = document.getElementById('nav-auth-actions');
+    const avatarWrapper = document.getElementById('profile-avatar-wrapper');
+    const guestActions = document.getElementById('profile-guest-actions');
+    const authActions = document.getElementById('profile-auth-actions');
+    const watchlistName = document.getElementById('watchlist-username');
+    const watchlistHandle = document.getElementById('watchlist-handle');
+    const watchlistAvatar = document.getElementById('watchlist-avatar-img');
+    const watchlistGuestActions = document.getElementById('watchlist-guest-actions');
+    const watchlistStats = document.getElementById('watchlist-stats');
+    const defaultAvatar = 'https://api.dicebear.com/9.x/avataaars/svg?seed=guest';
+
+    const setVisible = (el, show) => {
+        if (!el) return;
+        el.style.display = show ? '' : 'none';
+    };
+
+    const applyGuest = () => {
+        if (avatarImg) avatarImg.src = defaultAvatar;
+        if (avatarImg) avatarImg.alt = 'Guest avatar';
+        if (dropdownName) dropdownName.textContent = 'Guest';
+        if (dropdownHandle) dropdownHandle.textContent = '@guest';
+        setVisible(navAuthActions, true);
+        setVisible(avatarWrapper, false);
+        setVisible(guestActions, true);
+        setVisible(authActions, false);
+        if (watchlistName) watchlistName.textContent = 'Guest';
+        if (watchlistHandle) watchlistHandle.textContent = 'Sign in to manage your lists';
+        setVisible(watchlistGuestActions, true);
+        setVisible(watchlistStats, false);
+        if (watchlistAvatar) {
+            watchlistAvatar.src = defaultAvatar;
+            watchlistAvatar.alt = 'Guest avatar';
+            watchlistAvatar.style.display = 'none';
+        }
+    };
+
+    const userInfoRaw = localStorage.getItem('user_info');
+    if (!userInfoRaw) {
+        applyGuest();
+        return;
+    }
+
+    try {
+        const userInfo = JSON.parse(userInfoRaw);
+        const name = userInfo.username || userInfo.email || 'Guest';
+        const seed = userInfo.username || userInfo.email || 'guest';
+        const handleBase = userInfo.username || (userInfo.email ? userInfo.email.split('@')[0] : 'guest');
+        const avatarUrl = userInfo.avatarUrl || `https://api.dicebear.com/9.x/avataaars/svg?seed=${encodeURIComponent(seed)}`;
+
+        if (!userInfo.username && !userInfo.email) {
+            applyGuest();
+            return;
+        }
+
+        if (avatarImg) {
+            avatarImg.src = avatarUrl;
+            avatarImg.alt = `${name} avatar`;
+        }
+        setVisible(navAuthActions, false);
+        setVisible(avatarWrapper, true);
+        if (dropdownName) dropdownName.textContent = name;
+        if (dropdownHandle) dropdownHandle.textContent = `@${handleBase}`;
+        setVisible(guestActions, false);
+        setVisible(authActions, true);
+        if (watchlistName) watchlistName.textContent = name;
+        if (watchlistHandle) watchlistHandle.textContent = `@${handleBase}`;
+        setVisible(watchlistGuestActions, false);
+        setVisible(watchlistStats, true);
+        if (watchlistAvatar) {
+            watchlistAvatar.src = avatarUrl;
+            watchlistAvatar.alt = `${name} avatar`;
+            watchlistAvatar.style.display = '';
+        }
+    } catch (e) {
+        applyGuest();
+    }
+};
+
+window.ensureGuestSession = function() {
+    const token = localStorage.getItem('jwt_token');
+    if (token) return;
+    if (!localStorage.getItem('guest_session')) {
+        const guestId = `guest_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        localStorage.setItem('guest_session', guestId);
+    }
+};
+
+window.initProfilePage = function() {
+    const form = document.getElementById('profile-form');
+    const logoutBtn = document.getElementById('profile-logout-btn');
+    const resetBtn = document.getElementById('profile-reset-btn');
+    const saveBtn = document.getElementById('profile-save-btn');
+
+    const avatarImg = document.getElementById('profile-avatar-img');
+    const displayName = document.getElementById('profile-display-name');
+    const displayHandle = document.getElementById('profile-display-handle');
+    const displayEmail = document.getElementById('profile-display-email');
+    const displayId = document.getElementById('profile-display-id');
+    const roleBadge = document.getElementById('profile-role-badge');
+
+    const usernameInput = document.getElementById('profile-username-input');
+    const emailInput = document.getElementById('profile-email-input');
+    const avatarInput = document.getElementById('profile-avatar-input');
+    const currentPasswordInput = document.getElementById('profile-current-password');
+    const newPasswordInput = document.getElementById('profile-new-password');
+    const confirmPasswordInput = document.getElementById('profile-confirm-password');
+
+    const parseUserInfo = () => {
+        const raw = localStorage.getItem('user_info');
+        if (!raw) return null;
+        try {
+            return JSON.parse(raw);
+        } catch (e) {
+            return null;
+        }
+    };
+
+    const applyUserInfo = (userInfo) => {
+        if (!userInfo) return;
+        const name = userInfo.username || userInfo.email || 'User';
+        const handleBase = userInfo.username || (userInfo.email ? userInfo.email.split('@')[0] : 'user');
+        const seed = userInfo.username || userInfo.email || 'guest';
+        const avatarUrl = userInfo.avatarUrl || `https://api.dicebear.com/9.x/avataaars/svg?seed=${encodeURIComponent(seed)}`;
+
+        if (avatarImg) {
+            avatarImg.src = avatarUrl;
+            avatarImg.alt = `${name} avatar`;
+        }
+        if (displayName) displayName.textContent = name;
+        if (displayHandle) displayHandle.textContent = `@${handleBase}`;
+        if (displayEmail) displayEmail.textContent = userInfo.email || '-';
+        if (displayId) displayId.textContent = userInfo.userId != null ? `#${userInfo.userId}` : '-';
+        if (roleBadge) roleBadge.textContent = userInfo.role ? userInfo.role.toUpperCase() : 'MEMBER';
+
+        if (usernameInput) usernameInput.value = userInfo.username || '';
+        if (emailInput) emailInput.value = userInfo.email || '';
+        if (avatarInput) avatarInput.value = userInfo.avatarUrl || '';
+        if (currentPasswordInput) currentPasswordInput.value = '';
+        if (newPasswordInput) newPasswordInput.value = '';
+        if (confirmPasswordInput) confirmPasswordInput.value = '';
+    };
+
+    const userInfo = parseUserInfo();
+    applyUserInfo(userInfo);
+
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+            if (window.logout) window.logout();
+        });
+    }
+
+    if (resetBtn) {
+        resetBtn.addEventListener('click', () => {
+            applyUserInfo(parseUserInfo());
+        });
+    }
+
+    if (!form || form.dataset.bound === 'true') return;
+    form.dataset.bound = 'true';
+
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        const username = usernameInput?.value?.trim();
+        const email = emailInput?.value?.trim();
+        const avatarUrl = avatarInput?.value?.trim();
+        const currentPassword = currentPasswordInput?.value || '';
+        const newPassword = newPasswordInput?.value || '';
+        const confirmPassword = confirmPasswordInput?.value || '';
+
+        if (!username || !email) {
+            window.showNotification('Username and email are required');
+            return;
+        }
+
+        if (newPassword || confirmPassword || currentPassword) {
+            if (!newPassword || !confirmPassword) {
+                window.showNotification('Enter and confirm your new password');
+                return;
+            }
+            if (newPassword !== confirmPassword) {
+                window.showNotification('New passwords do not match');
+                return;
+            }
+            if (!currentPassword) {
+                window.showNotification('Current password is required');
+                return;
+            }
+        }
+
+        const payload = {
+            username,
+            email,
+            avatarUrl: avatarUrl || null
+        };
+
+        if (newPassword) {
+            payload.currentPassword = currentPassword;
+            payload.newPassword = newPassword;
+        }
+
+        const token = localStorage.getItem('jwt_token');
+        if (!token) {
+            window.showNotification('Please log in to update your account');
+            window.switchPage('login');
+            return;
+        }
+
+        if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saving...';
+        }
+
+        try {
+            const response = await fetch(buildApiUrl('/api/auth/profile'), {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                window.showNotification(data.error || 'Update failed');
+                return;
+            }
+
+            if (data.token) {
+                window.authenticate(data.token, data);
+            } else {
+                localStorage.setItem('user_info', JSON.stringify(data));
+                if (window.updateProfileDisplay) window.updateProfileDisplay();
+            }
+            applyUserInfo(parseUserInfo());
+            window.showNotification('Account updated');
+        } catch (error) {
+            window.showNotification('Update failed. Please try again.');
+        } finally {
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Save changes';
+            }
+        }
+    });
+};
+
+window.authenticate = function(token, user) {
+    localStorage.setItem('jwt_token', token);
+    localStorage.setItem('user_info', JSON.stringify(user));
+    window.updateProfileDisplay();
+};
+
+window.logout = async function() {
+    try {
+        await fetchJson(buildApiUrl('/api/auth/logout'), { method: 'POST' });
+    } catch (e) {
+        console.warn('Logout API failed', e);
+    }
+    localStorage.removeItem('jwt_token');
+    localStorage.removeItem('user_info');
+    if (window.ensureGuestSession) window.ensureGuestSession();
+    window.updateProfileDisplay();
+    window.switchPage('login');
+};
 
 async function fetchGenreMap(_unused) {
     const response = await fetchJson(backendUrl('/api/movies/genres'));

@@ -4,13 +4,17 @@
  */
 
 document.addEventListener('DOMContentLoaded', () => {
+    if (window.ensureGuestSession) window.ensureGuestSession();
     window.onPageRendered = (pageId) => {
+        if (window.updateProfileDisplay) window.updateProfileDisplay();
         if (window.initSearch) window.initSearch();
         if (window.initFilters) window.initFilters();
         if (pageId === 'discover' || pageId === 'movies' || pageId === 'series') {
             if (window.initCatalogPage) window.initCatalogPage(pageId);
         } else if (pageId === 'detail') {
             if (window.initDetailPage) window.initDetailPage();
+        } else if (pageId === 'profile') {
+            if (window.initProfilePage) window.initProfilePage();
         } else if (pageId === 'watchlists') {
             if (window.initWatchlistsPage) window.initWatchlistsPage();
         } else if (pageId === 'watching') {
@@ -32,6 +36,22 @@ document.addEventListener('DOMContentLoaded', () => {
             if (targetPage && window.switchPage) {
                 window.switchPage(targetPage);
             }
+            return;
+        }
+
+        // 0b. Profile dropdown links -> Route to profile or settings
+        const profileLink = e.target.closest('#profile-link, #settings-link');
+        if (profileLink) {
+            e.preventDefault();
+            const target = profileLink.id === 'settings-link' ? 'settings' : 'profile';
+            const token = localStorage.getItem('jwt_token');
+            if (!token) {
+                window.appState = window.appState || {};
+                window.appState.redirectAfterLogin = target;
+                window.switchPage('login');
+                return;
+            }
+            window.switchPage(target);
             return;
         }
 
@@ -86,16 +106,90 @@ document.addEventListener('DOMContentLoaded', () => {
         // 3. Login Button -> Go to Discover
         const loginBtn = e.target.closest('#btn-login-continue');
         if (loginBtn) {
-            if (window.appState) window.appState.playerOverride = null;
-            window.switchPage('discover');
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            
+            if (!email || !password) {
+                window.showNotification('Please enter email and password');
+                return;
+            }
+            
+            loginBtn.innerText = 'Signing in...';
+            loginBtn.disabled = true;
+            
+            fetch(buildApiUrl('/api/auth/login'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            })
+            .then(res => res.json().then(data => ({ status: res.status, data })))
+            .then(res => {
+                loginBtn.innerText = 'Continue';
+                loginBtn.disabled = false;
+                
+                if (res.status === 200 && res.data.token) {
+                    window.authenticate(res.data.token, res.data);
+                    if (window.appState) window.appState.playerOverride = null;
+                    const next = window.appState?.redirectAfterLogin || 'discover';
+                    window.switchPage(next);
+                } else {
+                    window.showNotification(res.data.error || 'Login failed');
+                }
+            })
+            .catch(err => {
+                loginBtn.innerText = 'Continue';
+                loginBtn.disabled = false;
+                window.showNotification('Login failed. Please try again.');
+            });
             return;
         }
 
         // 3b. Register Button -> Go to Discover
         const registerBtn = e.target.closest('#btn-register-continue');
         if (registerBtn) {
-            if (window.appState) window.appState.playerOverride = null;
-            window.switchPage('discover');
+            e.preventDefault();
+            const username = document.getElementById('register-username').value;
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
+            const confirm = document.getElementById('register-confirm').value;
+            
+            if (!username || !email || !password) {
+                window.showNotification('Please fill all fields');
+                return;
+            }
+            if (password !== confirm) {
+                window.showNotification('Passwords do not match');
+                return;
+            }
+            
+            registerBtn.innerText = 'Creating account...';
+            registerBtn.disabled = true;
+            
+            fetch(buildApiUrl('/api/auth/register'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, email, password })
+            })
+            .then(res => res.json().then(data => ({ status: res.status, data })))
+            .then(res => {
+                registerBtn.innerText = 'Create account';
+                registerBtn.disabled = false;
+                
+                if (res.status === 200 && res.data.token) {
+                    window.authenticate(res.data.token, res.data);
+                    if (window.appState) window.appState.playerOverride = null;
+                    const next = window.appState?.redirectAfterLogin || 'discover';
+                    window.switchPage(next);
+                } else {
+                    window.showNotification(res.data.error || 'Registration failed');
+                }
+            })
+            .catch(err => {
+                registerBtn.innerText = 'Create account';
+                registerBtn.disabled = false;
+                window.showNotification('Registration failed. Please try again.');
+            });
             return;
         }
 
@@ -110,6 +204,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const avatarToggle = e.target.closest('#avatar-toggle');
         const dropdown = document.getElementById('profile-dropdown');
         if (avatarToggle && dropdown) {
+            const userInfoRaw = localStorage.getItem('user_info');
+            if (userInfoRaw) {
+                try {
+                    const userInfo = JSON.parse(userInfoRaw);
+                    const nameEl = dropdown.querySelector('.dropdown-name');
+                    const handleEl = dropdown.querySelector('.dropdown-handle');
+                    const name = userInfo.username || userInfo.email || 'User';
+                    const handleBase = userInfo.username || (userInfo.email ? userInfo.email.split('@')[0] : 'user');
+                    if (nameEl) nameEl.textContent = name;
+                    if (handleEl) handleEl.textContent = '@' + handleBase;
+                } catch(e) {}
+            }
             dropdown.classList.toggle('show');
             return;
         }
@@ -117,7 +223,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // 5. Logout Button -> Go to Login
         const logoutBtn = e.target.closest('#logout-btn');
         if (logoutBtn) {
-            window.switchPage('login');
+            window.logout();
             return;
         }
 
