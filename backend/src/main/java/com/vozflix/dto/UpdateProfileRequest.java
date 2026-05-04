@@ -9,12 +9,11 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class AuthResponse {
+public class UpdateProfileRequest {
 
-    private Integer userId;
     private String username;
     private String email;
     private String avatarUrl;
-    private String role;
-    private String token;
+    private String currentPassword;
+    private String newPassword;
 }

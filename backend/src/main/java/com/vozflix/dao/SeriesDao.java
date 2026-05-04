@@ -58,7 +58,7 @@ public class SeriesDao {
                 "adult, episode_run_time_json, type, status, imdb_id, homepage, genres_json, " +
                 "networks_json, production_countries_json, spoken_languages_json, " +
                 "number_of_seasons, number_of_episodes) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         return jdbcTemplate.update(sql, series.getSeriesId(), series.getName(), series.getOriginalName(), series.getTagline(),
                 series.getOverview(), series.getPosterPath(), series.getBackdropPath(), series.getFirstAirDate(),
                 series.getLastAirDate(), series.getOriginalLanguage(), series.getPopularity(), series.getVoteAverage(), series.getVoteCount(),

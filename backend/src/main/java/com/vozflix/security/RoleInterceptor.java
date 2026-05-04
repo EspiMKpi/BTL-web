@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
 
+import org.springframework.data.redis.core.StringRedisTemplate;
 import java.util.Arrays;
 
 @Slf4j
@@ -18,6 +19,7 @@ import java.util.Arrays;
 public class RoleInterceptor implements HandlerInterceptor {
 
     private final JwtUtil jwtUtil;
+    private final StringRedisTemplate redisTemplate;
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
@@ -38,6 +40,14 @@ public class RoleInterceptor implements HandlerInterceptor {
         }
 
         String token = authHeader.substring(7);
+
+        // Check if token exists in Redis
+        Boolean hasKey = redisTemplate.hasKey("auth:token:" + token);
+        if (hasKey == null || !hasKey) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.getWriter().write("{\"error\":\"Token invalid or expired\"}");
+            return false;
+        }
 
         if (jwtUtil.isTokenExpired(token)) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);

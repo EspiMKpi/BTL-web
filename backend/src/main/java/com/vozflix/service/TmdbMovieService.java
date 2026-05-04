@@ -56,6 +56,12 @@ public class TmdbMovieService {
     public Map<String, Object> getPopularMovies(Integer page) {
         String cacheKey = "movies:popular:" + page;
         try { Object cached = redisTemplate.opsForValue().get(cacheKey); if (cached != null) return convertToMap(cached); } catch (Exception e) {}
+        
+        List<Movie> dbMovies = movieDao.findAll(20, (page - 1) * 20);
+        if (dbMovies != null && !dbMovies.isEmpty()) {
+            return mapMoviesToResponse(dbMovies, page);
+        }
+        
         try {
             Map<String, Object> response = executeCall(tmdbApiService.getPopularMovies(page, DEFAULT_LANGUAGE));
             cacheMovieListResponse(response);
@@ -70,6 +76,12 @@ public class TmdbMovieService {
     public Map<String, Object> getTopRatedMovies(Integer page) {
         String cacheKey = "movies:top_rated:" + page;
         try { Object cached = redisTemplate.opsForValue().get(cacheKey); if (cached != null) return convertToMap(cached); } catch (Exception e) {}
+        
+        List<Movie> dbMovies = movieDao.findTopRated(20, (page - 1) * 20);
+        if (dbMovies != null && !dbMovies.isEmpty()) {
+            return mapMoviesToResponse(dbMovies, page);
+        }
+
         try {
             Map<String, Object> response = executeCall(tmdbApiService.getTopRatedMovies(page, DEFAULT_LANGUAGE));
             cacheMovieListResponse(response);
@@ -84,6 +96,12 @@ public class TmdbMovieService {
     public Map<String, Object> getNowPlayingMovies(Integer page) {
         String cacheKey = "movies:now_playing:" + page;
         try { Object cached = redisTemplate.opsForValue().get(cacheKey); if (cached != null) return convertToMap(cached); } catch (Exception e) {}
+        
+        List<Movie> dbMovies = movieDao.findAll(20, (page - 1) * 20);
+        if (dbMovies != null && !dbMovies.isEmpty()) {
+            return mapMoviesToResponse(dbMovies, page);
+        }
+
         try {
             Map<String, Object> response = executeCall(tmdbApiService.getNowPlayingMovies(page, DEFAULT_LANGUAGE));
             cacheMovieListResponse(response);
@@ -98,6 +116,13 @@ public class TmdbMovieService {
     public Map<String, Object> discoverMovies(Integer page, String sortBy, String withGenres, Integer primaryReleaseYear) {
         String cacheKey = "movies:discover:" + page + ":" + sortBy + ":" + withGenres + ":" + primaryReleaseYear;
         try { Object cached = redisTemplate.opsForValue().get(cacheKey); if (cached != null) return convertToMap(cached); } catch (Exception e) {}
+        
+        // As a simple fallback for discover, return popular
+        List<Movie> dbMovies = movieDao.findAll(20, (page - 1) * 20);
+        if (dbMovies != null && !dbMovies.isEmpty()) {
+            return mapMoviesToResponse(dbMovies, page);
+        }
+
         try {
             Map<String, Object> response = executeCall(tmdbApiService.discoverMovies(page, DEFAULT_LANGUAGE, sortBy, withGenres, primaryReleaseYear));
             cacheMovieListResponse(response);
@@ -139,6 +164,11 @@ public class TmdbMovieService {
     }
 
     public Map<String, Object> searchMovies(String query, Integer page) {
+        List<Movie> dbMovies = movieDao.findByTitleContaining(query, 20, (page - 1) * 20);
+        if (dbMovies != null && !dbMovies.isEmpty()) {
+            return mapMoviesToResponse(dbMovies, page);
+        }
+
         try {
             Map<String, Object> response = executeCall(tmdbApiService.searchMovies(query, page, DEFAULT_LANGUAGE));
             cacheMovieListResponse(response);
@@ -147,6 +177,36 @@ public class TmdbMovieService {
             log.error("Error searching movies: {}", query, e);
             throw new RuntimeException("Failed to search movies", e);
         }
+    }
+
+    private Map<String, Object> mapMoviesToResponse(List<Movie> movies, int page) {
+        List<Map<String, Object>> results = new ArrayList<>();
+        for (Movie m : movies) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", m.getMovieId());
+            map.put("title", m.getTitle());
+            map.put("original_title", m.getOriginalTitle());
+            map.put("overview", m.getOverview());
+            map.put("poster_path", m.getPosterPath());
+            map.put("backdrop_path", m.getBackdropPath());
+            if (m.getReleaseDate() != null) map.put("release_date", m.getReleaseDate().toString());
+            map.put("vote_average", m.getVoteAverage());
+            map.put("popularity", m.getPopularity());
+            
+            if (m.getGenresJson() != null && !m.getGenresJson().isBlank()) {
+                try {
+                    List<?> genreIds = gson.fromJson(m.getGenresJson(), List.class);
+                    map.put("genre_ids", genreIds);
+                } catch (Exception e) {}
+            }
+            results.add(map);
+        }
+        Map<String, Object> response = new HashMap<>();
+        response.put("page", page);
+        response.put("results", results);
+        response.put("total_pages", 100);
+        response.put("total_results", 2000);
+        return response;
     }
 
     @SuppressWarnings("unchecked")

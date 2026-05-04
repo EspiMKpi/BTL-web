@@ -58,6 +58,12 @@ public class TmdbSeriesService {
     public Map<String, Object> discoverTvShows(Integer page, String sortBy, String withGenres) {
         String cacheKey = "series:discover:" + page + ":" + sortBy + ":" + withGenres;
         try { Object cached = redisTemplate.opsForValue().get(cacheKey); if (cached != null) return convertToMap(cached); } catch (Exception e) {}
+        
+        List<Series> dbSeries = seriesDao.findAll(20, (page - 1) * 20);
+        if (dbSeries != null && !dbSeries.isEmpty()) {
+            return buildSeriesListResponse(dbSeries, page);
+        }
+
         try {
             Map<String, Object> response = executeCall(tmdbApiService.discoverTvShows(page, DEFAULT_LANGUAGE, sortBy, withGenres));
             cacheSeriesListResponse(response);
@@ -79,6 +85,11 @@ public class TmdbSeriesService {
     }
 
     public Map<String, Object> searchTvShows(String query, Integer page) {
+        List<Series> dbSeries = seriesDao.findByNameContaining(query, 20, (page - 1) * 20);
+        if (dbSeries != null && !dbSeries.isEmpty()) {
+            return buildSeriesListResponse(dbSeries, page);
+        }
+
         try {
             Map<String, Object> response = executeCall(tmdbApiService.searchTvShows(query, page, DEFAULT_LANGUAGE));
             cacheSeriesListResponse(response);
@@ -266,6 +277,12 @@ public class TmdbSeriesService {
     public Map<String, Object> getPopularTvShows(Integer page) {
         String cacheKey = "series:popular:" + page;
         try { Object cached = redisTemplate.opsForValue().get(cacheKey); if (cached != null) return convertToMap(cached); } catch (Exception e) {}
+        
+        List<Series> dbSeries = seriesDao.findAll(20, (page - 1) * 20);
+        if (dbSeries != null && !dbSeries.isEmpty()) {
+            return buildSeriesListResponse(dbSeries, page);
+        }
+
         try {
             Map<String, Object> response = executeCall(tmdbApiService.getPopularTvShows(page, DEFAULT_LANGUAGE));
             cacheSeriesListResponse(response);
@@ -280,6 +297,12 @@ public class TmdbSeriesService {
     public Map<String, Object> getTopRatedTvShows(Integer page) {
         String cacheKey = "series:top_rated:" + page;
         try { Object cached = redisTemplate.opsForValue().get(cacheKey); if (cached != null) return convertToMap(cached); } catch (Exception e) {}
+        
+        List<Series> dbSeries = seriesDao.findAll(20, (page - 1) * 20);
+        if (dbSeries != null && !dbSeries.isEmpty()) {
+            return buildSeriesListResponse(dbSeries, page);
+        }
+
         try {
             Map<String, Object> response = executeCall(tmdbApiService.getTopRatedTvShows(page, DEFAULT_LANGUAGE));
             cacheSeriesListResponse(response);
