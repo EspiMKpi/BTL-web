@@ -5,12 +5,19 @@ Run with: uvicorn app.main:app --reload --port 8000
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
 from app.core.config import settings
 from app.database import close_mongo_connection, connect_to_mongo
 from app.routers import auth, content, history, movies, profile, ratings, watchlist
+
+# Global rate limiter (in-memory, per-worker)
+limiter = Limiter(key_func=get_remote_address)
 
 
 @asynccontextmanager
@@ -27,6 +34,10 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+
+# Rate limiting middleware
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # CORS — same origins as the Express cors() middleware
 app.add_middleware(

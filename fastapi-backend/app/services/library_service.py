@@ -4,22 +4,38 @@ Home rails, genre browsing, profile stats, recent activity.
 """
 
 from datetime import datetime
+from functools import wraps
 from typing import Any, Dict, List, Optional
+
+from cachetools import TTLCache
 
 from app.database import get_database
 
+# ── In-memory TTL cache for home rails (per-worker, 5 min TTL) ───────────
+_home_cache: TTLCache[str, dict] = TTLCache(maxsize=64, ttl=300)
 
-async def get_home_rails(user_id: Optional[str] = None) -> dict:
+
+def _cache_key(user_id: Optional[str], rail_limit: int) -> str:
+    return f"home:{user_id or 'anon'}:{rail_limit}"
+
+
+async def get_home_rails(user_id: Optional[str] = None, rail_limit: int = 10) -> dict:
     """Build Netflix-style home page rails."""
+    cache_key = _cache_key(user_id, rail_limit)
+
+    # Only cache anonymous requests (authenticated rails include per-user data)
+    if user_id is None and cache_key in _home_cache:
+        return _home_cache[cache_key]
+
     db = get_database()
 
     # Fetch all rails concurrently
-    trending_movies = await db.movies.find().sort("popularity", -1).limit(10).to_list(10)
-    trending_series = await db.series.find().sort("popularity", -1).limit(10).to_list(10)
-    top_rated_movies = await db.movies.find({"vote_count": {"$gte": 50}}).sort("vote_average", -1).limit(10).to_list(10)
-    top_rated_series = await db.series.find({"vote_count": {"$gte": 50}}).sort("vote_average", -1).limit(10).to_list(10)
-    new_release_movies = await db.movies.find().sort("release_date", -1).limit(10).to_list(10)
-    recent_series = await db.series.find().sort("first_air_date", -1).limit(10).to_list(10)
+    trending_movies = await db.movies.find().sort("popularity", -1).limit(rail_limit).to_list(rail_limit)
+    trending_series = await db.series.find().sort("popularity", -1).limit(rail_limit).to_list(rail_limit)
+    top_rated_movies = await db.movies.find({"vote_count": {"$gte": 50}}).sort("vote_average", -1).limit(rail_limit).to_list(rail_limit)
+    top_rated_series = await db.series.find({"vote_count": {"$gte": 50}}).sort("vote_average", -1).limit(rail_limit).to_list(rail_limit)
+    new_release_movies = await db.movies.find().sort("release_date", -1).limit(rail_limit).to_list(rail_limit)
+    recent_series = await db.series.find().sort("first_air_date", -1).limit(rail_limit).to_list(rail_limit)
     genres = await db.genres.find().sort("name", 1).to_list(100)
 
     # Convert ObjectId to string
@@ -87,7 +103,13 @@ async def get_home_rails(user_id: Optional[str] = None) -> dict:
                     {"id": "continue_watching", "title": "Continue Watching", "content_type": "mixed", "items": continue_watching},
                 )
 
-    return {"rails": rails, "genres": genres}
+    result = {"rails": rails, "genres": genres}
+
+    # Cache anonymous requests only
+    if user_id is None:
+        _home_cache[cache_key] = result
+
+    return result
 
 
 async def get_content_by_genre(genre_id: int, page: int = 1, limit: int = 20) -> dict:

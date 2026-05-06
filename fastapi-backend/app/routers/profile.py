@@ -45,12 +45,7 @@ async def update_profile(
     body: ProfileUpdateRequest,
     current_user: dict = Depends(get_current_user),
 ):
-    updates = {}
-    if body.username is not None:
-        updates["username"] = body.username
-    if body.avatar_url is not None:
-        updates["avatar_url"] = body.avatar_url
-
+    updates = body.model_dump(exclude_unset=True)
     if not updates:
         raise HTTPException(status_code=400, detail="No fields to update")
 

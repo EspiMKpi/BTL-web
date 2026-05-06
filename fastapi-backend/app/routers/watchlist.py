@@ -75,7 +75,9 @@ async def update_watchlist_item(
     current_user: dict = Depends(get_current_user),
 ):
     db = get_database()
-    updates = {k: v for k, v in body.model_dump().items() if v is not None}
+    updates = body.model_dump(exclude_unset=True)
+    if not updates:
+        raise HTTPException(status_code=400, detail="No fields to update")
     updates["updated_at"] = datetime.utcnow()
 
     try:
