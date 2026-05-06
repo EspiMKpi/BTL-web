@@ -7,6 +7,11 @@ import rate_limit from "express-rate-limit";
 import { connect_mongo } from "./db.js";
 import auth_router from "./routes/auth.js";
 import movies_router from "./routes/movies.js";
+import content_router from "./routes/content.js";
+import watchlist_router from "./routes/watchlist.js";
+import history_router from "./routes/history.js";
+import ratings_router from "./routes/ratings.js";
+import profile_router from "./routes/profile.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
@@ -28,7 +33,12 @@ app.use("/api", limiter);
 app.use(express.static(path.join(__dirname, "..", "..", "dist")));
 // API routes
 app.use("/api/auth", auth_router);
-app.use("/api/movies", movies_router);
+app.use("/api/movies", movies_router); // legacy — redirects to /api/content/movie
+app.use("/api/content", content_router); // new — movies, series, genres, home rails
+app.use("/api/watchlist", watchlist_router); // new — user watchlist
+app.use("/api/history", history_router); // new — watch history / progress
+app.use("/api/ratings", ratings_router); // new — user ratings
+app.use("/api/profile", profile_router); // new — user profile & stats
 app.get("/api/test", (_req, res) => {
     res.json({ status: "ok" });
 });

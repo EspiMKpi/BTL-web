@@ -16,7 +16,10 @@ const user_schema = new Schema({
     username: {
         type: String,
         trim: true
-    }
+    },
+    avatar_url: { type: String, default: null },
+    role: { type: String, enum: ["user", "admin"], default: "user" },
+    is_active: { type: Boolean, default: true }
 }, {
     timestamps: { createdAt: "created_at", updatedAt: "updated_at" }
 });

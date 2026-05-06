@@ -1,8 +1,11 @@
 /**
- * MongoDB Document Model — movies collection
+ * MongoDB Document Model — ERD-driven design
  *
- * Single embedded document replaces the 6 MySQL tables:
- *   movies, genres, people, movie_genres, movie_cast, movie_crew
+ * Collections: users, genres, movies, series,
+ *   watch_history, watchlist_items, user_ratings
+ *
+ * Embed: casts, seasons, episodes inside content documents
+ * Reference: users, genres, watch history, watchlist items, ratings
  */
 export {};
 //# sourceMappingURL=types.js.map

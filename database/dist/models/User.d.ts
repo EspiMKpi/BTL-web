@@ -3,6 +3,9 @@ export interface UserDoc extends Document {
     email: string;
     password: string;
     username: string;
+    avatar_url: string | null;
+    role: "user" | "admin";
+    is_active: boolean;
     created_at: Date;
     updated_at: Date;
     compare_password(candidate: string): Promise<boolean>;
