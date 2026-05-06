@@ -3,8 +3,14 @@
  * Application entry point and event delegation
  */
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     
+    // Wait for page fragments to be loaded into the DOM
+    if (window.pages_ready) await window.pages_ready;
+
+    // Switch to login page on first load
+    if (window.switchPage) window.switchPage('login');
+
     // Initialize specific modules
     if (window.initSearch) window.initSearch();
     if (window.initFilters) window.initFilters();

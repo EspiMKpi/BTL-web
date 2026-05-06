@@ -1,0 +1,188 @@
+@font-face {
+    font-family: 'Netflix Sans';
+    src: url('../fonts/NetflixSans-Th.ttf') format('truetype');
+    font-style: normal;
+    font-weight: 100;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Netflix Sans';
+    src: url('../fonts/NetflixSans-ThIt.ttf') format('truetype');
+    font-style: italic;
+    font-weight: 100;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Netflix Sans';
+    src: url('../fonts/NetflixSans-Lt.ttf') format('truetype');
+    font-style: normal;
+    font-weight: 300;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Netflix Sans';
+    src: url('../fonts/NetflixSans-LtIt.ttf') format('truetype');
+    font-style: italic;
+    font-weight: 300;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Netflix Sans';
+    src: url('../fonts/NetflixSans-Rg.ttf') format('truetype');
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Netflix Sans';
+    src: url('../fonts/NetflixSans-It.ttf') format('truetype');
+    font-style: italic;
+    font-weight: 400;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Netflix Sans';
+    src: url('../fonts/NetflixSans-Md.ttf') format('truetype');
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Netflix Sans';
+    src: url('../fonts/NetflixSans-MdIt.ttf') format('truetype');
+    font-style: italic;
+    font-weight: 500;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Netflix Sans';
+    src: url('../fonts/NetflixSans-Bd.ttf') format('truetype');
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Netflix Sans';
+    src: url('../fonts/NetflixSans-BdIt.ttf') format('truetype');
+    font-style: italic;
+    font-weight: 700;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Netflix Sans';
+    src: url('../fonts/NetflixSans-Blk.ttf') format('truetype');
+    font-style: normal;
+    font-weight: 900;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Netflix Sans';
+    src: url('../fonts/NetflixSans-BlkIt.ttf') format('truetype');
+    font-style: italic;
+    font-weight: 900;
+    font-display: swap;
+}
+
+:root {
+    --font-main: 'Netflix Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    --bg-main: #110b03;
+    --bg-surface: #1a1307;
+    --bg-surface-2: #251a08;
+    --accent-gold: #f4c84a;
+    --text-primary: #f8f2df;
+    --text-muted: #b8a36b;
+    --glass-bg: rgba(244, 200, 74, 0.08);
+    --glass-border: rgba(244, 200, 74, 0.22);
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: var(--font-main);
+}
+
+img {
+    max-width: 100%;
+    display: block;
+}
+
+.icon-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.icon-wrapper img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+body {
+    background-color: var(--bg-main);
+    color: var(--text-primary);
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+h1, h2, h3, .logo-text {
+    font-family: var(--font-main);
+}
+
+/* Layout */
+.app-container {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.main-layout {
+    display: block;
+    padding: 0 0 40px;
+    width: 100%;
+    max-width: 100%; 
+    margin: 0 auto;
+    min-height: calc(100vh - 200px);
+}
+
+.hide {
+    display: none !important;
+}
+
+.page-content {
+    display: none !important;
+    padding: 0 60px;
+    width: 100%;
+    max-width: 1500px;
+    margin: 0 auto;
+}
+
+#page-watching.page-content {
+    max-width: 94vw; 
+    padding: 0;
+    margin: 0 auto;
+}
+
+.page-content.active {
+    display: block !important;
+}
+
+.layout-grid {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 40px;
+}

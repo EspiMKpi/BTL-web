@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+@theme {
+    --color-gold: #f4c84a;
+    --color-gold-dark: #c9a83c;
+    --color-surface: #1a1307;
+    --color-surface-2: #251a08;
+    --color-main-bg: #110b03;
+    --color-text-primary: #f8f2df;
+    --color-text-muted: #b8a36b;
+    --color-glass-border: rgba(244, 200, 74, 0.22);
+    --color-glass-bg: rgba(244, 200, 74, 0.08);
+    --font-family-netflix: 'Netflix Sans', sans-serif;
+}
