@@ -5,6 +5,7 @@ Thumbs.db
 # Python bytecode/cache artifacts (from local helper scripts)
 __pycache__/
 *.py[cod]
+.venv/
 
 # Local GitHub Copilot prompt packs
 .github/prompts/

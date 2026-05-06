@@ -8,7 +8,9 @@ A full-stack SPA that lets you discover, browse, and track movies and TV series 
 
 ![Vite](https://img.shields.io/badge/Vite-6.3-646CFF?style=flat-square&logo=vite&logoColor=white)
 ![Express](https://img.shields.io/badge/Express-5-000000?style=flat-square&logo=express&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.136-009688?style=flat-square&logo=fastapi&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?style=flat-square&logo=typescript&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=flat-square&logo=python&logoColor=white)
 ![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47A248?style=flat-square&logo=mongodb&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.2-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)
 ![Alpine.js](https://img.shields.io/badge/Alpine.js-3-8BC0D0?style=flat-square&logo=alpine.js&logoColor=white)
@@ -36,10 +38,11 @@ A full-stack SPA that lets you discover, browse, and track movies and TV series 
 |-------|-----------|
 | **Frontend** | Vanilla HTML/CSS/JS + Alpine.js + Tailwind CSS 4 |
 | **Build Tool** | Vite 6 |
-| **Backend** | Express 5 + TypeScript |
-| **Database** | MongoDB Atlas (Mongoose ODM) |
+| **Backend (Node)** | Express 5 + TypeScript + Mongoose |
+| **Backend (Python)** | FastAPI + Motor (async) + Pydantic |
+| **Database** | MongoDB Atlas |
 | **External API** | [TMDB (The Movie Database)](https://www.themoviedb.org/) |
-| **Auth** | JWT + bcryptjs |
+| **Auth** | JWT + bcrypt |
 
 ## 🚀 Getting Started
 
@@ -59,36 +62,48 @@ cd BTL-web
 # Install frontend dependencies
 npm install
 
-# Install backend dependencies
-cd database
-npm install
+# Install Node.js backend dependencies
+cd database && npm install && cd ..
+
+# Install Python backend dependencies
+cd fastapi-backend
+python -m venv .venv
+.venv\Scripts\pip install -r requirements.txt   # Windows
+# source .venv/bin/activate && pip install -r requirements.txt  # macOS/Linux
 cd ..
 ```
 
 ### Environment Variables
 
-Create a `.env` file inside the `database/` directory:
+Create a `.env` file inside the `database/` directory (Node backend) **and** `fastapi-backend/` directory (Python backend) with the same values:
 
 ```env
-# database/.env
 MONGODB_URI=mongodb+srv://<username>:<password>@<cluster>.mongodb.net
 DB_NAME=movie_db
 TMDB_API_KEY=your_tmdb_api_key_here
 JWT_SECRET=your_super_secret_jwt_key
 ```
 
+> Both backends share the same JWT secret and database, so sessions are interchangeable.
+
 ### Running the App
 
 ```bash
-# Run frontend (Vite) and backend (Express) simultaneously
-npm run dev:all
+# ── Option A: Frontend + Node/Express backend ──
+npm run dev:all          # Vite :5173 + Express :3000
+
+# ── Option B: Frontend + Python/FastAPI backend ──
+npm run dev:all:python   # Vite :5173 + FastAPI :8000
 
 # Or run them separately:
-npm run dev          # Frontend → http://localhost:5173
-npm run dev:api      # Backend  → http://localhost:3000
+npm run dev              # Frontend only  → http://localhost:5173
+npm run dev:api          # Express        → http://localhost:3000
+npm run dev:fastapi      # FastAPI        → http://localhost:8000
 ```
 
 Open [http://localhost:5173](http://localhost:5173) in your browser.
+
+> The Vite proxy forwards `/api/*` requests to whichever backend is running on its configured port (`:3000` for Express, `:8000` for FastAPI).
 
 ### Build for Production
 
@@ -96,8 +111,11 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 # Build frontend
 npm run build
 
-# Build backend
+# Build Node backend
 cd database && npm run build
+
+# Run FastAPI in production mode
+cd fastapi-backend && .venv\Scripts\uvicorn.exe app.main:app --host 0.0.0.0 --port 8000
 ```
 
 ## 📡 API Endpoints
@@ -161,7 +179,7 @@ BTL-web/
 ├── AGENTS.md                    # Agent/contributor instructions
 ├── README.md                    # ← You are here
 ├── package.json                 # Root — Vite, Alpine.js, Tailwind
-├── vite.config.js               # Vite config (proxy /api → :3000)
+├── vite.config.js               # Vite config (proxy /api → :8000)
 │
 ├── src/                         # Frontend source
 │   ├── index.html               # Vite entry point
@@ -188,35 +206,60 @@ BTL-web/
 │       ├── login.html
 │       └── register.html
 │
-└── database/                    # Backend
-    ├── .env                     # Environment variables
-    ├── package.json             # Express, Mongoose, JWT, bcrypt
-    ├── tsconfig.json            # TypeScript config
-    └── src/
-        ├── index.ts             # Express server entry
-        ├── db.ts                # MongoDB/Mongoose connection
-        ├── movieService.ts      # Movie CRUD (TMDB ↔ MongoDB)
-        ├── seriesService.ts     # Series CRUD with episodes
-        ├── libraryService.ts    # Home rails, genre browse, profile stats
-        ├── types.ts             # TypeScript interfaces (ERD models)
-        ├── middleware/
-        │   └── auth.ts          # JWT auth middleware
+├── database/                    # Node.js/Express backend
+│   ├── .env                     # Environment variables
+│   ├── package.json             # Express, Mongoose, JWT, bcrypt
+│   ├── tsconfig.json            # TypeScript config
+│   └── src/
+│       ├── index.ts             # Express server entry
+│       ├── db.ts                # MongoDB/Mongoose connection
+│       ├── movieService.ts      # Movie CRUD (TMDB ↔ MongoDB)
+│       ├── seriesService.ts     # Series CRUD with episodes
+│       ├── libraryService.ts    # Home rails, genre browse, profile stats
+│       ├── types.ts             # TypeScript interfaces (ERD models)
+│       ├── middleware/
+│       │   └── auth.ts          # JWT auth middleware
+│       ├── models/
+│       │   ├── User.ts          # User model (bcrypt pre-save hook)
+│       │   ├── Movie.ts         # Movie document
+│       │   ├── Series.ts        # Series document
+│       │   ├── Genre.ts         # Genre reference
+│       │   ├── WatchHistory.ts  # Watch progress tracking
+│       │   ├── WatchlistItem.ts # User watchlist
+│       │   └── UserRating.ts    # User ratings
+│       └── routes/
+│           ├── auth.ts          # Register, login, me
+│           ├── content.ts       # Home rails, genres, browse, details
+│           ├── movies.ts        # Legacy movie route
+│           ├── watchlist.ts     # Watchlist CRUD
+│           ├── history.ts       # Watch history & progress
+│           ├── ratings.ts       # User ratings
+│           └── profile.ts       # Profile & stats
+│
+└── fastapi-backend/             # Python/FastAPI backend
+    ├── .env                     # Same env vars as database/.env
+    ├── requirements.txt         # fastapi, motor, pydantic, pyjwt, passlib
+    └── app/
+        ├── main.py              # FastAPI app entry + CORS + lifespan
+        ├── database.py          # Motor async MongoDB client
+        ├── core/
+        │   ├── config.py        # Pydantic Settings from .env
+        │   ├── security.py      # JWT + bcrypt (passlib)
+        │   └── deps.py          # get_current_user dependency
         ├── models/
-        │   ├── User.ts          # User model (bcrypt pre-save hook)
-        │   ├── Movie.ts         # Movie document
-        │   ├── Series.ts        # Series document
-        │   ├── Genre.ts         # Genre reference
-        │   ├── WatchHistory.ts  # Watch progress tracking
-        │   ├── WatchlistItem.ts # User watchlist
-        │   └── UserRating.ts    # User ratings
-        └── routes/
-            ├── auth.ts          # Register, login, me
-            ├── content.ts       # Home rails, genres, browse, details
-            ├── movies.ts        # Legacy movie route
-            ├── watchlist.ts     # Watchlist CRUD
-            ├── history.ts       # Watch history & progress
-            ├── ratings.ts       # User ratings
-            └── profile.ts       # Profile & stats
+        │   └── schemas.py       # Pydantic request/response models
+        ├── routers/
+        │   ├── auth.py          # Register, login, me
+        │   ├── content.py       # Home rails, genres, browse, details
+        │   ├── movies.py        # Legacy movie route
+        │   ├── watchlist.py     # Watchlist CRUD
+        │   ├── history.py       # Watch history & progress
+        │   ├── ratings.py       # User ratings
+        │   └── profile.py       # Profile & stats
+        └── services/
+            ├── movie_service.py     # Movie fetch (MongoDB → TMDB → upsert)
+            ├── series_service.py    # Series fetch with season/episode data
+            └── library_service.py   # Home rails, genre browse, profile stats
 ```
 
 ## 🗄️ Database Schema
@@ -296,9 +339,23 @@ Request → Check MongoDB → Found? → Return cached data
 
 This minimizes external API calls and provides fast response times for repeat requests.
 
+### Dual Backend
+
+The project ships with **two interchangeable backends** that share the same MongoDB database and JWT secret:
+
+| | Express (Node) | FastAPI (Python) |
+|---|---|---|
+| **Directory** | `database/` | `fastapi-backend/` |
+| **Port** | 3000 | 8000 |
+| **ODM/Driver** | Mongoose | Motor (async) |
+| **Validation** | TypeScript interfaces | Pydantic models |
+| **Run command** | `npm run dev:api` | `npm run dev:fastapi` |
+
+Switch between them by updating the Vite proxy target in `vite.config.js` or by using the convenience scripts (`dev:all` vs `dev:all:python`).
+
 ### Vite Proxy
 
-During development, Vite proxies all `/api/*` requests to the Express backend at `http://localhost:3000`, so the frontend and backend share the same origin without CORS issues.
+During development, Vite proxies all `/api/*` requests to whichever backend is running. The proxy target is configured in `vite.config.js` (default: `http://localhost:8000` for FastAPI).
 
 ### Page Fragments
 
@@ -328,7 +385,7 @@ This project is for educational purposes (BTL — Bài Tập Lớn).
 
 <div align="center">
 
-**Built with ❤️ using Vite, Express, TypeScript & MongoDB**
+**Built with ❤️ using Vite, Express, FastAPI, TypeScript, Python & MongoDB**
 
 [Report Bug](https://github.com/EspiMKpi/BTL-web/issues) · [Request Feature](https://github.com/EspiMKpi/BTL-web/issues)
 
