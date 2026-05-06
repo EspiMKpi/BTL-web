@@ -1,19 +1,15 @@
-FROM eclipse-temurin:21-jdk-alpine AS builder
+FROM python:3.11-slim
 
 WORKDIR /app
 
-COPY pom.xml .
-COPY src ./src
+ENV PYTHONDONTWRITEBYTECODE=1 \
+	PYTHONUNBUFFERED=1
 
-RUN apk add --no-cache maven && mvn clean package -DskipTests
+COPY requirements.txt ./requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
-
-FROM eclipse-temurin:21-jre-alpine
-
-WORKDIR /app
-
-COPY --from=builder /app/target/*.jar app.jar
+COPY app ./app
 
 EXPOSE 8080
 
-ENTRYPOINT ["java", "-jar", "app.jar"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]

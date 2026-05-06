@@ -1,6 +1,6 @@
 # VozFlix
 
-A streaming platform web application inspired by Netflix. The frontend is built with HTML/CSS/JS and directly consumes The Movie Database (TMDB) API for content browsing, while the Spring Boot backend manages user authentication, sessions, and watchlists.
+A streaming platform web application inspired by Netflix. The frontend is built with HTML/CSS/JS and directly consumes The Movie Database (TMDB) API for content browsing, while the FastAPI backend manages user authentication, sessions, watchlists, and TMDB proxy routes.
 
 ## Tech Stack
 
@@ -10,31 +10,25 @@ A streaming platform web application inspired by Netflix. The frontend is built 
 - Responsive design
 
 ### Backend
-- Java 21, Spring Boot 3.2
-- MySQL 8.4 (JDBC)
+- Python 3.11+, FastAPI
+- SQLAlchemy 2.x
+- MySQL 8.4
 - Redis (caching + sessions)
-- Retrofit2 (TMDB API client)
+- httpx (TMDB API client)
 - JWT (authentication)
-- Maven
+- Uvicorn
 
 ## Project Structure
 
 ```
 BTL-web/
-├── backend/                    # Spring Boot API
-│   ├── src/main/
-│   │   ├── java/com/vozflix/
-│   │   │   ├── api/           # TMDB API interface
-│   │   │   ├── config/        # App configuration
-│   │   │   ├── controller/    # REST endpoints
-│   │   │   ├── dao/           # JDBC data access
-│   │   │   ├── dto/           # Data transfer objects
-│   │   │   ├── entity/        # Domain models
-│   │   │   ├── security/     # JWT & role security
-│   │   │   └── service/      # Business logic
-│   │   └── resources/
-│   │       └── application.yml
-│   ├── pom.xml
+├── backend/                    # FastAPI API
+│   ├── app/
+│   │   ├── config.py          # Environment/config handling
+│   │   ├── database.py        # SQLAlchemy engine/session
+│   │   ├── main.py            # FastAPI app and routes
+│   │   ├── models.py          # SQLAlchemy models
+│   │   └── schemas.py         # Pydantic request/response models
 │   ├── Dockerfile
 │   ├── .env.example
 │   └── requirements.txt
@@ -52,6 +46,20 @@ BTL-web/
 ├── index.html
 └── README.md
 ```
+
+## Frontend JavaScript Breakdown
+
+The frontend JavaScript is split by responsibility:
+
+- `assets/js/router.js` handles hash routing and page fragment loading.
+- `assets/js/actions-shared.js` holds shared helpers, rendering primitives, loading states, and TMDB URL helpers.
+- `assets/js/actions-search.js` handles search input and filter logic.
+- `assets/js/actions-catalog.js` builds discover/movies/series catalogs and genre filtering.
+- `assets/js/actions-detail.js` handles detail pages, season tabs, episodes, and watching state.
+- `assets/js/actions-watchlist.js` handles watchlist rendering and bookmark sync.
+- `assets/js/main.js` wires global click behavior and page lifecycle hooks.
+
+Script load order matters. Shared helpers load first, then feature modules, then `main.js`.
 
 ## Features
 
@@ -85,8 +93,7 @@ BTL-web/
 
 ### Prerequisites
 
-- Java 21+
-- Maven 3.9+
+- Python 3.11+
 - MySQL 8.4
 - Redis
 - Docker (optional)
@@ -100,14 +107,15 @@ cd backend
 cp .env.example .env
 
 # Edit .env with your credentials
-# Required: DB_PASSWORD, TMDB_API_KEY
+# Required: DB_PASSWORD, TMDB_API_KEY, JWT_SECRET
 ```
 
 ### Running Backend
 
 **Local:**
 ```bash
-mvn spring-boot:run
+cd backend
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8080
 ```
 
 **Docker (full stack):**
@@ -206,7 +214,7 @@ curl http://localhost:8080/api/session/theme \
 | `admin` | Admin access |
 | `curator` | Content curator |
 
-Access is controlled via `@RequireRole` annotation.
+Access is controlled by JWT role claims in the FastAPI backend.
 
 ## Environment Variables
 
@@ -217,10 +225,10 @@ Access is controlled via `@RequireRole` annotation.
 | `DB_PORT` | 3306 | MySQL port |
 | `DB_NAME` | movie_db | Database name |
 | `DB_USER` | root | MySQL user |
-| `DB_PASSWORD` | - | MySQL password |
-| `SPRING_DATA_REDIS_HOST` | localhost | Redis host |
-| `SPRING_DATA_REDIS_PORT` | 6379 | Redis port |
 | `TMDB_API_KEY` | - | TMDB API key |
+| `DB_PASSWORD` | - | MySQL password |
+| `REDIS_HOST` | localhost | Redis host |
+| `REDIS_PORT` | 6379 | Redis port |
 | `JWT_SECRET` | - | JWT signing secret |
 | `JWT_EXPIRATION` | 86400000 | JWT expiry (ms) |
 | `SESSION_TTL` | 86400 | Session TTL (seconds) |

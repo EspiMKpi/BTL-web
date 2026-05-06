@@ -1,17 +1,9 @@
-# VozFlix Backend Requirements
-
-## Core
-spring-boot-starter-web>=3.2.0
-spring-boot-starter-jdbc>=3.2.0
-
-## Database
-mysql-connector-j>=8.3.0
-
-## TMDB API Client
-retrofit2>=2.9.0
-okhttp3>=4.12.0
-gson>=2.10.0
-
-## Build Tools
-maven>=3.9.0
-java>=21
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+sqlalchemy>=2.0.30
+pymysql>=1.1.1
+httpx>=0.27.0
+redis>=5.0.7
+PyJWT>=2.9.0
+pydantic-settings>=2.3.4
+cryptography>=42.0.0

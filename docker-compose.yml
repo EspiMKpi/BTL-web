@@ -27,13 +27,12 @@ services:
       - DB_NAME=movie_db
       - DB_USER=root
       - DB_PASSWORD=vozflix_db_pass
-      - JPA_DDL_AUTO=update
       - TMDB_API_KEY=${TMDB_API_KEY}
       - TMDB_BASE_URL=https://api.themoviedb.org/3
       - TMDB_IMAGE_BASE_URL=https://image.tmdb.org/t/p
       - SEARCH_CACHE_TTL=3600
-      - SPRING_DATA_REDIS_HOST=redis
-      - SPRING_DATA_REDIS_PORT=6379
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     depends_on:
       mysql:
         condition: service_healthy
