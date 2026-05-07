@@ -5,12 +5,12 @@
     --color-gold-dark: #c9a83c;
     --color-red: #f4c84a;
     --color-red-hover: #f7d794;
-    --color-surface: #1a1307;
-    --color-surface-2: #251a08;
-    --color-main-bg: #110b03;
-    --color-text-primary: #f8f2df;
-    --color-text-muted: #b8a36b;
-    --color-glass-border: rgba(244, 200, 74, 0.22);
-    --color-glass-bg: rgba(244, 200, 74, 0.08);
+    --color-surface: #141414;
+    --color-surface-2: #1a1a1a;
+    --color-main-bg: #0a0a0a;
+    --color-text-primary: #f5f5f5;
+    --color-text-muted: #8a8a8a;
+    --color-glass-border: rgba(244, 200, 74, 0.18);
+    --color-glass-bg: rgba(244, 200, 74, 0.06);
     --font-family-netflix: 'Netflix Sans', sans-serif;
 }

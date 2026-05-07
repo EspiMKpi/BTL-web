@@ -24,7 +24,11 @@ export async function apiFetch(endpoint, options = {}) {
     }
 
     if (res.status === 204) return null;
-    return res.json();
+    try {
+        return await res.json();
+    } catch {
+        throw new Error('Server returned an invalid response. Is the backend running?');
+    }
 }
 
 export const contentApi = {

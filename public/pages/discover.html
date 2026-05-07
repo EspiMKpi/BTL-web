@@ -1,153 +1,148 @@
 <div id="page-discover" class="page-content landing-page nf-landing" x-data="discoverPage">
-    <section class="nf-hero">
-        <img src="https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=2000&auto=format&fit=crop" alt="VozFlix hero backdrop" class="nf-hero-backdrop">
-        <div class="nf-hero-scrim"></div>
+    <!-- Hero Carousel -->
+    <section class="hero-carousel"
+             @mouseenter="carouselPause()" @mouseleave="carouselResume()"
+             @keydown.arrow-left.window="carouselPrev()" @keydown.arrow-right.window="carouselNext()">
+        <template x-for="(slide, i) in heroSlides" :key="slide.tmdb_id">
+            <div class="hero-slide" :class="{ 'active': carouselIndex === i }">
+                <img :src="slide.backdropUrl" :alt="slide.title" class="hero-slide-bg">
+                <div class="hero-slide-scrim"></div>
+            </div>
+        </template>
 
-        <div class="nf-hero-content">
-            <p class="nf-kicker">VozFlix Originals and Global Hits</p>
-            <h1 class="nf-title">Unlimited movies, series, and stories worth your night.</h1>
-            <p class="nf-copy">Watch on your TV, laptop, tablet, or phone. Cancel whenever you want and come back anytime.</p>
-
-            <div class="nf-email-row">
-                <input type="email" class="nf-email-input" placeholder="Email address" aria-label="Email address">
-                <button class="btn btn-primary" type="button" @click.stop="switchPage('movies')">
-                    <div class="icon-wrapper" style="width: 20px; height: 20px; color: currentColor;">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="m7 3 14 9-14 9V3z"/></svg>
-                    </div>
-                    Start Watching
+        <div class="hero-slide-content" x-show="currentSlide">
+            <p class="hero-slide-kicker">
+                <span class="hero-slide-type" x-text="currentSlide?._type === 'series' ? 'Series' : 'Movie'"></span>
+                <span class="hero-slide-dot">·</span>
+                <span x-text="currentSlide?.year"></span>
+                <span class="hero-slide-dot">·</span>
+                <span class="hero-slide-rating">★ <span x-text="currentSlide ? (currentSlide.vote_average || 0).toFixed(1) : ''"></span></span>
+            </p>
+            <h1 class="hero-slide-title" x-text="currentSlide?.title"></h1>
+            <p class="hero-slide-desc" x-text="currentSlide?.overview ? (currentSlide.overview.length > 180 ? currentSlide.overview.substring(0, 180) + '…' : currentSlide.overview) : ''"></p>
+            <div class="hero-slide-btns">
+                <button class="btn btn-primary" type="button" @click="navigateTo(currentSlide, currentSlide?._type)">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="m7 3 14 9-14 9V3z"/></svg>
+                    Play Now
+                </button>
+                <button class="btn btn-secondary" type="button" @click="navigateTo(currentSlide, currentSlide?._type)">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                    More Info
                 </button>
             </div>
-
-            <p class="nf-helper">Ready to watch? Start now and dive into your first title in seconds.</p>
-        </div>
-    </section>
-
-    <div class="nf-loading" x-show="loading" style="text-align:center; padding: 60px 20px; color: rgba(255,255,255,0.5);">
-        Loading featured titles…
-    </div>
-
-    <div class="nf-error" x-show="error" x-text="error" style="text-align:center; padding: 40px 20px; color: #ff6b6b;"></div>
-
-    <section class="movie-section nf-content-section" x-show="!loading && top10.length > 0">
-        <div class="section-header">
-            <h2 class="section-title" x-text="top10Rail ? top10Rail.title : 'Top 10 in Vietnam Today'">Top 10 in Vietnam Today</h2>
-            <button class="see-all" type="button" @click="switchPage('movies')">Browse full chart</button>
         </div>
 
-        <div class="nf-top10-grid">
-            <template x-for="(item, index) in top10" :key="item.tmdb_id">
-                <article class="nf-top10-item">
-                    <span class="nf-rank" x-text="index + 1"></span>
-                    <div class="movie-card"
-                         :data-tmdb-id="item.tmdb_id"
-                         :data-content-type="top10ContentType">
-                        <div class="poster-container">
-                            <img :src="posterUrl(item.poster_path)" :alt="getTitle(item, top10ContentType)">
-                            <span class="rating-badge" x-text="(item.vote_average || 0).toFixed(1)"></span>
-                        </div>
-                        <div class="card-info">
-                            <span class="card-title" x-text="getTitle(item, top10ContentType)"></span>
-                            <span class="card-status" x-text="getYear(item, top10ContentType) || (top10ContentType === 'series' ? 'Series' : 'Movie')"></span>
-                        </div>
-                    </div>
-                </article>
+        <!-- Carousel Nav Arrows -->
+        <button class="hero-carousel-arrow hero-carousel-arrow-left" type="button" @click.stop="carouselPrev()" aria-label="Previous slide">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <button class="hero-carousel-arrow hero-carousel-arrow-right" type="button" @click.stop="carouselNext()" aria-label="Next slide">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+
+        <!-- Dot Indicators -->
+        <div class="hero-carousel-dots">
+            <template x-for="(slide, i) in heroSlides" :key="'dot-'+slide.tmdb_id">
+                <button class="hero-carousel-dot" :class="{ 'active': carouselIndex === i }" @click.stop="carouselGo(i)" :aria-label="'Go to slide ' + (i + 1)"></button>
             </template>
         </div>
     </section>
 
+    <!-- Skeleton Loading State -->
+    <template x-if="loading">
+        <div>
+            <div class="skeleton skeleton-hero" style="margin-bottom: 32px;"></div>
+            <div style="padding: 0 60px;">
+                <div class="skeleton skeleton-text" style="width: 200px; height: 20px; margin-bottom: 16px;"></div>
+                <div style="display: flex; gap: 14px; overflow: hidden;">
+                    <div class="skeleton-card" style="min-width: 180px;"><div class="skeleton skeleton-poster"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text-short"></div></div>
+                    <div class="skeleton-card" style="min-width: 180px;"><div class="skeleton skeleton-poster"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text-short"></div></div>
+                    <div class="skeleton-card" style="min-width: 180px;"><div class="skeleton skeleton-poster"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text-short"></div></div>
+                    <div class="skeleton-card" style="min-width: 180px;"><div class="skeleton skeleton-poster"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text-short"></div></div>
+                    <div class="skeleton-card" style="min-width: 180px;"><div class="skeleton skeleton-poster"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text-short"></div></div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <div class="nf-error" x-show="error" x-text="error" style="text-align:center; padding: 40px 20px; color: #ff6b6b;"></div>
+
+    <!-- Top 10 Rail -->
+    <section class="movie-section nf-content-section" x-show="!loading && top10.length > 0">
+        <div class="section-header">
+            <h2 class="section-title" x-text="top10Rail ? top10Rail.title : 'Top 10 Today'">Top 10 Today</h2>
+            <button class="see-all" type="button" @click="switchPage('movies')">Browse all</button>
+        </div>
+        <div class="content-rail-wrapper" x-data="scrollRail" x-init="$nextTick(() => checkArrows())">
+            <div class="rail-scroll-container">
+                <button class="rail-arrow rail-arrow-left" :class="{ 'rail-arrow-visible': canScrollLeft }" @click="scrollLeft()" type="button" aria-label="Scroll left">
+                    <span class="rail-arrow-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></span>
+                </button>
+                <div class="nf-top10-grid" x-ref="scrollContainer" @scroll="checkArrows()">
+                    <template x-for="(item, index) in top10" :key="item.tmdb_id">
+                        <article class="nf-top10-item">
+                            <span class="nf-rank" x-text="index + 1"></span>
+                            <div class="movie-card"
+                                 :data-tmdb-id="item.tmdb_id"
+                                 :data-content-type="top10ContentType"
+                                 @click="navigateTo(item, top10ContentType)">
+                                <div class="poster-container">
+                                    <img :src="posterUrl(item.poster_path)" :alt="getTitle(item, top10ContentType)" loading="lazy">
+                                    <span class="rating-badge" x-text="(item.vote_average || 0).toFixed(1)"></span>
+                                </div>
+                                <div class="card-info">
+                                    <span class="card-title" x-text="getTitle(item, top10ContentType)"></span>
+                                    <span class="card-status" x-text="getYear(item, top10ContentType) || (top10ContentType === 'series' ? 'Series' : 'Movie')"></span>
+                                </div>
+                            </div>
+                        </article>
+                    </template>
+                </div>
+                <button class="rail-arrow rail-arrow-right" :class="{ 'rail-arrow-visible': canScrollRight }" @click="scrollRight()" type="button" aria-label="Scroll right">
+                    <span class="rail-arrow-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Trending / Genre Rails -->
     <template x-for="rail in otherRails" :key="rail.id">
         <section class="movie-section nf-content-section">
             <div class="section-header">
                 <h2 class="section-title" x-text="rail.title"></h2>
                 <button class="see-all" type="button" @click="switchPage(rail.content_type === 'series' ? 'series' : 'movies')">See all</button>
             </div>
-            <div class="movie-grid nf-row-grid">
-                <template x-for="item in rail.items.slice(0, 8)" :key="item.tmdb_id">
-                    <div class="movie-card"
-                         :data-tmdb-id="item.tmdb_id"
-                         :data-content-type="rail.content_type">
-                        <div class="poster-container">
-                            <img :src="posterUrl(item.poster_path)" :alt="getTitle(item, rail.content_type)">
-                            <span class="rating-badge" x-text="(item.vote_average || 0).toFixed(1)"></span>
-                        </div>
-                        <div class="card-info">
-                            <span class="card-title" x-text="getTitle(item, rail.content_type)"></span>
-                            <span class="card-status" x-text="getYear(item, rail.content_type) || (rail.content_type === 'series' ? 'Series' : 'Movie')"></span>
-                        </div>
+            <div class="content-rail-wrapper" x-data="scrollRail" x-init="$nextTick(() => checkArrows())">
+                <div class="rail-scroll-container">
+                    <button class="rail-arrow rail-arrow-left" :class="{ 'rail-arrow-visible': canScrollLeft }" @click="scrollLeft()" type="button" aria-label="Scroll left">
+                        <span class="rail-arrow-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></span>
+                    </button>
+                    <div class="movie-grid nf-row-grid" x-ref="scrollContainer" @scroll="checkArrows()">
+                        <template x-for="item in rail.items.slice(0, 12)" :key="item.tmdb_id">
+                            <div class="movie-card"
+                                 :data-tmdb-id="item.tmdb_id"
+                                 :data-content-type="rail.content_type"
+                                 @click="navigateTo(item, rail.content_type)">
+                                <div class="poster-container">
+                                    <img :src="posterUrl(item.poster_path)" :alt="getTitle(item, rail.content_type)" loading="lazy">
+                                    <span class="rating-badge" x-text="(item.vote_average || 0).toFixed(1)"></span>
+                                </div>
+                                <div class="card-info">
+                                    <span class="card-title" x-text="getTitle(item, rail.content_type)"></span>
+                                    <span class="card-status" x-text="getYear(item, rail.content_type) || (rail.content_type === 'series' ? 'Series' : 'Movie')"></span>
+                                </div>
+                            </div>
+                        </template>
                     </div>
-                </template>
+                    <button class="rail-arrow rail-arrow-right" :class="{ 'rail-arrow-visible': canScrollRight }" @click="scrollRight()" type="button" aria-label="Scroll right">
+                        <span class="rail-arrow-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+                    </button>
+                </div>
             </div>
         </section>
     </template>
 
-    <section class="nf-reasons">
-        <div class="section-header nf-light-header">
-            <h2 class="section-title">More reasons to join</h2>
-        </div>
-        <div class="nf-reasons-grid">
-            <article class="nf-reason-card">
-                <h3>Enjoy on your TV</h3>
-                <p>Watch on Smart TVs, PlayStation, Xbox, Chromecast, Apple TV, Blu-ray players, and more.</p>
-            </article>
-            <article class="nf-reason-card">
-                <h3>Download to watch offline</h3>
-                <p>Save your favorites easily and always have something to watch even without internet.</p>
-            </article>
-            <article class="nf-reason-card">
-                <h3>Watch everywhere</h3>
-                <p>Stream unlimited movies and TV shows on your phone, tablet, laptop, and TV.</p>
-            </article>
-            <article class="nf-reason-card">
-                <h3>Create profiles for kids</h3>
-                <p>Send kids on adventures with their favorite characters in a space made just for them.</p>
-            </article>
-        </div>
-    </section>
-
-    <section class="nf-faq">
-        <div class="section-header nf-light-header">
-            <h2 class="section-title">Frequently Asked Questions</h2>
-        </div>
-        <div class="nf-faq-list">
-            <article class="nf-faq-item" x-data="faqItem" :class="{'open': open}">
-                <button class="nf-faq-question" type="button" :aria-expanded="open" @click="toggle()">What is VozFlix?</button>
-                <div class="nf-faq-answer">
-                    <p>VozFlix is a free movie and TV series streaming platform powered by TMDB. Browse thousands of titles across every genre — from action blockbusters and gripping thrillers to heartwarming comedies and binge-worthy TV shows. Create a free account to build watchlists, track your viewing history, and pick up right where you left off on any device.</p>
-                </div>
-            </article>
-            <article class="nf-faq-item" x-data="faqItem" :class="{'open': open}">
-                <button class="nf-faq-question" type="button" :aria-expanded="open" @click="toggle()">How much does VozFlix cost?</button>
-                <div class="nf-faq-answer">
-                    <p>VozFlix is completely free to use. Sign up with just an email address and start streaming immediately — no credit card required, no hidden fees, and no paywalls. All movies and series are available to every registered user at no charge.</p>
-                </div>
-            </article>
-            <article class="nf-faq-item" x-data="faqItem" :class="{'open': open}">
-                <button class="nf-faq-question" type="button" :aria-expanded="open" @click="toggle()">Where can I watch?</button>
-                <div class="nf-faq-answer">
-                    <p>You can watch VozFlix on any device with a modern web browser. That includes laptops, desktops, tablets, and smartphones — no app download needed. Just visit the site, sign in, and start streaming. Your watchlist and viewing history sync automatically across all your devices.</p>
-                </div>
-            </article>
-            <article class="nf-faq-item" x-data="faqItem" :class="{'open': open}">
-                <button class="nf-faq-question" type="button" :aria-expanded="open" @click="toggle()">Can I save movies to watch later?</button>
-                <div class="nf-faq-answer">
-                    <p>Absolutely. Click the bookmark icon on any movie or series card to add it to your personal watchlist. Organise your saved titles by status — plan to watch, watching, completed, or favourites — and access them anytime from the Watchlists tab in the navigation bar.</p>
-                </div>
-            </article>
-            <article class="nf-faq-item" x-data="faqItem" :class="{'open': open}">
-                <button class="nf-faq-question" type="button" :aria-expanded="open" @click="toggle()">How does the recommendation system work?</button>
-                <div class="nf-faq-answer">
-                    <p>VozFlix curates personalised content rails on the Discover page based on trending titles, top-rated picks, and new releases sourced from TMDB. You can also browse by genre or use the search bar to find specific movies, series, or actors. The more you explore, the better your experience becomes.</p>
-                </div>
-            </article>
-            <article class="nf-faq-item" x-data="faqItem" :class="{'open': open}">
-                <button class="nf-faq-question" type="button" :aria-expanded="open" @click="toggle()">Does VozFlix track my watch history?</button>
-                <div class="nf-faq-answer">
-                    <p>Yes. When you're signed in, VozFlix automatically saves your viewing progress so you can resume playback from exactly where you left off. Your watch history is accessible from your profile and helps you keep track of what you've watched and what's next on your list.</p>
-                </div>
-            </article>
-        </div>
-    </section>
-
+    <!-- Final CTA -->
     <section class="nf-final-cta">
         <h2>Ready to watch?</h2>
         <p>Choose your first story and start streaming in minutes.</p>
