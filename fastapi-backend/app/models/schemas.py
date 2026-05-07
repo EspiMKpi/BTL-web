@@ -267,3 +267,56 @@ class ProfileStatsOut(BaseModel):
     ratings_count: int = 0
     history_count: int = 0
     average_rating: float = 0
+
+
+# ─── Comments ─────────────────────────────────────────────────────────────
+
+class CommentOut(BaseModel):
+    id: Optional[str] = Field(None, alias="_id")
+    user_id: str
+    username: str = ""
+    content_type: str  # "movie" | "series"
+    tmdb_id: int
+    text: str
+    created_at: Optional[datetime] = None
+
+    model_config = {"populate_by_name": True}
+
+
+class CommentCreateRequest(BaseModel):
+    content_type: str
+    tmdb_id: int
+    text: str
+
+
+# ─── Admin ────────────────────────────────────────────────────────────────
+
+class AdminUserOut(BaseModel):
+    id: Optional[str] = Field(None, alias="_id")
+    email: str
+    username: str = ""
+    role: str = "user"
+    is_active: bool = True
+    is_banned: bool = False
+    created_at: Optional[datetime] = None
+
+    model_config = {"populate_by_name": True}
+
+
+class AdminMovieOut(BaseModel):
+    id: Optional[str] = Field(None, alias="_id")
+    tmdb_id: int
+    title: str
+    poster_path: Optional[str] = None
+    is_hidden: bool = False
+    vote_average: float = 0
+
+    model_config = {"populate_by_name": True}
+
+
+class BanUserRequest(BaseModel):
+    is_banned: bool
+
+
+class HideMovieRequest(BaseModel):
+    is_hidden: bool

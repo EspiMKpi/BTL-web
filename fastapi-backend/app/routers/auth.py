@@ -51,7 +51,7 @@ async def register(request: Request, body: RegisterRequest):
     token = create_access_token(user_id, body.email)
     return {
         "token": token,
-        "user": {"_id": user_id, "email": body.email, "username": username},
+        "user": {"_id": user_id, "email": body.email, "username": username, "role": "user"},
     }
 
 
@@ -70,6 +70,9 @@ async def login(request: Request, body: LoginRequest):
     if not verify_password(body.password, stored_password):
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
+    if user.get("is_banned", False):
+        raise HTTPException(status_code=403, detail="Your account has been banned")
+
     user_id = str(user["_id"])
     token = create_access_token(user_id, user["email"])
     return {
@@ -78,6 +81,7 @@ async def login(request: Request, body: LoginRequest):
             "_id": user_id,
             "email": user["email"],
             "username": user.get("username", ""),
+            "role": user.get("role", "user"),
         },
     }
 
@@ -88,4 +92,7 @@ async def get_me(current_user: dict = Depends(get_current_user)):
         "id": current_user["_id"],
         "email": current_user["email"],
         "username": current_user.get("username", ""),
+        "role": current_user.get("role", "user"),
+        "is_active": current_user.get("is_active", True),
+        "is_banned": current_user.get("is_banned", False),
     }

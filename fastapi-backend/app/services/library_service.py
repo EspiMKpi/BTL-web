@@ -43,13 +43,14 @@ async def get_home_rails(user_id: Optional[str] = None, rail_limit: int = 10) ->
 
     db = get_database()
 
-    # Fetch all rails concurrently
-    trending_movies = await db.movies.find().sort("popularity", -1).limit(rail_limit).to_list(rail_limit)
-    trending_series = await db.series.find().sort("popularity", -1).limit(rail_limit).to_list(rail_limit)
-    top_rated_movies = await db.movies.find({"vote_count": {"$gte": 50}}).sort("vote_average", -1).limit(rail_limit).to_list(rail_limit)
-    top_rated_series = await db.series.find({"vote_count": {"$gte": 50}}).sort("vote_average", -1).limit(rail_limit).to_list(rail_limit)
-    new_release_movies = await db.movies.find().sort("release_date", -1).limit(rail_limit).to_list(rail_limit)
-    recent_series = await db.series.find().sort("first_air_date", -1).limit(rail_limit).to_list(rail_limit)
+    # Fetch all rails concurrently — exclude hidden content
+    hidden_filter = {"is_hidden": {"$ne": True}}
+    trending_movies = await db.movies.find(hidden_filter).sort("popularity", -1).limit(rail_limit).to_list(rail_limit)
+    trending_series = await db.series.find(hidden_filter).sort("popularity", -1).limit(rail_limit).to_list(rail_limit)
+    top_rated_movies = await db.movies.find({"vote_count": {"$gte": 50}, **hidden_filter}).sort("vote_average", -1).limit(rail_limit).to_list(rail_limit)
+    top_rated_series = await db.series.find({"vote_count": {"$gte": 50}, **hidden_filter}).sort("vote_average", -1).limit(rail_limit).to_list(rail_limit)
+    new_release_movies = await db.movies.find(hidden_filter).sort("release_date", -1).limit(rail_limit).to_list(rail_limit)
+    recent_series = await db.series.find(hidden_filter).sort("first_air_date", -1).limit(rail_limit).to_list(rail_limit)
     genres = await db.genres.find().sort("name", 1).to_list(100)
 
     # Sanitize all documents (convert ObjectId, datetime, etc.)
@@ -130,10 +131,11 @@ async def get_content_by_genre(genre_id: int, page: int = 1, limit: int = 20) ->
     db = get_database()
     skip = (page - 1) * limit
 
-    movies = await db.movies.find({"genres.genre_id": genre_id}).sort("popularity", -1).skip(skip).limit(limit).to_list(limit)
-    series_list = await db.series.find({"genres.genre_id": genre_id}).sort("popularity", -1).skip(skip).limit(limit).to_list(limit)
-    movie_total = await db.movies.count_documents({"genres.genre_id": genre_id})
-    series_total = await db.series.count_documents({"genres.genre_id": genre_id})
+    genre_filter = {"genres.genre_id": genre_id, "is_hidden": {"$ne": True}}
+    movies = await db.movies.find(genre_filter).sort("popularity", -1).skip(skip).limit(limit).to_list(limit)
+    series_list = await db.series.find(genre_filter).sort("popularity", -1).skip(skip).limit(limit).to_list(limit)
+    movie_total = await db.movies.count_documents(genre_filter)
+    series_total = await db.series.count_documents(genre_filter)
 
     movies = [_sanitize(d) for d in movies]
     series_list = [_sanitize(d) for d in series_list]

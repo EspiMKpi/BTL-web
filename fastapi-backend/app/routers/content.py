@@ -64,12 +64,29 @@ async def search_content(
     limit: int = Query(20, ge=1, le=100),
 ):
     skip = (page - 1) * limit
-    results = await search_movies(q, limit=limit + skip)
+    db = get_database()
+    escaped = q.replace(".", r"\.")
+
+    # Search both movies and series
+    movie_cursor = db.movies.find(
+        {"title": {"$regex": escaped, "$options": "i"}, "is_hidden": {"$ne": True}},
+        {"tmdb_id": 1, "title": 1, "poster_path": 1, "backdrop_path": 1, "vote_average": 1, "release_date": 1, "overview": 1},
+    ).limit(limit + skip)
+    series_cursor = db.series.find(
+        {"name": {"$regex": escaped, "$options": "i"}, "is_hidden": {"$ne": True}},
+        {"tmdb_id": 1, "name": 1, "poster_path": 1, "backdrop_path": 1, "vote_average": 1, "first_air_date": 1, "overview": 1},
+    ).limit(limit + skip)
+
+    movies = [dict(_sanitize(d), content_type="movie") async for d in movie_cursor]
+    series = [dict(_sanitize(d), content_type="series") async for d in series_cursor]
+
+    # Merge and paginate
+    all_results = movies + series
     return {
-        "results": results[skip : skip + limit],
+        "results": all_results[skip : skip + limit],
         "page": page,
         "limit": limit,
-        "total": len(results),
+        "total": len(all_results),
     }
 
 

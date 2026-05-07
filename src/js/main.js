@@ -1,7 +1,7 @@
 import Alpine from 'alpinejs';
 import { pages_ready } from './pages.js';
 import { switchPage } from './router.js';
-import { contentApi, watchlistApi, historyApi } from './api.js';
+import { contentApi, watchlistApi, historyApi, adminApi, commentsApi } from './api.js';
 
 window.Alpine = Alpine;
 window.switchPage = switchPage;
@@ -234,7 +234,19 @@ Alpine.data('moviesPage', () => ({
 
     async init() {
         document.addEventListener('page:switch', (e) => {
-            if (e.detail.pageId === 'movies') this.loadHome();
+            if (e.detail.pageId === 'movies') {
+                const q = e.detail.params?.searchQuery;
+                if (q) {
+                    this.searchQuery = q;
+                    this.runSearch(q);
+                } else if (this.rails.length === 0) {
+                    this.loadHome();
+                }
+            }
+        });
+        document.addEventListener('nav:search', (e) => {
+            this.searchQuery = e.detail.query;
+            this.runSearch(e.detail.query);
         });
         this.loadHome();
     },
@@ -655,6 +667,198 @@ Alpine.data('watchlistPage', () => ({
         switchPage('detail', { contentId: item.tmdb_id, contentType: item.content_type });
     },
 }));
+
+Alpine.data('adminPage', () => ({
+    activeTab: 'movies',
+    loading: false,
+    error: '',
+    movies: [],
+    comments: [],
+    users: [],
+    movieSearch: '',
+    userSearch: '',
+    _moviesLoaded: false,
+    _commentsLoaded: false,
+    _usersLoaded: false,
+
+    init() {
+        document.addEventListener('page:switch', (e) => {
+            if (e.detail.pageId === 'admin') {
+                this._moviesLoaded = false;
+                this._commentsLoaded = false;
+                this._usersLoaded = false;
+                this.loadMovies();
+            }
+        });
+    },
+
+    async loadMovies() {
+        if (this._moviesLoaded) return;
+        this.loading = true;
+        this.error = '';
+        try {
+            this.movies = await adminApi.getMovies();
+            this._moviesLoaded = true;
+        } catch (e) {
+            this.error = 'Failed to load movies: ' + e.message;
+        } finally {
+            this.loading = false;
+        }
+    },
+
+    async loadComments() {
+        if (this._commentsLoaded) return;
+        this.loading = true;
+        this.error = '';
+        try {
+            this.comments = await adminApi.getComments();
+            this._commentsLoaded = true;
+        } catch (e) {
+            this.error = 'Failed to load comments: ' + e.message;
+        } finally {
+            this.loading = false;
+        }
+    },
+
+    async loadUsers() {
+        if (this._usersLoaded) return;
+        this.loading = true;
+        this.error = '';
+        try {
+            this.users = await adminApi.getUsers();
+            this._usersLoaded = true;
+        } catch (e) {
+            this.error = 'Failed to load users: ' + e.message;
+        } finally {
+            this.loading = false;
+        }
+    },
+
+    get filteredMovies() {
+        if (!this.movieSearch.trim()) return this.movies;
+        const q = this.movieSearch.toLowerCase();
+        return this.movies.filter(m =>
+            (m.title || '').toLowerCase().includes(q) ||
+            String(m.tmdb_id).includes(q)
+        );
+    },
+
+    get filteredUsers() {
+        if (!this.userSearch.trim()) return this.users;
+        const q = this.userSearch.toLowerCase();
+        return this.users.filter(u =>
+            (u.email || '').toLowerCase().includes(q) ||
+            (u.username || '').toLowerCase().includes(q)
+        );
+    },
+
+    filterMovies() { /* triggers reactivity via filteredMovies getter */ },
+    filterUsers() { /* triggers reactivity via filteredUsers getter */ },
+
+    async toggleMovieVisibility(movie) {
+        try {
+            const res = await adminApi.toggleMovieVisibility(movie.tmdb_id, !movie.is_hidden);
+            movie.is_hidden = res.is_hidden;
+            Alpine.store('toast').show(movie.is_hidden ? 'Movie hidden from users' : 'Movie is now visible');
+        } catch (e) {
+            Alpine.store('toast').show('Error: ' + e.message);
+        }
+    },
+
+    async deleteComment(comment) {
+        try {
+            await adminApi.deleteComment(comment._id);
+            this.comments = this.comments.filter(c => c._id !== comment._id);
+            Alpine.store('toast').show('Comment deleted');
+        } catch (e) {
+            Alpine.store('toast').show('Error: ' + e.message);
+        }
+    },
+
+    async toggleBan(user) {
+        try {
+            const res = await adminApi.banUser(user._id, !user.is_banned);
+            user.is_banned = res.is_banned;
+            Alpine.store('toast').show(user.is_banned ? 'User banned' : 'User unbanned');
+        } catch (e) {
+            Alpine.store('toast').show('Error: ' + e.message);
+        }
+    },
+}));
+
+Alpine.data('profilePage', () => ({
+    stats: { watchlist_count: 0, completed_count: 0, ratings_count: 0, history_count: 0, average_rating: 0 },
+    recentActivity: [],
+    editUsername: '',
+    editAvatar: '',
+    saving: false,
+    saveMsg: '',
+    loading: false,
+
+    init() {
+        document.addEventListener('page:switch', (e) => {
+            if (e.detail.pageId === 'profile') this.loadProfile();
+        });
+    },
+
+    async loadProfile() {
+        if (!Alpine.store('auth').isLoggedIn) return;
+        this.loading = true;
+        try {
+            const [statsData, activityData] = await Promise.all([
+                apiFetch('/api/profile/stats'),
+                apiFetch('/api/profile/recent-activity?limit=10'),
+            ]);
+            this.stats = statsData;
+            this.recentActivity = activityData || [];
+            this.editUsername = Alpine.store('auth').user?.username || '';
+            this.editAvatar = Alpine.store('auth').user?.avatar_url || '';
+        } catch (e) {
+            Alpine.store('toast').show('Failed to load profile: ' + e.message);
+        } finally {
+            this.loading = false;
+        }
+    },
+
+    async saveProfile() {
+        this.saving = true;
+        this.saveMsg = '';
+        try {
+            const data = await apiFetch('/api/profile/', {
+                method: 'PATCH',
+                body: JSON.stringify({
+                    username: this.editUsername || undefined,
+                    avatar_url: this.editAvatar || undefined,
+                }),
+            });
+            // Update the auth store
+            const auth = Alpine.store('auth');
+            if (auth.user) {
+                auth.user.username = data.username;
+                auth.user.avatar_url = data.avatar_url;
+            }
+            this.saveMsg = 'Profile updated!';
+            setTimeout(() => { this.saveMsg = ''; }, 3000);
+        } catch (e) {
+            Alpine.store('toast').show('Error: ' + e.message);
+        } finally {
+            this.saving = false;
+        }
+    },
+}));
+
+// Helper used by profilePage
+async function apiFetch(endpoint, options = {}) {
+    const token = localStorage.getItem('token');
+    const headers = { ...options.headers };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    if (options.body && typeof options.body === 'string') headers['Content-Type'] = 'application/json';
+    const res = await fetch(endpoint, { ...options, headers });
+    if (res.status === 401) { document.dispatchEvent(new CustomEvent('auth:expired')); throw new Error('Session expired'); }
+    if (!res.ok) { let msg = `HTTP ${res.status}`; try { const body = await res.json(); msg = body.detail || body.error || msg; } catch {} throw new Error(msg); }
+    if (res.status === 204) return null;
+    return res.json();
+}
 
 // Start Alpine
 Alpine.start();

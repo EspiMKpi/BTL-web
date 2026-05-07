@@ -55,3 +55,36 @@ export const historyApi = {
             body: JSON.stringify(body),
         }),
 };
+
+export const commentsApi = {
+    get: (tmdbId, contentType) =>
+        apiFetch(`/api/comments/${tmdbId}${contentType ? '?content_type=' + contentType : ''}`),
+    add: (contentType, tmdbId, text) =>
+        apiFetch('/api/comments/', {
+            method: 'POST',
+            body: JSON.stringify({ content_type: contentType, tmdb_id: tmdbId, text }),
+        }),
+    remove: (commentId) =>
+        apiFetch(`/api/comments/${commentId}`, { method: 'DELETE' }),
+};
+
+export const adminApi = {
+    getUsers: (page = 1, limit = 50) =>
+        apiFetch(`/api/admin/users?page=${page}&limit=${limit}`),
+    banUser: (userId, isBanned) =>
+        apiFetch(`/api/admin/users/${userId}/ban`, {
+            method: 'PATCH',
+            body: JSON.stringify({ is_banned: isBanned }),
+        }),
+    getMovies: (page = 1, limit = 50) =>
+        apiFetch(`/api/admin/movies?page=${page}&limit=${limit}`),
+    toggleMovieVisibility: (tmdbId, isHidden) =>
+        apiFetch(`/api/admin/movies/${tmdbId}/visibility`, {
+            method: 'PATCH',
+            body: JSON.stringify({ is_hidden: isHidden }),
+        }),
+    getComments: (page = 1, limit = 50) =>
+        apiFetch(`/api/admin/comments?page=${page}&limit=${limit}`),
+    deleteComment: (commentId) =>
+        apiFetch(`/api/admin/comments/${commentId}`, { method: 'DELETE' }),
+};

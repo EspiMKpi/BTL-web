@@ -134,7 +134,7 @@ async def search_movies(query: str, limit: int = 20) -> List[dict]:
     db = get_database()
     escaped_query = re.escape(query)
     cursor = (
-        db.movies.find({"title": {"$regex": escaped_query, "$options": "i"}})
+        db.movies.find({"title": {"$regex": escaped_query, "$options": "i"}, "is_hidden": {"$ne": True}})
         # Optional: You can't use textScore anymore, so sort alphabetically or by year
         # .sort("title", 1) 
         .limit(limit)

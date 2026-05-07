@@ -97,13 +97,13 @@
                 <h2 class="section-title" x-text="searchResults.length + ' results'"></h2>
             </div>
             <div class="movie-grid" id="search-results-grid">
-                <template x-for="item in searchResults" :key="item.tmdb_id">
+                <template x-for="item in searchResults" :key="item.tmdb_id + (item.content_type || 'movie')">
                     <div class="movie-card"
                          :data-tmdb-id="item.tmdb_id"
-                         data-content-type="movie"
-                         @click="navigateTo(item, 'movie')">
+                         :data-content-type="item.content_type || 'movie'"
+                         @click="navigateTo(item, item.content_type || 'movie')">
                         <div class="poster-container">
-                            <img :src="posterUrl(item.poster_path)" :alt="item.title" loading="lazy">
+                            <img :src="posterUrl(item.poster_path)" :alt="getTitle(item, item.content_type || 'movie')" loading="lazy">
                             <span class="rating-badge" x-text="item.vote_average ? item.vote_average.toFixed(1) : 'N/A'"></span>
                             <div class="bookmark-btn">
                                 <div class="icon-wrapper" style="width: 14px; height: 14px;">
@@ -112,8 +112,8 @@
                             </div>
                         </div>
                         <div class="card-info">
-                            <span class="card-title" x-text="item.title"></span>
-                            <span class="card-status" x-text="item.release_date ? item.release_date.substring(0,4) : ''"></span>
+                            <span class="card-title" x-text="getTitle(item, item.content_type || 'movie')"></span>
+                            <span class="card-status" x-text="getYear(item, item.content_type || 'movie')"></span>
                         </div>
                     </div>
                 </template>

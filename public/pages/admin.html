@@ -1,0 +1,185 @@
+<div id="page-admin" class="page-content" x-data="adminPage">
+
+    <!-- Access Denied -->
+    <div x-show="!$store.auth.user || $store.auth.user.role !== 'admin'"
+         style="text-align:center; padding:120px 20px; color:#ff6b6b;">
+        <h2 style="font-size:28px; margin-bottom:12px;">Access Denied</h2>
+        <p style="color:rgba(255,255,255,0.5);">You do not have permission to view this page.</p>
+    </div>
+
+    <!-- Admin Panel -->
+    <div x-show="$store.auth.user?.role === 'admin'" class="admin-panel">
+
+        <!-- Admin Header -->
+        <div class="admin-header">
+            <h1 class="admin-title">
+                <div class="icon-wrapper" style="width:28px; height:28px; color:var(--accent-gold); display:inline-flex; vertical-align:middle; margin-right:10px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                </div>
+                Admin Panel
+            </h1>
+            <p class="admin-subtitle">Manage movies, comments, and users</p>
+        </div>
+
+        <!-- Tab Navigation -->
+        <div class="admin-tabs">
+            <button class="admin-tab" :class="{ active: activeTab === 'movies' }" @click="activeTab = 'movies'; loadMovies()">
+                <div class="icon-wrapper" style="width:16px; height:16px; margin-right:6px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/><line x1="17" y1="17" x2="22" y2="17"/></svg>
+                </div>
+                Movies
+            </button>
+            <button class="admin-tab" :class="{ active: activeTab === 'comments' }" @click="activeTab = 'comments'; loadComments()">
+                <div class="icon-wrapper" style="width:16px; height:16px; margin-right:6px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                </div>
+                Comments
+            </button>
+            <button class="admin-tab" :class="{ active: activeTab === 'users' }" @click="activeTab = 'users'; loadUsers()">
+                <div class="icon-wrapper" style="width:16px; height:16px; margin-right:6px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                </div>
+                Users
+            </button>
+        </div>
+
+        <!-- Loading -->
+        <div x-show="loading" style="text-align:center; padding:60px; color:rgba(255,255,255,0.5);">Loading...</div>
+        <div x-show="error" style="text-align:center; padding:20px; color:#ff6b6b;" x-text="error"></div>
+
+        <!-- ====== Movies Tab ====== -->
+        <div x-show="activeTab === 'movies' && !loading">
+            <div class="admin-search-bar">
+                <input type="text" placeholder="Search movies..." x-model="movieSearch"
+                       @input="filterMovies()" class="admin-search-input">
+            </div>
+            <div class="admin-table-wrap">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Poster</th>
+                            <th>Title</th>
+                            <th>TMDB ID</th>
+                            <th>Rating</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="movie in filteredMovies" :key="movie._id">
+                            <tr>
+                                <td>
+                                    <img :src="movie.poster_path ? 'https://image.tmdb.org/t/p/w92' + movie.poster_path : 'https://placehold.co/46x69/1a1a2e/white?text=N/A'"
+                                         style="width:46px; height:69px; border-radius:4px; object-fit:cover;" loading="lazy">
+                                </td>
+                                <td x-text="movie.title || 'Untitled'"></td>
+                                <td x-text="movie.tmdb_id"></td>
+                                <td x-text="(movie.vote_average || 0).toFixed(1)"></td>
+                                <td>
+                                    <span class="admin-badge" :class="movie.is_hidden ? 'badge-hidden' : 'badge-visible'"
+                                          x-text="movie.is_hidden ? 'Hidden' : 'Visible'"></span>
+                                </td>
+                                <td>
+                                    <button class="admin-btn" :class="movie.is_hidden ? 'admin-btn-success' : 'admin-btn-danger'"
+                                            @click="toggleMovieVisibility(movie)"
+                                            x-text="movie.is_hidden ? 'Show' : 'Hide'"></button>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+                <div x-show="filteredMovies.length === 0 && !loading" style="text-align:center; padding:40px; color:rgba(255,255,255,0.4);">
+                    No movies found.
+                </div>
+            </div>
+        </div>
+
+        <!-- ====== Comments Tab ====== -->
+        <div x-show="activeTab === 'comments' && !loading">
+            <div class="admin-table-wrap">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Content</th>
+                            <th>TMDB ID</th>
+                            <th>Comment</th>
+                            <th>Date</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="comment in comments" :key="comment._id">
+                            <tr>
+                                <td x-text="comment.username || comment.user_id"></td>
+                                <td x-text="comment.content_type"></td>
+                                <td x-text="comment.tmdb_id"></td>
+                                <td style="max-width:300px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" x-text="comment.text"></td>
+                                <td x-text="comment.created_at ? new Date(comment.created_at).toLocaleDateString() : '—'"></td>
+                                <td>
+                                    <button class="admin-btn admin-btn-danger" @click="deleteComment(comment)">Delete</button>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+                <div x-show="comments.length === 0 && !loading" style="text-align:center; padding:40px; color:rgba(255,255,255,0.4);">
+                    No comments found.
+                </div>
+            </div>
+        </div>
+
+        <!-- ====== Users Tab ====== -->
+        <div x-show="activeTab === 'users' && !loading">
+            <div class="admin-search-bar">
+                <input type="text" placeholder="Search users by email or username..." x-model="userSearch"
+                       @input="filterUsers()" class="admin-search-input">
+            </div>
+            <div class="admin-table-wrap">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                            <th>Joined</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="user in filteredUsers" :key="user._id">
+                            <tr>
+                                <td x-text="user.username || '—'"></td>
+                                <td x-text="user.email"></td>
+                                <td>
+                                    <span class="admin-badge" :class="user.role === 'admin' ? 'badge-admin' : 'badge-user'"
+                                          x-text="user.role"></span>
+                                </td>
+                                <td>
+                                    <span class="admin-badge" :class="user.is_banned ? 'badge-banned' : 'badge-active'"
+                                          x-text="user.is_banned ? 'Banned' : 'Active'"></span>
+                                </td>
+                                <td x-text="user.created_at ? new Date(user.created_at).toLocaleDateString() : '—'"></td>
+                                <td>
+                                    <template x-if="user._id !== $store.auth.user?.id">
+                                        <button class="admin-btn" :class="user.is_banned ? 'admin-btn-success' : 'admin-btn-danger'"
+                                                @click="toggleBan(user)"
+                                                x-text="user.is_banned ? 'Unban' : 'Ban'"></button>
+                                    </template>
+                                    <template x-if="user._id === $store.auth.user?.id">
+                                        <span style="color:rgba(255,255,255,0.3); font-size:12px;">You</span>
+                                    </template>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+                <div x-show="filteredUsers.length === 0 && !loading" style="text-align:center; padding:40px; color:rgba(255,255,255,0.4);">
+                    No users found.
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>

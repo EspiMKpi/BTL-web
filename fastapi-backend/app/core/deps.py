@@ -61,3 +61,15 @@ async def get_optional_current_user(
         return await _resolve_user(payload)
     except HTTPException:
         return None
+
+
+async def get_admin_user(
+    current_user: dict = Depends(get_current_user),
+) -> dict:
+    """Require admin role — raises 403 if user is not an admin."""
+    if current_user.get("role") != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required",
+        )
+    return current_user

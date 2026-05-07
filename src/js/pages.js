@@ -11,7 +11,9 @@ const PAGE_FILES = [
     "series",
     "detail",
     "watching",
-    "watchlists"
+    "watchlists",
+    "profile",
+    "admin"
 ];
 
 export const pages_ready = (async function load_pages() {

@@ -1,0 +1,105 @@
+<div id="page-profile" class="page-content" x-data="profilePage">
+
+    <!-- Not logged in -->
+    <div x-show="!$store.auth.isLoggedIn" style="text-align:center; padding:120px 20px;">
+        <h2 style="font-size:24px; color:var(--text-primary); margin-bottom:12px;">Not Logged In</h2>
+        <p style="color:var(--text-muted); margin-bottom:20px;">Please log in to view your profile.</p>
+        <button class="btn btn-primary" @click="switchPage('login')">Go to Login</button>
+    </div>
+
+    <!-- Profile Content -->
+    <div x-show="$store.auth.isLoggedIn" class="profile-layout">
+
+        <!-- Profile Hero -->
+        <div class="profile-hero-card">
+            <div class="profile-hero-bg"></div>
+            <div class="profile-hero-content">
+                <div class="profile-avatar-large">
+                    <img :src="$store.auth.user?.avatar_url || 'https://i.pravatar.cc/150?u=' + ($store.auth.user?.email || 'user')" alt="Avatar">
+                </div>
+                <div class="profile-info">
+                    <h1 class="profile-username" x-text="$store.auth.user?.username || 'User'"></h1>
+                    <p class="profile-email" x-text="$store.auth.user?.email || ''"></p>
+                    <span class="profile-role-badge" x-text="$store.auth.user?.role || 'user'"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="profile-stats-grid">
+            <div class="profile-stat-card">
+                <div class="profile-stat-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                </div>
+                <span class="profile-stat-num" x-text="stats.watchlist_count">0</span>
+                <span class="profile-stat-label">Watchlist</span>
+            </div>
+            <div class="profile-stat-card">
+                <div class="profile-stat-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                </div>
+                <span class="profile-stat-num" x-text="stats.completed_count">0</span>
+                <span class="profile-stat-label">Completed</span>
+            </div>
+            <div class="profile-stat-card">
+                <div class="profile-stat-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                </div>
+                <span class="profile-stat-num" x-text="stats.ratings_count">0</span>
+                <span class="profile-stat-label">Ratings</span>
+            </div>
+            <div class="profile-stat-card">
+                <div class="profile-stat-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                </div>
+                <span class="profile-stat-num" x-text="stats.history_count">0</span>
+                <span class="profile-stat-label">History</span>
+            </div>
+        </div>
+
+        <!-- Edit Profile -->
+        <div class="profile-section">
+            <h2 class="profile-section-title">Edit Profile</h2>
+            <div class="profile-edit-card">
+                <div class="profile-form-group">
+                    <label class="profile-label">Username</label>
+                    <input type="text" class="profile-input" x-model="editUsername" placeholder="Enter username">
+                </div>
+                <div class="profile-form-group">
+                    <label class="profile-label">Avatar URL</label>
+                    <input type="text" class="profile-input" x-model="editAvatar" placeholder="https://example.com/avatar.jpg">
+                </div>
+                <div class="profile-form-actions">
+                    <button class="btn btn-primary" @click="saveProfile()" :disabled="saving">
+                        <span x-text="saving ? 'Saving...' : 'Save Changes'"></span>
+                    </button>
+                    <span x-show="saveMsg" x-text="saveMsg" class="profile-save-msg"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="profile-section">
+            <h2 class="profile-section-title">Recent Activity</h2>
+            <div class="profile-activity-list" x-show="recentActivity.length > 0">
+                <template x-for="item in recentActivity" :key="item._id">
+                    <div class="profile-activity-item">
+                        <div class="profile-activity-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        </div>
+                        <div class="profile-activity-info">
+                            <span class="profile-activity-title" x-text="(item.content_type === 'series' ? 'Series' : 'Movie') + ' #' + item.tmdb_id"></span>
+                            <span class="profile-activity-meta" x-text="item.last_watched_at ? new Date(item.last_watched_at).toLocaleDateString() : ''"></span>
+                        </div>
+                        <span class="profile-activity-status" :class="item.completed ? 'completed' : ''"
+                              x-text="item.completed ? 'Completed' : Math.floor(item.progress_seconds / 60) + 'm watched'"></span>
+                    </div>
+                </template>
+            </div>
+            <div x-show="recentActivity.length === 0 && !loading" style="color:var(--text-muted); padding:20px 0;">
+                No recent activity yet. Start watching something!
+            </div>
+        </div>
+
+    </div>
+</div>

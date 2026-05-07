@@ -18,7 +18,7 @@ from slowapi.util import get_remote_address
 
 from app.core.config import settings
 from app.database import close_mongo_connection, connect_to_mongo
-from app.routers import auth, content, history, movies, profile, ratings, watchlist
+from app.routers import admin, auth, comments, content, history, movies, profile, ratings, watchlist
 
 # Teach FastAPI's jsonable_encoder how to serialize MongoDB ObjectId.
 # This is the actual fix for the "ObjectId is not iterable" / "vars() argument
@@ -85,6 +85,8 @@ app.include_router(watchlist.router)
 app.include_router(history.router)
 app.include_router(ratings.router)
 app.include_router(profile.router)
+app.include_router(comments.router)
+app.include_router(admin.router)
 
 
 @app.get("/api/test")
