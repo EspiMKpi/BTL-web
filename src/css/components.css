@@ -25,6 +25,9 @@
     display: flex;
     gap: 2px;
     letter-spacing: -0.5px;
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
 }
 
 .logo span:last-child {

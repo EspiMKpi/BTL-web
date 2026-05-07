@@ -14,9 +14,9 @@
     <div class="app-container" x-data="appState">
         <!-- Navigation -->
         <nav class="nav-bar hide" id="main-nav">
-            <div class="logo">
+            <a href="#discover" class="logo" @click.prevent="window.switchPage('discover')">
                 <span class="logo-text">Voz</span><span class="logo-text">Flix</span>
-            </div>
+            </a>
             <div class="nav-links">
                 <a href="#discover" class="nav-link active" data-page="discover">Discover</a>
                 <a href="#movies" class="nav-link" data-page="movies">Movies</a>
