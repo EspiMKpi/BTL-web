@@ -1,18 +1,56 @@
 /**
  * CineDrop Router
- * Handles page switching and navigation state
+ * Handles page switching with smooth fade transitions
  */
 
+let isTransitioning = false;
+
 export function switchPage(pageId, params = {}) {
-    const navLinks = document.querySelectorAll('.nav-link');
+    if (isTransitioning) return;
+
     const pages = document.querySelectorAll('.page-content');
+    const currentPage = document.querySelector('.page-content.active');
+    const targetPage = document.getElementById(`page-${pageId}`);
     const nav = document.getElementById('main-nav');
     const footer = document.querySelector('.main-footer');
     const dropdown = document.getElementById('profile-dropdown');
     const navLinksContainer = document.querySelector('.nav-links');
 
+    // Already on this page — skip
+    if (currentPage && targetPage && currentPage.id === targetPage.id) return;
+
+    // --- Instant switch (no animation) for first load or missing elements ---
+    if (!currentPage || !targetPage) {
+        applySwitch(pages, pageId, params, nav, footer, dropdown, navLinksContainer);
+        return;
+    }
+
+    // --- Animated transition ---
+    isTransitioning = true;
+
+    // 1. Fade out current page
+    currentPage.classList.add('page-fade-out');
+
+    setTimeout(() => {
+        // 2. Swap pages
+        applySwitch(pages, pageId, params, nav, footer, dropdown, navLinksContainer);
+
+        // 3. Prepare target for fade-in
+        targetPage.classList.add('page-fade-in');
+
+        // 4. Clean up after animation
+        setTimeout(() => {
+            targetPage.classList.remove('page-fade-in');
+            isTransitioning = false;
+        }, 300);
+    }, 200);
+}
+
+function applySwitch(pages, pageId, params, nav, footer, dropdown, navLinksContainer) {
+    const navLinks = document.querySelectorAll('.nav-link');
+
     pages.forEach(page => {
-        page.classList.remove('active');
+        page.classList.remove('active', 'page-fade-out');
         if (page.id === `page-${pageId}`) {
             page.classList.add('active');
         }
@@ -33,20 +71,15 @@ export function switchPage(pageId, params = {}) {
         }
     });
 
-    if (pageId === 'series') {
-        const seriesPage = document.getElementById('page-series');
-        if (seriesPage) seriesPage.classList.add('active');
-    }
-
     if (dropdown) dropdown.classList.remove('show');
     if (navLinksContainer) navLinksContainer.classList.remove('active');
 
     if (window.Alpine) {
-        const nav = window.Alpine.store('nav');
-        if (nav) {
-            nav.currentPage = pageId;
-            if (params.contentId !== undefined) nav.contentId = params.contentId;
-            if (params.contentType !== undefined) nav.contentType = params.contentType;
+        const alpineNav = window.Alpine.store('nav');
+        if (alpineNav) {
+            alpineNav.currentPage = pageId;
+            if (params.contentId !== undefined) alpineNav.contentId = params.contentId;
+            if (params.contentType !== undefined) alpineNav.contentType = params.contentType;
         }
     }
 

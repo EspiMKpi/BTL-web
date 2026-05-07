@@ -6,6 +6,18 @@ import { contentApi, watchlistApi, historyApi } from './api.js';
 window.Alpine = Alpine;
 window.switchPage = switchPage;
 
+// --- Netflix-style navbar scroll effect ---
+window.addEventListener('scroll', () => {
+    const nav = document.getElementById('main-nav');
+    if (nav) {
+        if (window.scrollY > 30) {
+            nav.classList.add('scrolled');
+        } else {
+            nav.classList.remove('scrolled');
+        }
+    }
+}, { passive: true });
+
 // --- Alpine Stores ---
 Alpine.store('toast', {
     message: '',

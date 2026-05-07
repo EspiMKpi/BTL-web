@@ -14,7 +14,7 @@
     cursor: pointer;
     align-items: center;
     justify-content: center;
-    border-radius: 12px;
+    border-radius: var(--radius-sm);
     background: rgba(255, 255, 255, 0.05);
 }
 
@@ -114,7 +114,7 @@
     /* --- Detail hero --- */
     .detail-hero {
         height: 450px;
-        border-radius: 24px;
+        border-radius: var(--radius-md);
     }
 
     .detail-hero-content {
@@ -326,8 +326,8 @@
     .hero {
         height: auto;
         min-height: 380px;
-        margin: 16px 0;
-        border-radius: 16px;
+        margin: 0 -20px;
+        border-radius: 0;
     }
 
     .hero-poster {
@@ -383,8 +383,8 @@
     /* --- Detail hero --- */
     .detail-hero {
         height: 360px;
-        border-radius: 16px;
-        margin-bottom: 24px;
+        border-radius: 0;
+        margin: 0 -20px 24px;
     }
 
     .detail-hero-content {
@@ -457,7 +457,7 @@
 
     /* --- Player --- */
     .video-player-container {
-        border-radius: 12px;
+        border-radius: var(--radius-sm);
     }
 
     .player-bottom-bar {
@@ -475,7 +475,7 @@
     /* --- Watchlist page --- */
     .user-main-card {
         padding: 24px;
-        border-radius: 16px;
+        border-radius: var(--radius-md);
     }
 
     .user-main-info h2 {
@@ -718,7 +718,8 @@
     /* --- Hero --- */
     .hero {
         min-height: 320px;
-        border-radius: 12px;
+        border-radius: 0;
+        margin: 0 -14px;
     }
 
     .hero-content {
@@ -881,7 +882,7 @@
 
     /* --- Player --- */
     .video-player-container {
-        border-radius: 8px;
+        border-radius: var(--radius-sm);
     }
 
     .player-bottom-bar {
