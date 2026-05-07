@@ -256,6 +256,11 @@ class ProfileUpdateRequest(BaseModel):
     avatar_url: Optional[str] = None
 
 
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str = Field(min_length=6)
+
+
 class ProfileStatsOut(BaseModel):
     watchlist_count: int = 0
     completed_count: int = 0

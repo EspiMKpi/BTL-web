@@ -7,8 +7,14 @@ from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.core.deps import get_current_user
+from app.core.security import hash_password, verify_password
 from app.database import get_database
-from app.models.schemas import ProfileStatsOut, ProfileUpdateRequest, UserOut
+from app.models.schemas import (
+    ChangePasswordRequest,
+    ProfileStatsOut,
+    ProfileUpdateRequest,
+    UserOut,
+)
 from app.services.library_service import get_profile_stats, get_recent_activity
 
 router = APIRouter(prefix="/api/profile", tags=["profile"])
@@ -65,3 +71,24 @@ async def update_profile(
         "avatar_url": result.get("avatar_url"),
         "role": result.get("role", "user"),
     }
+
+
+@router.post("/change-password")
+async def change_password(
+    body: ChangePasswordRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    db = get_database()
+    user = await db.users.find_one({"_id": ObjectId(current_user["_id"])})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if not verify_password(body.current_password, user["password"]):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+
+    new_hashed = hash_password(body.new_password)
+    await db.users.update_one(
+        {"_id": ObjectId(current_user["_id"])},
+        {"$set": {"password": new_hashed}},
+    )
+    return {"message": "Password updated successfully"}

@@ -57,10 +57,15 @@
             </div>
         </div>
 
-        <!-- Edit Profile -->
+        <!-- Edit Profile / Change Password Tabs -->
         <div class="profile-section">
-            <h2 class="profile-section-title">Edit Profile</h2>
-            <div class="profile-edit-card">
+            <div class="profile-tabs">
+                <button class="profile-tab" :class="{ active: activeTab === 'edit' }" @click="activeTab = 'edit'">Edit Profile</button>
+                <button class="profile-tab" :class="{ active: activeTab === 'password' }" @click="activeTab = 'password'">Change Password</button>
+            </div>
+
+            <!-- Edit Profile Tab -->
+            <div x-show="activeTab === 'edit'" class="profile-edit-card">
                 <div class="profile-form-group">
                     <label class="profile-label">Username</label>
                     <input type="text" class="profile-input" x-model="editUsername" placeholder="Enter username">
@@ -74,6 +79,28 @@
                         <span x-text="saving ? 'Saving...' : 'Save Changes'"></span>
                     </button>
                     <span x-show="saveMsg" x-text="saveMsg" class="profile-save-msg"></span>
+                </div>
+            </div>
+
+            <!-- Change Password Tab -->
+            <div x-show="activeTab === 'password'" class="profile-edit-card">
+                <div class="profile-form-group">
+                    <label class="profile-label">Current Password</label>
+                    <input type="password" class="profile-input" x-model="currentPassword" placeholder="Enter current password">
+                </div>
+                <div class="profile-form-group">
+                    <label class="profile-label">New Password</label>
+                    <input type="password" class="profile-input" x-model="newPassword" placeholder="Enter new password (min 6 characters)">
+                </div>
+                <div class="profile-form-group">
+                    <label class="profile-label">Confirm New Password</label>
+                    <input type="password" class="profile-input" x-model="confirmPassword" placeholder="Confirm new password">
+                </div>
+                <div class="profile-form-actions">
+                    <button class="btn btn-primary" @click="changePassword()" :disabled="changingPassword">
+                        <span x-text="changingPassword ? 'Updating...' : 'Update Password'"></span>
+                    </button>
+                    <span x-show="passwordMsg" x-text="passwordMsg" :class="passwordMsgClass" class="profile-save-msg"></span>
                 </div>
             </div>
         </div>

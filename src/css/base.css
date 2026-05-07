@@ -2,27 +2,28 @@
 
 :root {
     --font-main: 'Netflix Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-    --bg-main: #110b03;
-    --bg-surface: #1a1307;
-    --bg-surface-2: #251a08;
-    --bg-elevated: #2e2009;
+    --bg-main: #0a0a0a;
+    --bg-surface: #141414;
+    --bg-surface-2: #1a1a1a;
+    --bg-elevated: #222222;
     --accent-red: #f4c84a;
     --accent-red-hover: #f7d794;
     --accent-red-glow: rgba(244, 200, 74, 0.35);
     --accent-gold: #f4c84a;
-    --text-primary: #f8f2df;
-    --text-secondary: #e8ddc4;
-    --text-muted: #b8a36b;
-    --glass-bg: rgba(244, 200, 74, 0.08);
-    --glass-border: rgba(244, 200, 74, 0.22);
+    --text-primary: #f5f5f5;
+    --text-secondary: #d4d4d4;
+    --text-muted: #8a8a8a;
+    --glass-bg: rgba(244, 200, 74, 0.06);
+    --glass-border: rgba(244, 200, 74, 0.18);
+    --border-subtle: rgba(255, 255, 255, 0.08);
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-fast: all 0.18s ease;
     --transition-spring: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-    --shadow-card: 0 8px 30px rgba(0, 0, 0, 0.5);
-    --shadow-elevated: 0 16px 50px rgba(0, 0, 0, 0.6);
-    --radius-sm: 4px;
-    --radius-md: 8px;
-    --radius-lg: 12px;
+    --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.6);
+    --shadow-elevated: 0 12px 40px rgba(0, 0, 0, 0.7);
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
 }
 
 * {

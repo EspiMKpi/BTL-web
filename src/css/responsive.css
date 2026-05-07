@@ -15,7 +15,12 @@
     align-items: center;
     justify-content: center;
     border-radius: var(--radius-sm);
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.06);
+    transition: background 0.2s ease;
+}
+
+.mobile-menu-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
 }
 
 /* ==========================================================================
@@ -46,8 +51,13 @@
         font-size: clamp(30px, 4vw, 52px);
     }
 
-    .nf-hero-content {
-        padding: 100px 40px 60px;
+    .hero-slide-content {
+        left: 40px;
+        width: min(480px, 55vw);
+    }
+
+    .hero-carousel-dots {
+        right: 40px;
     }
 
     .nf-reasons-grid {
@@ -222,16 +232,24 @@
         gap: 34px;
     }
 
-    .nf-hero {
-        min-height: 64vh;
+    .hero-carousel {
+        height: 60vh;
+        min-height: 400px;
+    }
+
+    .hero-slide-content {
+        left: 30px;
+        width: min(440px, 55vw);
+        bottom: 10%;
+    }
+
+    .hero-carousel-dots {
+        right: 30px;
+        bottom: 20px;
     }
 
     .nf-title {
         max-width: 100%;
-    }
-
-    .nf-copy {
-        font-size: 16px;
     }
 
     .nf-email-row {
@@ -288,7 +306,7 @@
         left: 0;
         right: 0;
         bottom: 0;
-        background: rgba(34, 24, 9, 0.98);
+        background: rgba(14, 14, 14, 0.98);
         backdrop-filter: blur(20px);
         flex-direction: column;
         padding: 40px;
@@ -366,8 +384,8 @@
 
     /* --- Movie grids --- */
     .movie-grid {
-        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-        gap: 14px;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 12px;
     }
 
     /* --- Section headers --- */
@@ -664,21 +682,34 @@
         padding: 10px 14px;
     }
 
-    .nf-hero {
-        min-height: 56vh;
+    .hero-carousel {
+        height: 55vh;
+        min-height: 360px;
     }
 
-    .nf-hero-content {
-        width: 100%;
-        padding: 88px 20px 50px;
+    .hero-slide-content {
+        left: 20px;
+        right: 20px;
+        width: auto;
+        bottom: 14%;
     }
 
-    .nf-title {
-        font-size: clamp(36px, 9vw, 54px);
+    .hero-slide-title {
+        font-size: clamp(28px, 7vw, 42px);
     }
 
-    .nf-copy {
-        font-size: 14px;
+    .hero-slide-desc {
+        font-size: 13px;
+        margin-bottom: 16px;
+    }
+
+    .hero-carousel-dots {
+        right: 20px;
+        bottom: 16px;
+    }
+
+    .hero-carousel-arrow {
+        display: none;
     }
 
     .nf-top10-grid {
@@ -1101,12 +1132,35 @@
         gap: 24px;
     }
 
-    .nf-hero {
-        min-height: 52vh;
+    .hero-carousel {
+        height: 50vh;
+        min-height: 320px;
+        margin: 0;
     }
 
-    .nf-hero-content {
-        padding: 78px 14px 40px;
+    .hero-slide-content {
+        left: 14px;
+        right: 14px;
+        bottom: 16%;
+    }
+
+    .hero-slide-title {
+        font-size: clamp(24px, 6vw, 36px);
+    }
+
+    .hero-slide-btns {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .hero-slide-btns .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .hero-carousel-dots {
+        right: 14px;
+        bottom: 10px;
     }
 
     .nf-kicker {
