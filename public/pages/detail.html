@@ -1,49 +1,62 @@
-<div id="page-detail" class="page-content">
-    <section class="detail-hero">
+<div id="page-detail" class="page-content" x-data="detailPage">
+
+    <!-- Loading State -->
+    <div x-show="loading" style="text-align:center; padding: 120px 20px; color: rgba(255,255,255,0.5);">
+        Loading details…
+    </div>
+
+    <!-- Error State -->
+    <div x-show="error" x-text="error" style="text-align:center; padding: 80px 20px; color: #ff6b6b;"></div>
+
+    <!-- Hero Section -->
+    <section class="detail-hero" x-show="!loading && content">
         <div class="detail-hero-poster">
-            <img src="https://images.unsplash.com/photo-1510827220565-c6a086ff31c8?q=80&w=1920&auto=format&fit=crop" alt="Glass Kingdom key art">
+            <img :src="backdropUrl" :alt="title + ' key art'">
         </div>
 
         <div class="detail-hero-scrim"></div>
         <div class="detail-hero-content">
-            <p class="landing-eyebrow">VozFlix Original</p>
-            <h1 class="detail-title">Glass Kingdom</h1>
+            <p class="landing-eyebrow" x-text="contentType === 'series' ? 'TV Series' : 'Movie'"></p>
+            <h1 class="detail-title" x-text="title"></h1>
             <div class="detail-meta-row">
-                <span class="rating">★ 8.9</span>
-                <span>2026</span>
-                <span>2h 11m</span>
-                <span>Thriller, Sci-fi, Mystery</span>
+                <span class="rating" x-text="'★ ' + (content?.vote_average?.toFixed(1) || '—')"></span>
+                <span x-text="year"></span>
+                <span x-text="runtime"></span>
+                <span x-text="genreString"></span>
             </div>
-            <p class="detail-desc">
-                In a city suspended over a dead ocean, an architect uncovers an algorithm that can rewrite memory itself. To save her family, she must destroy the machine she once designed.
-            </p>
+            <p class="detail-desc" x-text="content?.overview || 'No description available.'"></p>
             <div class="detail-cta-row">
-                <button class="btn btn-primary" id="btn-watch-now">
+                <button class="btn btn-primary" @click="switchPage('watching')">
                     <div class="icon-wrapper" style="width: 18px; height: 18px; color: black;">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="m7 3 14 9-14 9V3z"/></svg>
                     </div>
                     Watch Now
                 </button>
-                <button class="btn btn-secondary">
-                    <div class="icon-wrapper" style="width: 18px; height: 18px;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg></div>
-                    Add to List
+                <button class="btn btn-secondary" @click="toggleBookmark()">
+                    <div class="icon-wrapper" style="width: 18px; height: 18px;">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" :fill="watchlistItem ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>
+                    </div>
+                    <span x-text="watchlistItem ? 'In Watchlist' : 'Add to List'"></span>
                 </button>
-                <button class="btn btn-secondary">
-                    <div class="icon-wrapper" style="width: 18px; height: 18px;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></div>
-                    View Episodes
-                </button>
+                <template x-if="contentType === 'series'">
+                    <button class="btn btn-secondary" @click="$refs.episodes?.scrollIntoView({behavior:'smooth'})">
+                        <div class="icon-wrapper" style="width: 18px; height: 18px;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></div>
+                        View Episodes
+                    </button>
+                </template>
             </div>
         </div>
     </section>
 
-    <section class="detail-info-grid">
+    <!-- Info Grid -->
+    <section class="detail-info-grid" x-show="!loading && content">
         <article class="detail-info-card">
             <p class="sidebar-label">Synopsis</p>
-            <p>A whistleblower leaks proof that Glass Kingdom's citizens are living edited lives. As riots spread through the vertical city, the truth becomes the most dangerous weapon of all.</p>
+            <p x-text="content?.overview || 'No synopsis available.'"></p>
         </article>
         <article class="detail-info-card">
             <p class="sidebar-label">Cast</p>
-            <p>Nina Zhao · Mateo Rios · Kareem Voss · Anya Takahashi · Pavel Dobrev</p>
+            <p x-text="castString"></p>
         </article>
         <article class="detail-info-card">
             <p class="sidebar-label">Audio & Subtitles</p>
@@ -51,59 +64,34 @@
         </article>
     </section>
 
-    <section class="episode-section">
+    <!-- Episodes Section (series only) -->
+    <section class="episode-section" x-ref="episodes" x-show="!loading && content && contentType === 'series' && content?.seasons?.length > 0">
         <div class="section-header">
             <h2 class="section-title">Episodes</h2>
-            <a href="#watching" class="see-all">Open Player</a>
+            <a href="#watching" class="see-all" @click.prevent="switchPage('watching')">Open Player</a>
         </div>
-        <div class="season-tabs">
-            <button class="season-tab active">Season 1</button>
-            <button class="season-tab">Season 2</button>
+        <div class="season-tabs" x-show="content?.seasons?.length > 1">
+            <template x-for="(season, idx) in (content?.seasons || [])" :key="season.season_number">
+                <button class="season-tab"
+                        :class="{ active: selectedSeason === idx }"
+                        @click="selectedSeason = idx"
+                        x-text="'Season ' + season.season_number"></button>
+            </template>
         </div>
         <div class="episode-grid">
-            <div class="episode-card">
-                <div class="ep-thumbnail">
-                    <img src="https://images.unsplash.com/photo-1497015289639-54688650d173?q=80&w=600&auto=format&fit=crop" alt="Episode 1">
-                    <div class="ep-number">1</div>
+            <template x-for="ep in currentSeasonEpisodes" :key="ep.episode_number">
+                <div class="episode-card" @click="switchPage('watching')">
+                    <div class="ep-thumbnail">
+                        <img :src="ep.still_path ? 'https://image.tmdb.org/t/p/w500' + ep.still_path : backdropUrl"
+                             :alt="ep.name || ('Episode ' + ep.episode_number)">
+                        <div class="ep-number" x-text="ep.episode_number"></div>
+                    </div>
+                    <div class="ep-info">
+                        <h3 x-text="ep.name || ('Episode ' + ep.episode_number)"></h3>
+                        <p x-text="ep.overview || 'No description available.'"></p>
+                    </div>
                 </div>
-                <div class="ep-info">
-                    <h3>Blueprints</h3>
-                    <p>The first fracture appears in the city's memory network after a suspicious construction collapse.</p>
-                </div>
-            </div>
-
-            <div class="episode-card">
-                <div class="ep-thumbnail">
-                    <img src="https://images.unsplash.com/photo-1542204172-3f240e3eb9fb?q=80&w=600&auto=format&fit=crop" alt="Episode 2">
-                    <div class="ep-number">2</div>
-                </div>
-                <div class="ep-info">
-                    <h3>Ghost Archive</h3>
-                    <p>An underground archivist reveals thousands of lives erased from the city's records.</p>
-                </div>
-            </div>
-
-            <div class="episode-card">
-                <div class="ep-thumbnail">
-                    <img src="https://images.unsplash.com/photo-1540324155974-7523202daa3f?q=80&w=600&auto=format&fit=crop" alt="Episode 3">
-                    <div class="ep-number">3</div>
-                </div>
-                <div class="ep-info">
-                    <h3>The Last Elevator</h3>
-                    <p>Escaping to the lower decks becomes impossible as the city seals all vertical routes.</p>
-                </div>
-            </div>
-
-            <div class="episode-card">
-                <div class="ep-thumbnail">
-                    <img src="https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?q=80&w=600&auto=format&fit=crop" alt="Episode 4">
-                    <div class="ep-number">4</div>
-                </div>
-                <div class="ep-info">
-                    <h3>Signal Fire</h3>
-                    <p>A forbidden broadcast ignites unrest as the city learns who controls their memories.</p>
-                </div>
-            </div>
+            </template>
         </div>
     </section>
 </div>

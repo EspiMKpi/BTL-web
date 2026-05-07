@@ -188,8 +188,7 @@ BTL-web/
 │   │   ├── main.js              # Alpine.js stores, components & app logic
 │   │   ├── api.js               # Centralized API client (JWT, error handling)
 │   │   ├── pages.js             # Page fragment loader
-│   │   ├── router.js            # SPA page switching
-│   │   └── actions.js           # Search, filters, toast
+│   │   └── router.js            # SPA page switching
 │   └── css/
 │       ├── base.css             # Reset & variables
 │       ├── components.css       # Cards, nav, buttons
@@ -436,7 +435,7 @@ During development, Vite proxies all `/api/*` requests to the FastAPI backend on
 | Scope | Convention | Example |
 |-------|-----------|---------|
 | Backend TS variables/functions | `snake_case` | `get_movie_by_id`, `movies_collection` |
-| Frontend JS | `camelCase` | `switchPage`, `showNotification` |
+| Frontend JS | `camelCase` | `switchPage`, `fetchUser` |
 | CSS classes | `kebab-case` | `movie-card`, `nav-links` |
 
 ## 📄 License

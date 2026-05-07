@@ -73,7 +73,7 @@ BTL-web/
 │   │   ├── main.js            # Entry point, Alpine.js app
 │   │   ├── pages.js           # Page fragment loader
 │   │   ├── router.js          # SPA page switching
-│   │   └── actions.js         # Search, filters, toast
+│   │   └── api.js             # Centralized API client (JWT, error handling)
 │   └── css/                   # Stylesheets
 ├── public/pages/              # HTML page fragments (served raw by Vite)
 └── fastapi-backend/           # Python/FastAPI backend

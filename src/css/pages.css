@@ -365,13 +365,13 @@
    Discover - Netflix-Inspired
    =================================== */
 
-.nf-landing {
+.page-content.active.nf-landing {
     --nf-bg: #151008;
     --nf-red: #f4c84a;
     --nf-card: #2a1d0a;
     --nf-text-soft: rgba(248, 242, 223, 0.86);
     padding-top: 0;
-    display: flex !important;
+    display: flex;
     flex-direction: column;
     gap: 42px;
 }
@@ -657,9 +657,9 @@
    Discover Landing
    =================================== */
 
-.landing-page {
+.page-content.active.landing-page {
     padding-top: 28px;
-    display: flex !important;
+    display: flex;
     flex-direction: column;
     gap: 44px;
 }

@@ -18,7 +18,7 @@ export function switchPage(pageId, params = {}) {
         }
     });
 
-    if (pageId === 'login') {
+    if (pageId === 'login' || pageId === 'register') {
         if (nav) nav.classList.add('hide');
         if (footer) footer.classList.add('hide');
     } else {

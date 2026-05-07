@@ -80,6 +80,9 @@ Alpine.store('nav', {
 // --- Alpine Components ---
 Alpine.data('appState', () => ({
     init() {
+        // Fire-and-forget: fetchUser stores the result in the store.
+        // The actual initial page switch is handled in DOMContentLoaded
+        // to avoid a race condition that overrides user navigation.
         Alpine.store('auth').fetchUser();
     }
 }));
@@ -647,7 +650,16 @@ Alpine.start();
 // --- DOM Ready ---
 document.addEventListener('DOMContentLoaded', async () => {
     await pages_ready;
-    switchPage('login');
+
+    // Wait for fetchUser (started by appState.init) to settle
+    // so we know the auth state before choosing the initial page.
+    await new Promise(r => setTimeout(r, 300));
+
+    if (Alpine.store('auth').isLoggedIn) {
+        switchPage('discover');
+    } else {
+        switchPage('login');
+    }
 
     document.addEventListener('auth:expired', () => {
         Alpine.store('auth').logout();
