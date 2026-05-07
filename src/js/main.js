@@ -716,6 +716,11 @@ Alpine.data('watchingPage', () => ({
             const contentType = params.contentType || Alpine.store('nav').contentType || 'movie';
             this.load(contentId, contentType);
         });
+
+        // VidKing player → parent postMessage bridge.
+        // One listener for the lifetime of the SPA; handler ignores events
+        // when the iframe isn't loaded or the user is anonymous.
+        window.addEventListener('message', (event) => this._onPlayerMessage(event));
     },
 
     async load(contentId, contentType) {
@@ -744,14 +749,26 @@ Alpine.data('watchingPage', () => ({
         }
     },
 
+    get playerSrc() {
+        if (!this.content?.tmdb_id) return '';
+        const id = this.content.tmdb_id;
+        const base = 'https://www.vidking.net/embed';
+        const color = 'f4c84a';
+        if (this.contentType === 'series') {
+            // Series default to S1E1 unless an episode card has been clicked.
+            const season = this.selectedEpisode
+                ? (this.content?.seasons?.[this.selectedSeasonIndex]?.season_number ?? 1)
+                : 1;
+            const ep = this.selectedEpisode?.episode_number ?? 1;
+            return `${base}/tv/${id}/${season}/${ep}?color=${color}&autoPlay=true&nextEpisode=true&episodeSelector=true`;
+        }
+        return `${base}/movie/${id}?color=${color}&autoPlay=true`;
+    },
+
     selectEpisode(ep) {
         this.selectedEpisode = ep;
         this._lastPostAt = 0;
-        const video = document.querySelector('#page-watching video');
-        if (video) {
-            video.currentTime = 0;
-            video.play().catch(() => {});
-        }
+        // playerSrc getter recomputes; Alpine re-binds :src and the iframe reloads.
     },
 
     get title() {
@@ -796,36 +813,42 @@ Alpine.data('watchingPage', () => ({
         return 'https://placehold.co/500x281/1a1a2e/white?text=Episode';
     },
 
-    onTimeUpdate(ev) {
-        const now = Date.now();
-        if (now - this._lastPostAt < 10000) return;
-        this._lastPostAt = now;
+    _onPlayerMessage(event) {
+        if (!event.data || event.data.type !== 'PLAYER_EVENT') return;
         if (!Alpine.store('auth').isLoggedIn || !this.content?.tmdb_id) return;
-        const seasonNumber = this.selectedEpisode
-            ? this.content?.seasons?.[this.selectedSeasonIndex]?.season_number ?? null
-            : null;
-        historyApi.postProgress({
-            content_type: this.contentType,
-            tmdb_id: this.content.tmdb_id,
-            progress_seconds: Math.floor(ev.target.currentTime || 0),
-            completed: false,
-            season_number: seasonNumber,
-            episode_number: this.selectedEpisode?.episode_number ?? null,
-        }).catch(() => {});
-    },
 
-    onEnded(ev) {
-        if (!Alpine.store('auth').isLoggedIn || !this.content?.tmdb_id) return;
-        const seasonNumber = this.selectedEpisode
-            ? this.content?.seasons?.[this.selectedSeasonIndex]?.season_number ?? null
-            : null;
+        const payload = event.data.data || {};
+        const status = payload.player_status;
+        const progress = payload.player_progress;
+        const info = payload.player_info || {};
+        if (!status) return;
+
+        const completed = status === 'completed';
+        // 10s throttle for in-progress events; always post on completion.
+        if (!completed) {
+            const now = Date.now();
+            if (now - this._lastPostAt < 10000) return;
+            this._lastPostAt = now;
+        }
+
+        const rawSeason = info.season ?? null;
+        const rawEpisode = info.episode ?? null;
+        const seasonNumber = rawSeason != null && rawSeason !== ''
+            ? parseInt(rawSeason, 10)
+            : (this.selectedEpisode
+                ? this.content?.seasons?.[this.selectedSeasonIndex]?.season_number ?? null
+                : null);
+        const episodeNumber = rawEpisode != null && rawEpisode !== ''
+            ? parseInt(rawEpisode, 10)
+            : this.selectedEpisode?.episode_number ?? null;
+
         historyApi.postProgress({
             content_type: this.contentType,
             tmdb_id: this.content.tmdb_id,
-            progress_seconds: Math.floor(ev.target.currentTime || 0),
-            completed: true,
-            season_number: seasonNumber,
-            episode_number: this.selectedEpisode?.episode_number ?? null,
+            progress_seconds: Math.round(Number(progress) || 0),
+            completed,
+            season_number: Number.isFinite(seasonNumber) ? seasonNumber : null,
+            episode_number: Number.isFinite(episodeNumber) ? episodeNumber : null,
         }).catch(() => {});
     },
 }));

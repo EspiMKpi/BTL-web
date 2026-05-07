@@ -1837,74 +1837,7 @@
     max-height: 85vh;
 }
 
-.player-bottom-bar {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: linear-gradient(transparent, rgba(0,0,0,0.8));
-    padding: 20px 40px;
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-    transform: translateY(20px);
-    opacity: 0;
-    transition: var(--transition-fast);
-    z-index: 10;
-}
-
-.video-player-container:hover .player-bottom-bar {
-    transform: translateY(0);
-    opacity: 1;
-}
-
-.progress-container {
-    width: 100%;
-}
-
-.progress-bar-bg {
-    height: 6px;
-    background: rgba(255,255,255,0.1);
-    border-radius: 3px;
-    position: relative;
-    overflow: hidden;
-    cursor: pointer;
-}
-
-.progress-bar-fill {
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 100%;
-    background: var(--accent-gold);
-}
-
-.player-controls-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.controls-left, .controls-right {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-}
-
-.player-btn {
-    background: none;
-    border: none;
-    color: white;
-    width: 24px;
-    height: 24px;
-    cursor: pointer;
-    transition: var(--transition-fast);
-}
-
-.player-btn:hover {
-    color: var(--accent-gold);
-    transform: scale(1.1);
-}
+/* Player overlay/control rules removed — VidKing renders its own controls. */
 
 /* =========================================
    Admin Page
