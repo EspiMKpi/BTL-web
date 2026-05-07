@@ -40,7 +40,8 @@ Alpine.store('auth', {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password })
         });
-        const data = await res.json();
+        let data;
+        try { data = await res.json(); } catch { throw new Error('Server is unreachable. Please try again later.'); }
         if (!res.ok) throw new Error(data.error || data.detail);
         this.token = data.token;
         this.user = data.user;
@@ -54,7 +55,8 @@ Alpine.store('auth', {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password })
         });
-        const data = await res.json();
+        let data;
+        try { data = await res.json(); } catch { throw new Error('Server is unreachable. Please try again later.'); }
         if (!res.ok) throw new Error(data.error || data.detail);
         this.token = data.token;
         this.user = data.user;
@@ -75,7 +77,7 @@ Alpine.store('auth', {
                 headers: { 'Authorization': `Bearer ${this.token}` }
             });
             if (res.ok) {
-                this.user = await res.json();
+                try { this.user = await res.json(); } catch { /* non-JSON response */ }
             } else {
                 this.logout();
             }
@@ -99,10 +101,38 @@ Alpine.data('appState', () => ({
     }
 }));
 
+/* ---- Scroll Rail Component (horizontal content rows with arrow nav) ---- */
+Alpine.data('scrollRail', () => ({
+    canScrollLeft: false,
+    canScrollRight: false,
+
+    checkArrows() {
+        const el = this.$refs.scrollContainer;
+        if (!el) return;
+        this.canScrollLeft = el.scrollLeft > 4;
+        this.canScrollRight = el.scrollLeft < el.scrollWidth - el.clientWidth - 4;
+    },
+
+    scrollLeft() {
+        const el = this.$refs.scrollContainer;
+        if (!el) return;
+        el.scrollBy({ left: -el.clientWidth * 0.75, behavior: 'smooth' });
+    },
+
+    scrollRight() {
+        const el = this.$refs.scrollContainer;
+        if (!el) return;
+        el.scrollBy({ left: el.clientWidth * 0.75, behavior: 'smooth' });
+    },
+}));
+
 Alpine.data('discoverPage', () => ({
     rails: [],
     loading: false,
     error: '',
+    carouselIndex: 0,
+    carouselPaused: false,
+    _carouselTimer: null,
 
     init() {
         document.addEventListener('page:switch', (e) => {
@@ -122,9 +152,77 @@ Alpine.data('discoverPage', () => ({
             this.error = e.message;
         } finally {
             this.loading = false;
+            this.$nextTick(() => this._startCarousel());
         }
     },
 
+    /* ---- Hero Carousel ---- */
+    get heroSlides() {
+        const rail = this.top10Rail;
+        if (!rail) return [];
+        return rail.items.slice(0, 6).map(item => ({
+            ...item,
+            _type: rail.content_type,
+            backdropUrl: item.backdrop_path
+                ? `https://image.tmdb.org/t/p/original${item.backdrop_path}`
+                : item.poster_path
+                    ? `https://image.tmdb.org/t/p/original${item.poster_path}`
+                    : '',
+            posterUrl: item.poster_path
+                ? `https://image.tmdb.org/t/p/w500${item.poster_path}`
+                : 'https://placehold.co/300x450/1a1a2e/white?text=No+Image',
+            title: rail.content_type === 'series' ? (item.name || item.title) : (item.title || item.name),
+            year: (() => {
+                const d = rail.content_type === 'series' ? item.first_air_date : item.release_date;
+                return d ? d.substring(0, 4) : '';
+            })(),
+        }));
+    },
+
+    get currentSlide() {
+        return this.heroSlides[this.carouselIndex] || null;
+    },
+
+    carouselNext() {
+        if (this.heroSlides.length === 0) return;
+        this.carouselIndex = (this.carouselIndex + 1) % this.heroSlides.length;
+    },
+
+    carouselPrev() {
+        if (this.heroSlides.length === 0) return;
+        this.carouselIndex = (this.carouselIndex - 1 + this.heroSlides.length) % this.heroSlides.length;
+    },
+
+    carouselGo(i) {
+        this.carouselIndex = i;
+    },
+
+    carouselPause() {
+        this.carouselPaused = true;
+        this._stopCarousel();
+    },
+
+    carouselResume() {
+        this.carouselPaused = false;
+        this._startCarousel();
+    },
+
+    _startCarousel() {
+        this._stopCarousel();
+        if (this.heroSlides.length <= 1) return;
+        this._carouselTimer = setInterval(() => {
+            if (!this.carouselPaused) this.carouselNext();
+        }, 6000);
+    },
+
+    _stopCarousel() {
+        if (this._carouselTimer) {
+            clearInterval(this._carouselTimer);
+            this._carouselTimer = null;
+        }
+    },
+
+    /* ---- Content Rails ---- */
     get top10Rail() {
         return this.rails.find(r => r.items && r.items.length >= 5) || this.rails[0] || null;
     },
