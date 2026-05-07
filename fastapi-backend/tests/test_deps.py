@@ -6,7 +6,7 @@ Exercises the dependency layer directly via HTTP calls through the /api/auth/me 
 import pytest
 from bson import ObjectId
 
-from app.core.security import create_access_token
+from app.core.security import create_access_token, hash_password
 
 
 class TestGetCurrentUser:
@@ -45,6 +45,27 @@ class TestGetCurrentUser:
         )
         assert resp.status_code == 401
         assert "not found" in resp.json()["detail"].lower()
+
+    async def test_banned_user_rejected(self, client, db):
+        """A banned user with a valid JWT should get 403."""
+        user_id = ObjectId()
+        await db.users.insert_one({
+            "_id": user_id,
+            "email": "banned@vozflix.com",
+            "password": hash_password("Test1234!"),
+            "username": "banned",
+            "role": "user",
+            "is_banned": True,
+            "is_active": True,
+        })
+        token = create_access_token(str(user_id), "banned@vozflix.com")
+
+        resp = await client.get(
+            "/api/auth/me",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 403
+        assert "banned" in resp.json()["detail"].lower()
 
     async def test_no_auth_header(self, client):
         resp = await client.get("/api/auth/me")

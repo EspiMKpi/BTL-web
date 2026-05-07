@@ -53,20 +53,33 @@
             <div x-show="error && !loading" style="text-align:center; padding:40px; color:#ff6b6b;" x-text="error"></div>
 
             <div class="movie-grid watchlist-grid" x-show="!loading">
-                <template x-for="item in filteredItems" :key="item._id">
+                <template x-for="item in filteredItems" :key="item._id || item.tmdb_id">
                     <div class="movie-card" @click="navigateTo(item)">
                         <div class="poster-container">
                             <img :src="item._poster || 'https://placehold.co/300x450/1a1a2e/white?text=No+Image'" :alt="item._title" loading="lazy">
                             <span class="rating-badge" x-text="item._rating ? item._rating.toFixed(1) : 'N/A'"></span>
-                            <div class="bookmark-btn" @click.stop="remove(item)">
-                                <div class="icon-wrapper" style="width: 14px; height: 14px;">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>
+                            <!-- Progress bar for continue-watching items -->
+                            <template x-if="activeFilter === 'continue' && item.progress_seconds > 0">
+                                <div class="progress-overlay">
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" :style="'width:' + getProgressPercent(item) + '%'"></div>
+                                    </div>
+                                    <span class="progress-label" x-text="getProgressLabel(item)"></span>
                                 </div>
-                            </div>
+                            </template>
+                            <!-- Bookmark button only for watchlist items -->
+                            <template x-if="activeFilter !== 'continue'">
+                                <div class="bookmark-btn" @click.stop="remove(item)">
+                                    <div class="icon-wrapper" style="width: 14px; height: 14px;">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>
+                                    </div>
+                                </div>
+                            </template>
                         </div>
                         <div class="card-info">
                             <span class="card-title" x-text="item._title || 'Unknown'"></span>
-                            <span class="card-status" x-text="(item.status || '').replace(/_/g, ' ')"></span>
+                            <span class="card-status" x-show="activeFilter !== 'continue'" x-text="(item.status || '').replace(/_/g, ' ')"></span>
+                            <span class="card-status" x-show="activeFilter === 'continue'" x-text="item.season_number ? 'S' + item.season_number + ' E' + (item.episode_number || '?') : 'Continue watching'"></span>
                         </div>
                     </div>
                 </template>

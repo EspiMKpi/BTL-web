@@ -881,13 +881,17 @@ Alpine.data('watchingPage', () => ({
 
 Alpine.data('watchlistPage', () => ({
     items: [],
+    continueItems: [],
     loading: false,
     error: '',
     activeFilter: 'all',
 
     init() {
         document.addEventListener('page:switch', (e) => {
-            if (e.detail.pageId === 'watchlists') this.loadWatchlist();
+            if (e.detail.pageId === 'watchlists') {
+                this.loadWatchlist();
+                this.loadContinueWatching();
+            }
         });
     },
 
@@ -908,10 +912,12 @@ Alpine.data('watchlistPage', () => ({
                             ? `https://image.tmdb.org/t/p/w500${content.poster_path}`
                             : null;
                         item._rating = content.vote_average || null;
+                        item._runtime = content.runtime || null;
                     } catch {
                         item._title = item.content_type + ' ' + item.tmdb_id;
                         item._poster = null;
                         item._rating = null;
+                        item._runtime = null;
                     }
                     return item;
                 })
@@ -924,10 +930,55 @@ Alpine.data('watchlistPage', () => ({
         }
     },
 
+    async loadContinueWatching() {
+        if (!Alpine.store('auth').isLoggedIn) return;
+        try {
+            const historyItems = await historyApi.getContinueWatching(20);
+            const enriched = await Promise.allSettled(
+                historyItems.map(async (item) => {
+                    try {
+                        const content = item.content_type === 'series'
+                            ? await contentApi.getSeries(item.tmdb_id)
+                            : await contentApi.getMovie(item.tmdb_id);
+                        item._title = content.title || content.name || 'Unknown';
+                        item._poster = content.poster_path
+                            ? `https://image.tmdb.org/t/p/w500${content.poster_path}`
+                            : null;
+                        item._rating = content.vote_average || null;
+                        item._runtime = content.runtime || null;
+                    } catch {
+                        item._title = item.content_type + ' ' + item.tmdb_id;
+                        item._poster = null;
+                        item._rating = null;
+                        item._runtime = null;
+                    }
+                    return item;
+                })
+            );
+            this.continueItems = enriched.filter(r => r.status === 'fulfilled').map(r => r.value);
+        } catch {
+            this.continueItems = [];
+        }
+    },
+
     get filteredItems() {
-        const map = { continue: 'watching', wishlist: 'plan_to_watch', completed: 'completed', favorites: 'favorites' };
+        if (this.activeFilter === 'continue') return this.continueItems;
+        const map = { wishlist: 'plan_to_watch', completed: 'completed', favorites: 'favorites' };
         const status = map[this.activeFilter];
         return status ? this.items.filter(i => i.status === status) : this.items;
+    },
+
+    getProgressPercent(item) {
+        if (!item._runtime || !item.progress_seconds) return 0;
+        const totalSec = item._runtime * 60;
+        return Math.min(100, Math.round((item.progress_seconds / totalSec) * 100));
+    },
+
+    getProgressLabel(item) {
+        if (!item.progress_seconds) return '';
+        const mins = Math.floor(item.progress_seconds / 60);
+        if (item._runtime) return `${mins}m / ${item._runtime}m`;
+        return `${mins}m watched`;
     },
 
     async remove(item) {

@@ -58,6 +58,8 @@ export const historyApi = {
             method: 'POST',
             body: JSON.stringify(body),
         }),
+    getContinueWatching: (limit = 20) =>
+        apiFetch(`/api/history/continue-watching?limit=${limit}`),
 };
 
 export const ratingsApi = {

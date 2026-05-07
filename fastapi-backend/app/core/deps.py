@@ -26,6 +26,11 @@ async def _resolve_user(payload: dict) -> dict:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found",
         )
+    if user.get("is_banned", False):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your account has been banned",
+        )
     user["_id"] = str(user["_id"])
     return user
 
