@@ -3,7 +3,7 @@
  * Handles page switching and navigation state
  */
 
-export function switchPage(pageId) {
+export function switchPage(pageId, params = {}) {
     const navLinks = document.querySelectorAll('.nav-link');
     const pages = document.querySelectorAll('.page-content');
     const nav = document.getElementById('main-nav');
@@ -40,6 +40,17 @@ export function switchPage(pageId) {
 
     if (dropdown) dropdown.classList.remove('show');
     if (navLinksContainer) navLinksContainer.classList.remove('active');
+
+    if (window.Alpine) {
+        const nav = window.Alpine.store('nav');
+        if (nav) {
+            nav.currentPage = pageId;
+            if (params.contentId !== undefined) nav.contentId = params.contentId;
+            if (params.contentType !== undefined) nav.contentType = params.contentType;
+        }
+    }
+
+    document.dispatchEvent(new CustomEvent('page:switch', { detail: { pageId, params } }));
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }

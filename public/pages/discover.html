@@ -1,4 +1,4 @@
-<div id="page-discover" class="page-content landing-page nf-landing" x-data="discoverPage()" x-init="init()">
+<div id="page-discover" class="page-content landing-page nf-landing" x-data="discoverPage">
     <section class="nf-hero">
         <img src="https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=2000&auto=format&fit=crop" alt="VozFlix hero backdrop" class="nf-hero-backdrop">
         <div class="nf-hero-scrim"></div>
@@ -10,7 +10,7 @@
 
             <div class="nf-email-row">
                 <input type="email" class="nf-email-input" placeholder="Email address" aria-label="Email address">
-                <button class="btn btn-primary" id="btn-watch-now">
+                <button class="btn btn-primary" type="button" @click.stop="switchPage('movies')">
                     <div class="icon-wrapper" style="width: 20px; height: 20px; color: currentColor;">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="m7 3 14 9-14 9V3z"/></svg>
                     </div>
@@ -22,57 +22,62 @@
         </div>
     </section>
 
-    <!-- Dynamic Rails from API -->
-    <template x-if="!loading && rails.length > 0">
-        <div>
-            <template x-for="rail in rails" :key="rail.id">
-                <section class="movie-section nf-content-section">
-                    <div class="section-header">
-                        <h2 class="section-title" x-text="rail.title"></h2>
-                        <a href="#movies" class="see-all">See all</a>
+    <div class="nf-loading" x-show="loading" style="text-align:center; padding: 60px 20px; color: rgba(255,255,255,0.5);">
+        Loading featured titles…
+    </div>
+
+    <div class="nf-error" x-show="error" x-text="error" style="text-align:center; padding: 40px 20px; color: #ff6b6b;"></div>
+
+    <section class="movie-section nf-content-section" x-show="!loading && top10.length > 0">
+        <div class="section-header">
+            <h2 class="section-title" x-text="top10Rail ? top10Rail.title : 'Top 10 in Vietnam Today'">Top 10 in Vietnam Today</h2>
+            <button class="see-all" type="button" @click="switchPage('movies')">Browse full chart</button>
+        </div>
+
+        <div class="nf-top10-grid">
+            <template x-for="(item, index) in top10" :key="item.tmdb_id">
+                <article class="nf-top10-item">
+                    <span class="nf-rank" x-text="index + 1"></span>
+                    <div class="movie-card"
+                         :data-tmdb-id="item.tmdb_id"
+                         :data-content-type="top10ContentType">
+                        <div class="poster-container">
+                            <img :src="posterUrl(item.poster_path)" :alt="getTitle(item, top10ContentType)">
+                            <span class="rating-badge" x-text="(item.vote_average || 0).toFixed(1)"></span>
+                        </div>
+                        <div class="card-info">
+                            <span class="card-title" x-text="getTitle(item, top10ContentType)"></span>
+                            <span class="card-status" x-text="getYear(item, top10ContentType) || (top10ContentType === 'series' ? 'Series' : 'Movie')"></span>
+                        </div>
                     </div>
-                    <div class="movie-grid nf-row-grid">
-                        <template x-for="item in rail.items" :key="item.tmdb_id">
-                            <div class="movie-card" :data-tmdb-id="item.tmdb_id" :data-content-type="rail.content_type === 'series' ? 'series' : 'movie'">
-                                <div class="poster-container">
-                                    <img :src="posterUrl(item.poster_path)" :alt="item.title || item.name" loading="lazy">
-                                    <span class="rating-badge" x-text="(item.vote_average || 0).toFixed(1)"></span>
-                                    <div class="bookmark-btn"><div class="icon-wrapper" style="width: 14px; height: 14px;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg></div></div>
-                                </div>
-                                <div class="card-info">
-                                    <span class="card-title" x-text="item.title || item.name"></span>
-                                    <span class="card-status" x-text="formatItemStatus(item, rail.content_type)"></span>
-                                </div>
-                            </div>
-                        </template>
-                    </div>
-                </section>
+                </article>
             </template>
         </div>
-    </template>
+    </section>
 
-    <!-- Loading state -->
-    <template x-if="loading">
-        <div style="text-align:center; padding: 60px 0;">
-            <p style="color: rgba(255,255,255,0.5); font-size: 16px;">Loading content...</p>
-        </div>
-    </template>
-
-    <!-- Fallback static content if API returns nothing -->
-    <template x-if="!loading && rails.length === 0">
-        <div>
-            <section class="movie-section nf-content-section">
-                <div class="section-header">
-                    <h2 class="section-title">Top 10 in Vietnam Today</h2>
-                    <a href="#movies" class="see-all">Browse full chart</a>
-                </div>
-                <div class="nf-top10-grid">
-                    <article class="nf-top10-item"><span class="nf-rank">1</span><div class="movie-card"><div class="poster-container"><img src="https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=800&auto=format&fit=crop" alt="Project Sol"><span class="rating-badge">9.3</span></div><div class="card-info"><span class="card-title">Project Sol</span><span class="card-status">Sci-fi Event</span></div></div></article>
-                    <article class="nf-top10-item"><span class="nf-rank">2</span><div class="movie-card"><div class="poster-container"><img src="https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=800&auto=format&fit=crop" alt="Glass District"><span class="rating-badge">8.9</span></div><div class="card-info"><span class="card-title">Glass District</span><span class="card-status">Noir Thriller</span></div></div></article>
-                    <article class="nf-top10-item"><span class="nf-rank">3</span><div class="movie-card"><div class="poster-container"><img src="https://images.unsplash.com/photo-1524985069026-dd778a71c7b4?q=80&w=800&auto=format&fit=crop" alt="Kingfall"><span class="rating-badge">8.7</span></div><div class="card-info"><span class="card-title">Kingfall</span><span class="card-status">Action Epic</span></div></div></article>
-                </div>
-            </section>
-        </div>
+    <template x-for="rail in otherRails" :key="rail.id">
+        <section class="movie-section nf-content-section">
+            <div class="section-header">
+                <h2 class="section-title" x-text="rail.title"></h2>
+                <button class="see-all" type="button" @click="switchPage(rail.content_type === 'series' ? 'series' : 'movies')">See all</button>
+            </div>
+            <div class="movie-grid nf-row-grid">
+                <template x-for="item in rail.items.slice(0, 8)" :key="item.tmdb_id">
+                    <div class="movie-card"
+                         :data-tmdb-id="item.tmdb_id"
+                         :data-content-type="rail.content_type">
+                        <div class="poster-container">
+                            <img :src="posterUrl(item.poster_path)" :alt="getTitle(item, rail.content_type)">
+                            <span class="rating-badge" x-text="(item.vote_average || 0).toFixed(1)"></span>
+                        </div>
+                        <div class="card-info">
+                            <span class="card-title" x-text="getTitle(item, rail.content_type)"></span>
+                            <span class="card-status" x-text="getYear(item, rail.content_type) || (rail.content_type === 'series' ? 'Series' : 'Movie')"></span>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </section>
     </template>
 
     <section class="nf-reasons">
@@ -104,27 +109,27 @@
             <h2 class="section-title">Frequently Asked Questions</h2>
         </div>
         <div class="nf-faq-list">
-            <article class="nf-faq-item">
-                <button class="nf-faq-question" type="button" aria-expanded="false">What is VozFlix?</button>
-                <div class="nf-faq-answer">
+            <article class="nf-faq-item" x-data="faqItem">
+                <button class="nf-faq-question" type="button" :aria-expanded="open" @click="toggle()">What is VozFlix?</button>
+                <div class="nf-faq-answer" x-show="open">
                     <p>VozFlix is a streaming service with movies, series, documentaries, and original productions across multiple genres.</p>
                 </div>
             </article>
-            <article class="nf-faq-item">
-                <button class="nf-faq-question" type="button" aria-expanded="false">How much does VozFlix cost?</button>
-                <div class="nf-faq-answer">
+            <article class="nf-faq-item" x-data="faqItem">
+                <button class="nf-faq-question" type="button" :aria-expanded="open" @click="toggle()">How much does VozFlix cost?</button>
+                <div class="nf-faq-answer" x-show="open">
                     <p>Plans start at a low monthly price, with flexible options for solo, premium, and family viewing.</p>
                 </div>
             </article>
-            <article class="nf-faq-item">
-                <button class="nf-faq-question" type="button" aria-expanded="false">Where can I watch?</button>
-                <div class="nf-faq-answer">
+            <article class="nf-faq-item" x-data="faqItem">
+                <button class="nf-faq-question" type="button" :aria-expanded="open" @click="toggle()">Where can I watch?</button>
+                <div class="nf-faq-answer" x-show="open">
                     <p>You can watch on web browsers, mobile apps, smart TVs, tablets, and game consoles.</p>
                 </div>
             </article>
-            <article class="nf-faq-item">
-                <button class="nf-faq-question" type="button" aria-expanded="false">Can I cancel anytime?</button>
-                <div class="nf-faq-answer">
+            <article class="nf-faq-item" x-data="faqItem">
+                <button class="nf-faq-question" type="button" :aria-expanded="open" @click="toggle()">Can I cancel anytime?</button>
+                <div class="nf-faq-answer" x-show="open">
                     <p>Yes. There are no long-term contracts. You can start or stop your subscription anytime.</p>
                 </div>
             </article>
@@ -134,6 +139,6 @@
     <section class="nf-final-cta">
         <h2>Ready to watch?</h2>
         <p>Choose your first story and start streaming in minutes.</p>
-        <a href="#register" class="btn btn-primary">Create Your Account</a>
+        <button class="btn btn-primary" type="button" @click="switchPage('register')">Create Your Account</button>
     </section>
 </div>

@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Any, List, Optional
 
 import httpx
+import re
 from bson import ObjectId
 
 from app.core.config import settings
@@ -131,9 +132,11 @@ async def get_movies_by_ids(tmdb_ids: List[int]) -> List[dict]:
 
 async def search_movies(query: str, limit: int = 20) -> List[dict]:
     db = get_database()
+    escaped_query = re.escape(query)
     cursor = (
-        db.movies.find({"$text": {"$search": query}})
-        .sort([("score", {"$meta": "textScore"})])
+        db.movies.find({"title": {"$regex": escaped_query, "$options": "i"}})
+        # Optional: You can't use textScore anymore, so sort alphabetically or by year
+        # .sort("title", 1) 
         .limit(limit)
     )
     docs = []

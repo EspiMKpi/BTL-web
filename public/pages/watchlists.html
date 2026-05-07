@@ -1,72 +1,78 @@
-<div id="page-watchlists" class="page-content" x-data="watchlistPage()">
+<div id="page-watchlists" class="page-content" x-data="watchlistPage">
     <div class="watchlist-layout">
         <div class="user-main-card watchlist-hero-card">
             <div class="user-main-header">
                 <div class="avatar-large">
-                    <img :src="$store.auth.user?.avatar_url || 'https://i.pravatar.cc/150?u=' + ($store.auth.user?.email || 'default')" alt="User Avatar">
+                    <img :src="$store.auth.user?.avatar || 'https://i.pravatar.cc/150?u=' + ($store.auth.user?.email || 'user')" alt="Avatar">
                 </div>
-
                 <div class="user-main-info">
-                    <h2 x-text="$store.auth.user?.username || 'User'"></h2>
-                    <p x-text="'@' + ($store.auth.user?.username || 'user') + ' · Viewer'"></p>
+                    <h2 x-text="$store.auth.user?.username || $store.auth.user?.email || 'My Profile'">My Profile</h2>
+                    <p x-text="$store.auth.user?.email || ''"></p>
                 </div>
             </div>
             <div class="user-main-stats">
-                <div class="main-stat"><span class="stat-num" x-text="$store.profile.stats?.watchlist_count || 0"></span><span class="stat-txt">Watchlist</span></div>
+                <div class="main-stat">
+                    <span class="stat-num" x-text="items.filter(i => i.status === 'completed').length">0</span>
+                    <span class="stat-txt">Watched</span>
+                </div>
                 <div class="stat-divider"></div>
-                <div class="main-stat"><span class="stat-num" x-text="$store.profile.stats?.ratings_count || 0"></span><span class="stat-txt">Reviews</span></div>
+                <div class="main-stat">
+                    <span class="stat-num" x-text="items.filter(i => i.status === 'plan_to_watch').length">0</span>
+                    <span class="stat-txt">Wishlist</span>
+                </div>
                 <div class="stat-divider"></div>
-                <div class="main-stat"><span class="stat-num" x-text="$store.profile.stats?.completed_count || 0"></span><span class="stat-txt">Completed</span></div>
+                <div class="main-stat">
+                    <span class="stat-num" x-text="items.length">0</span>
+                    <span class="stat-txt">Total Saved</span>
+                </div>
                 <div class="stat-divider"></div>
-                <div class="main-stat"><span class="stat-num" x-text="$store.profile.stats?.watching_count || 0"></span><span class="stat-txt">Watching</span></div>
-                <div class="stat-divider"></div>
-                <div class="main-stat"><span class="stat-num" x-text="$store.profile.stats?.history_count || 0"></span><span class="stat-txt">History</span></div>
+                <div class="main-stat">
+                    <span class="stat-num" x-text="items.filter(i => i.status === 'favorites').length">0</span>
+                    <span class="stat-txt">Favorites</span>
+                </div>
             </div>
         </div>
 
         <div class="watchlist-container">
             <div class="section-header">
                 <h2 class="section-title">My Collections</h2>
-                <a href="#movies" class="see-all">Browse more titles</a>
+                <a class="see-all" href="#" @click.prevent="window.switchPage('movies')">Browse more titles</a>
             </div>
 
             <div class="list-tabs">
-                <button class="list-tab" :class="{'active': activeTab === 'all'}" @click="setTab('all')">All</button>
-                <button class="list-tab" :class="{'active': activeTab === 'plan_to_watch'}" @click="setTab('plan_to_watch')">Wishlist</button>
-                <button class="list-tab" :class="{'active': activeTab === 'watching'}" @click="setTab('watching')">Watching</button>
-                <button class="list-tab" :class="{'active': activeTab === 'completed'}" @click="setTab('completed')">Completed</button>
+                <button class="list-tab" :class="{ active: activeFilter === 'continue' }" @click="activeFilter = 'continue'" data-filter="continue">Continue Watching</button>
+                <button class="list-tab" :class="{ active: activeFilter === 'wishlist' }" @click="activeFilter = 'wishlist'" data-filter="wishlist">Wishlist</button>
+                <button class="list-tab" :class="{ active: activeFilter === 'completed' }" @click="activeFilter = 'completed'" data-filter="completed">Completed</button>
+                <button class="list-tab" :class="{ active: activeFilter === 'favorites' }" @click="activeFilter = 'favorites'" data-filter="favorites">Favorites</button>
+                <button class="list-tab" :class="{ active: activeFilter === 'all' }" @click="activeFilter = 'all'" data-filter="all">All</button>
             </div>
 
             <!-- Loading -->
-            <template x-if="$store.watchlist.loading">
-                <p style="color: rgba(255,255,255,0.5); text-align: center; padding: 40px 0;">Loading watchlist...</p>
-            </template>
+            <div x-show="loading" style="text-align:center; padding:60px; color:rgba(255,255,255,0.5);">Loading watchlist...</div>
+            <!-- Error -->
+            <div x-show="error && !loading" style="text-align:center; padding:40px; color:#ff6b6b;" x-text="error"></div>
 
-            <!-- Empty state -->
-            <template x-if="!$store.watchlist.loading && filteredItems.length === 0">
-                <div style="text-align: center; padding: 60px 0;">
-                    <p style="color: rgba(255,255,255,0.5); font-size: 16px;">Your watchlist is empty.</p>
-                    <a href="#movies" class="btn btn-primary" style="margin-top: 16px; display: inline-flex;">Browse Movies</a>
-                </div>
-            </template>
-
-            <!-- Dynamic watchlist grid -->
-            <div class="movie-grid watchlist-grid" x-show="filteredItems.length > 0">
+            <div class="movie-grid watchlist-grid" x-show="!loading">
                 <template x-for="item in filteredItems" :key="item._id">
-                    <div class="movie-card" :data-tmdb-id="item.tmdb_id" :data-content-type="item.content_type" :data-status="item.status">
+                    <div class="movie-card" @click="navigateTo(item)">
                         <div class="poster-container">
-                            <img :src="posterUrl(item.poster_path)" :alt="item.title || item.name" loading="lazy">
-                            <span class="rating-badge" x-show="item.rating" x-text="item.rating?.toFixed(1)"></span>
-                            <div class="bookmark-btn active" @click="removeItem(item._id)" style="background: var(--accent-gold);">
-                                <div class="icon-wrapper" style="width: 14px; height: 14px;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg></div>
+                            <img :src="item._poster || 'https://placehold.co/300x450/1a1a2e/white?text=No+Image'" :alt="item._title" loading="lazy">
+                            <span class="rating-badge" x-text="item._rating ? item._rating.toFixed(1) : 'N/A'"></span>
+                            <div class="bookmark-btn" @click.stop="remove(item)">
+                                <div class="icon-wrapper" style="width: 14px; height: 14px;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>
+                                </div>
                             </div>
                         </div>
                         <div class="card-info">
-                            <span class="card-title" x-text="item.title || item.name || ('TMDB #' + item.tmdb_id)"></span>
-                            <span class="card-status" x-text="itemStatusText(item)"></span>
+                            <span class="card-title" x-text="item._title || 'Unknown'"></span>
+                            <span class="card-status" x-text="(item.status || '').replace(/_/g, ' ')"></span>
                         </div>
                     </div>
                 </template>
+                <div x-show="!loading && filteredItems.length === 0" style="color:rgba(255,255,255,0.4); padding:40px; text-align:center;">
+                    Nothing here yet. <span style="cursor:pointer; color:var(--accent-gold);" @click="window.switchPage('movies')">Browse titles →</span>
+                </div>
             </div>
         </div>
     </div>

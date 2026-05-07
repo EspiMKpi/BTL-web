@@ -1,18 +1,18 @@
-<div id="page-series" class="page-content">
+<div id="page-series" class="page-content" x-data="seriesPage">
     <section class="catalog-hero catalog-hero-series">
         <div>
             <p class="landing-eyebrow">Series</p>
-            <h1 class="catalog-title">Binge-Worthy Starts Here</h1>
+            <h1 class="catalog-title">Binge-Worthy Starts Here.</h1>
             <p class="catalog-copy">From limited thrillers to long-running universes, jump into stories built for late-night marathons.</p>
         </div>
         <div class="catalog-hero-metrics">
             <div class="catalog-metric">
-                <span>620+</span>
-                <p>Original series</p>
+                <span x-text="rails.reduce((s, r) => s + r.items.length, 0) || '...'">...</span>
+                <p>TV series</p>
             </div>
             <div class="catalog-metric">
-                <span>2,400+</span>
-                <p>Episodes in 4K</p>
+                <span>4K</span>
+                <p>Stream quality</p>
             </div>
             <div class="catalog-metric">
                 <span>7</span>
@@ -21,89 +21,44 @@
         </div>
     </section>
 
-    <div class="filters">
-        <button class="filter-chip active">All</button>
-        <button class="filter-chip">Crime</button>
-        <button class="filter-chip">Sci-fi</button>
-        <button class="filter-chip">Fantasy</button>
-        <button class="filter-chip">Anime</button>
-        <button class="filter-chip">Reality</button>
-        <button class="filter-chip">Mini-series</button>
+    <!-- Loading -->
+    <div x-show="loading" style="text-align:center; padding: 60px; color: rgba(255,255,255,0.5);">Loading...</div>
+    <!-- Error -->
+    <div x-show="error && !loading" style="text-align:center; padding: 40px; color: #ff6b6b;" x-text="error"></div>
+
+    <!-- Rails -->
+    <div x-show="!loading">
+        <template x-for="rail in rails" :key="rail.id">
+            <section class="movie-section">
+                <div class="section-header">
+                    <h2 class="section-title" x-text="rail.title"></h2>
+                </div>
+                <div class="movie-grid series-grid">
+                    <template x-for="item in rail.items" :key="item.tmdb_id">
+                        <div class="movie-card"
+                             :data-tmdb-id="item.tmdb_id"
+                             data-content-type="series"
+                             @click="navigateTo(item)">
+                            <div class="poster-container">
+                                <img :src="posterUrl(item.poster_path)" :alt="item.name" loading="lazy">
+                                <span class="rating-badge" x-text="item.vote_average ? item.vote_average.toFixed(1) : 'N/A'"></span>
+                                <div class="bookmark-btn">
+                                    <div class="icon-wrapper" style="width: 14px; height: 14px;">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-info">
+                                <span class="card-title" x-text="item.name || item.title"></span>
+                                <span class="card-status" x-text="item.first_air_date ? item.first_air_date.substring(0,4) : ''"></span>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </section>
+        </template>
+        <div x-show="!loading && rails.length === 0 && !error" style="text-align:center; padding:60px; color:rgba(255,255,255,0.4);">
+            No series available yet.
+        </div>
     </div>
-
-    <section class="movie-section">
-        <div class="section-header">
-            <h2 class="section-title">Trending Series</h2>
-            <a href="#discover" class="see-all">Back to Discover</a>
-        </div>
-
-        <div class="movie-grid series-grid">
-            <div class="movie-card">
-                <div class="poster-container">
-                    <img src="https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?q=80&w=800&auto=format&fit=crop" alt="Neon Covenant">
-                    <span class="rating-badge">9.0</span>
-                    <div class="bookmark-btn"><div class="icon-wrapper" style="width: 14px; height: 14px;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg></div></div>
-                </div>
-                <div class="card-info"><span class="card-title">Neon Covenant</span><span class="card-status">S2 · New episode</span></div>
-            </div>
-
-            <div class="movie-card">
-                <div class="poster-container">
-                    <img src="https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=800&auto=format&fit=crop" alt="City of Echoes">
-                    <span class="rating-badge">8.8</span>
-                    <div class="bookmark-btn"><div class="icon-wrapper" style="width: 14px; height: 14px;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg></div></div>
-                </div>
-                <div class="card-info"><span class="card-title">City of Echoes</span><span class="card-status">S1 · 10 episodes</span></div>
-            </div>
-
-            <div class="movie-card">
-                <div class="poster-container">
-                    <img src="https://images.unsplash.com/photo-1497015289639-54688650d173?q=80&w=800&auto=format&fit=crop" alt="Iron District">
-                    <span class="rating-badge">8.5</span>
-                    <div class="bookmark-btn"><div class="icon-wrapper" style="width: 14px; height: 14px;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg></div></div>
-                </div>
-                <div class="card-info"><span class="card-title">Iron District</span><span class="card-status">S3 · Finale week</span></div>
-            </div>
-
-            <div class="movie-card">
-                <div class="poster-container">
-                    <img src="https://images.unsplash.com/photo-1542204172-3f240e3eb9fb?q=80&w=800&auto=format&fit=crop" alt="Cold Harbor">
-                    <span class="rating-badge">8.9</span>
-                    <div class="bookmark-btn"><div class="icon-wrapper" style="width: 14px; height: 14px;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg></div></div>
-                </div>
-                <div class="card-info"><span class="card-title">Cold Harbor</span><span class="card-status">Mini-series</span></div>
-            </div>
-
-            <div class="movie-card">
-                <div class="poster-container">
-                    <img src="https://images.unsplash.com/photo-1478720568477-152d9b164e26?q=80&w=800&auto=format&fit=crop" alt="Zero Day">
-                    <span class="rating-badge">8.7</span>
-                    <div class="bookmark-btn"><div class="icon-wrapper" style="width: 14px; height: 14px;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg></div></div>
-                </div>
-                <div class="card-info"><span class="card-title">Zero Day</span><span class="card-status">S1 · Crime Thriller</span></div>
-            </div>
-
-            <div class="movie-card">
-                <div class="poster-container">
-                    <img src="https://images.unsplash.com/photo-1510827220565-c6a086ff31c8?q=80&w=800&auto=format&fit=crop" alt="Throne of Sand">
-                    <span class="rating-badge">8.4</span>
-                    <div class="bookmark-btn"><div class="icon-wrapper" style="width: 14px; height: 14px;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg></div></div>
-                </div>
-                <div class="card-info"><span class="card-title">Throne of Sand</span><span class="card-status">S4 · Historical</span></div>
-            </div>
-        </div>
-    </section>
-
-    <section class="movie-section">
-        <div class="section-header">
-            <h2 class="section-title">Mini-Series Picks</h2>
-            <a href="#watchlists" class="see-all">Open Watchlists</a>
-        </div>
-        <div class="movie-grid">
-            <div class="movie-card"><div class="poster-container"><img src="https://images.unsplash.com/photo-1540324155974-7523202daa3f?q=80&w=800&auto=format&fit=crop" alt="Small Wars"><span class="rating-badge">8.2</span></div><div class="card-info"><span class="card-title">Small Wars</span><span class="card-status">6 Episodes</span></div></div>
-            <div class="movie-card"><div class="poster-container"><img src="https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?q=80&w=800&auto=format&fit=crop" alt="Monochrome"><span class="rating-badge">8.6</span></div><div class="card-info"><span class="card-title">Monochrome</span><span class="card-status">8 Episodes</span></div></div>
-            <div class="movie-card"><div class="poster-container"><img src="https://images.unsplash.com/photo-1524985069026-dd778a71c7b4?q=80&w=800&auto=format&fit=crop" alt="Sunline"><span class="rating-badge">8.3</span></div><div class="card-info"><span class="card-title">Sunline</span><span class="card-status">5 Episodes</span></div></div>
-            <div class="movie-card"><div class="poster-container"><img src="https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=800&auto=format&fit=crop" alt="Signal Lost"><span class="rating-badge">8.9</span></div><div class="card-info"><span class="card-title">Signal Lost</span><span class="card-status">7 Episodes</span></div></div>
-        </div>
-    </section>
 </div>
