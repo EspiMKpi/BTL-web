@@ -1056,6 +1056,15 @@ Alpine.data('profilePage', () => ({
     saving: false,
     saveMsg: '',
     loading: false,
+    activeTab: 'edit',
+
+    // Change password state
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+    changingPassword: false,
+    passwordMsg: '',
+    passwordMsgClass: '',
 
     init() {
         document.addEventListener('page:switch', (e) => {
@@ -1105,6 +1114,49 @@ Alpine.data('profilePage', () => ({
             Alpine.store('toast').show('Error: ' + e.message);
         } finally {
             this.saving = false;
+        }
+    },
+
+    async changePassword() {
+        this.passwordMsg = '';
+        this.passwordMsgClass = '';
+
+        if (!this.currentPassword || !this.newPassword || !this.confirmPassword) {
+            this.passwordMsg = 'Please fill in all fields.';
+            this.passwordMsgClass = 'msg-error';
+            return;
+        }
+        if (this.newPassword.length < 6) {
+            this.passwordMsg = 'New password must be at least 6 characters.';
+            this.passwordMsgClass = 'msg-error';
+            return;
+        }
+        if (this.newPassword !== this.confirmPassword) {
+            this.passwordMsg = 'Passwords do not match.';
+            this.passwordMsgClass = 'msg-error';
+            return;
+        }
+
+        this.changingPassword = true;
+        try {
+            await apiFetch('/api/profile/change-password', {
+                method: 'POST',
+                body: JSON.stringify({
+                    current_password: this.currentPassword,
+                    new_password: this.newPassword,
+                }),
+            });
+            this.passwordMsg = 'Password updated successfully!';
+            this.passwordMsgClass = 'msg-success';
+            this.currentPassword = '';
+            this.newPassword = '';
+            this.confirmPassword = '';
+            setTimeout(() => { this.passwordMsg = ''; }, 3000);
+        } catch (e) {
+            this.passwordMsg = e.message || 'Failed to update password.';
+            this.passwordMsgClass = 'msg-error';
+        } finally {
+            this.changingPassword = false;
         }
     },
 }));
