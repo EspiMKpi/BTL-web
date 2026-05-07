@@ -26,6 +26,7 @@ A full-stack SPA that lets you discover, browse, and track movies and TV series 
 - 📊 **Watch History & Progress** — Track viewing progress across movies and series
 - ⭐ **User Ratings** — Rate content and see community averages
 - 👤 **User Profiles** — View stats, recent activity, and manage account settings
+- 🛠️ **Admin Panel** — Role-gated dashboard to ban users, hide movies, hide genres, and moderate comments
 - 🔐 **JWT Authentication** — Secure register/login with bcrypt password hashing
 - 🛡️ **Rate Limiting** — slowapi protects login/register against brute-force
 - ⚡ **In-Memory Caching** — TTL-cached home rails for fast anonymous browsing
@@ -173,6 +174,21 @@ cd fastapi-backend
 | `GET` | `/api/profile/stats` | Viewing statistics | ✅ |
 | `GET` | `/api/profile/recent-activity` | Recent activity feed | ✅ |
 
+### Admin
+
+All `/api/admin/*` routes require `role === "admin"` (enforced via `get_admin_user`).
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/admin/users` | List all users |
+| `PATCH` | `/api/admin/users/:user_id/ban` | Ban / unban a user |
+| `GET` | `/api/admin/movies` | List all movies (incl. hidden) |
+| `PATCH` | `/api/admin/movies/:tmdb_id/visibility` | Hide / show a movie |
+| `GET` | `/api/admin/genres` | List all genres (incl. hidden) |
+| `PATCH` | `/api/admin/genres/:genre_id/visibility` | Hide / show a genre |
+| `GET` | `/api/admin/comments` | List all comments |
+| `DELETE` | `/api/admin/comments/:comment_id` | Delete a comment |
+
 ## 📁 Project Structure
 
 ```
@@ -204,6 +220,8 @@ BTL-web/
 │       ├── detail.html
 │       ├── watching.html
 │       ├── watchlists.html
+│       ├── profile.html
+│       ├── admin.html           # Admin panel (movies / comments / users / genres)
 │       ├── login.html
 │       └── register.html
 │
@@ -212,9 +230,13 @@ BTL-web/
     ├── pyproject.toml           # pytest + coverage config
     ├── requirements.txt         # Pinned dependencies
     ├── run.sh / run.bat         # Startup scripts
+    ├── scripts/
+    │   ├── seed_tmdb.py         # One-time seed of popular movies + TV from TMDB
+    │   └── create_admin.py      # Create / promote the admin user
     ├── tests/
     │   ├── conftest.py          # Shared fixtures (mongomock, httpx)
     │   ├── test_auth.py         # Auth endpoint tests
+    │   ├── test_admin.py        # Admin panel (genre visibility & RBAC)
     │   ├── test_deps.py         # Dependency injection tests
     │   ├── test_content.py      # Content router tests
     │   ├── test_watchlist.py    # Watchlist CRUD tests
@@ -232,7 +254,7 @@ BTL-web/
         ├── core/
         │   ├── config.py        # Pydantic Settings from .env
         │   ├── security.py      # JWT + bcrypt (passlib)
-        │   └── deps.py          # get_current_user dependency
+        │   └── deps.py          # get_current_user / get_admin_user dependencies
         ├── models/
         │   └── schemas.py       # Pydantic request/response models
         ├── routers/
@@ -242,6 +264,8 @@ BTL-web/
         │   ├── watchlist.py     # Watchlist CRUD
         │   ├── history.py       # Watch history & progress (background tasks)
         │   ├── ratings.py       # User ratings
+        │   ├── comments.py      # Comments CRUD
+        │   ├── admin.py         # Admin: users, movies, genres, comments
         │   └── profile.py       # Profile & stats
         └── services/
             ├── movie_service.py     # Movie fetch (MongoDB → TMDB → upsert)
@@ -320,11 +344,12 @@ cd fastapi-backend
 # Open htmlcov/index.html in browser
 ```
 
-**142 tests** across 13 test files. Coverage: **94%** (minimum 60% enforced in `pyproject.toml`).
+**151 tests** across 14 test files (minimum 60% coverage enforced in `pyproject.toml`).
 
 | Test File | What it Covers |
 |-----------|---------------|
 | `test_auth.py` | Register, login, `/me` |
+| `test_admin.py` | Admin RBAC + genre visibility (list, toggle, public filtering) |
 | `test_deps.py` | JWT dependency injection, optional auth |
 | `test_content.py` | Home rails, genres, browse, search, movie/series detail |
 | `test_watchlist.py` | Watchlist CRUD, user isolation |
@@ -382,16 +407,18 @@ asyncio.run(seed())
 "
 ```
 
-## 🧪 Test Account
+## 🧪 Test Accounts
 
-A test account is pre-configured for quick testing:
+Two accounts are pre-configured for quick testing:
 
-| Field | Value |
-|-------|-------|
-| **Email** | `tester@vozflix.com` |
-| **Password** | `Tester1234!` |
+| Account | Email | Password | Notes |
+|---------|-------|----------|-------|
+| **User** | `tester@vozflix.com` | `Tester1234!` | Default tester role |
+| **Admin** | `admin@vozflix.com` | `admin123` | Created via `python scripts/create_admin.py` |
 
-> ⚠️ This account is for development/testing only. Do not use in production.
+The admin account unlocks the **Admin Panel** nav link, which exposes user-ban, movie-visibility, genre-visibility, and comment-moderation tabs.
+
+> ⚠️ These accounts are for development/testing only. Do not use in production.
 
 ## 🔧 Key Architectural Decisions
 

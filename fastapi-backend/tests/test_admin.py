@@ -6,6 +6,15 @@ import pytest
 from bson import ObjectId
 
 from app.core.security import create_access_token
+from app.services.library_service import clear_home_cache
+
+
+@pytest.fixture(autouse=True)
+def _reset_home_cache():
+    """Clear the module-level home rails cache between tests."""
+    clear_home_cache()
+    yield
+    clear_home_cache()
 
 
 @pytest.fixture
@@ -146,3 +155,134 @@ class TestPublicGenreFiltering:
         body = resp.json()
         assert "movies" in body
         assert "series" in body
+
+
+# ── Hidden-genre cascade onto movies/series ───────────────────────────────
+
+@pytest.fixture
+async def seeded_movies_with_genres(db, seeded_genres):
+    """Three movies: one Action-only, one Action+Horror, one Comedy-only."""
+    docs = [
+        {
+            "_id": ObjectId(),
+            "tmdb_id": 1001,
+            "title": "Pure Action Movie",
+            "genres": [{"genre_id": 28, "name": "Action"}],
+            "popularity": 100,
+            "vote_count": 100,
+            "vote_average": 8.0,
+            "raw_data": {"id": 1001},  # required so two-tier service hits cache
+        },
+        {
+            "_id": ObjectId(),
+            "tmdb_id": 1002,
+            "title": "Horror-Action Movie",
+            "genres": [
+                {"genre_id": 28, "name": "Action"},
+                {"genre_id": 27, "name": "Horror"},  # 27 is hidden in fixture
+            ],
+            "popularity": 90,
+            "vote_count": 100,
+            "vote_average": 8.5,
+            "raw_data": {"id": 1002},
+        },
+        {
+            "_id": ObjectId(),
+            "tmdb_id": 1003,
+            "title": "Pure Comedy Movie",
+            "genres": [{"genre_id": 35, "name": "Comedy"}],
+            "popularity": 80,
+            "vote_count": 100,
+            "vote_average": 7.0,
+            "raw_data": {"id": 1003},
+        },
+    ]
+    await db.movies.insert_many(docs)
+    return docs
+
+
+class TestHiddenGenreCascade:
+    async def test_search_excludes_movie_with_hidden_genre(
+        self, client, seeded_movies_with_genres
+    ):
+        resp = await client.get("/api/content/search?q=Movie")
+        assert resp.status_code == 200
+        titles = {r["title"] for r in resp.json()["results"]}
+        assert "Pure Action Movie" in titles
+        assert "Pure Comedy Movie" in titles
+        assert "Horror-Action Movie" not in titles  # has hidden Horror genre
+
+    async def test_browse_excludes_movie_with_other_hidden_genre(
+        self, client, seeded_movies_with_genres
+    ):
+        # Browse Action (28) — should still hide the movie also tagged Horror.
+        resp = await client.get("/api/content/browse/28")
+        assert resp.status_code == 200
+        titles = {m["title"] for m in resp.json()["movies"]}
+        assert "Pure Action Movie" in titles
+        assert "Horror-Action Movie" not in titles
+
+    async def test_movie_detail_404_for_hidden_genre_item(
+        self, client, seeded_movies_with_genres
+    ):
+        resp = await client.get("/api/content/movie/1002")  # has hidden Horror
+        assert resp.status_code == 404
+
+    async def test_movie_detail_ok_for_clean_item(
+        self, client, seeded_movies_with_genres
+    ):
+        resp = await client.get("/api/content/movie/1001")
+        assert resp.status_code == 200
+
+    async def test_home_rails_exclude_movies_with_hidden_genre(
+        self, client, seeded_movies_with_genres
+    ):
+        resp = await client.get("/api/content/home")
+        assert resp.status_code == 200
+        all_titles = {
+            item.get("title")
+            for rail in resp.json()["rails"]
+            for item in rail["items"]
+        }
+        assert "Pure Action Movie" in all_titles
+        assert "Pure Comedy Movie" in all_titles
+        assert "Horror-Action Movie" not in all_titles
+
+
+# ── Cache invalidation on toggle ──────────────────────────────────────────
+
+class TestCacheInvalidation:
+    async def test_genre_toggle_clears_home_cache(
+        self, client, admin_headers, db
+    ):
+        # Seed a genre + movie
+        await db.genres.insert_one(
+            {"_id": ObjectId(), "genre_id": 99, "name": "Test", "is_hidden": False}
+        )
+        await db.movies.insert_one({
+            "_id": ObjectId(),
+            "tmdb_id": 5001,
+            "title": "Test Movie",
+            "genres": [{"genre_id": 99, "name": "Test"}],
+            "popularity": 50,
+            "vote_count": 100,
+            "vote_average": 7.0,
+        })
+
+        # Warm the anonymous home cache — Test Movie should appear.
+        first = await client.get("/api/content/home")
+        first_titles = {i.get("title") for r in first.json()["rails"] for i in r["items"]}
+        assert "Test Movie" in first_titles
+
+        # Hide the genre.
+        resp = await client.patch(
+            "/api/admin/genres/99/visibility",
+            headers=admin_headers,
+            json={"is_hidden": True},
+        )
+        assert resp.status_code == 200
+
+        # Anonymous home should now exclude the movie immediately (cache cleared).
+        second = await client.get("/api/content/home")
+        second_titles = {i.get("title") for r in second.json()["rails"] for i in r["items"]}
+        assert "Test Movie" not in second_titles

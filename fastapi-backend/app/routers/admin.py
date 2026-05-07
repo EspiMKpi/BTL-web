@@ -18,6 +18,7 @@ from app.models.schemas import (
     HideGenreRequest,
     HideMovieRequest,
 )
+from app.services.library_service import clear_home_cache
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -105,6 +106,7 @@ async def toggle_movie_visibility(
     if not result:
         raise HTTPException(status_code=404, detail="Movie not found")
 
+    clear_home_cache()
     action = "hidden" if body.is_hidden else "visible"
     return {"message": f"Movie is now {action}", "tmdb_id": tmdb_id, "is_hidden": body.is_hidden}
 
@@ -140,6 +142,7 @@ async def toggle_genre_visibility(
     if not result:
         raise HTTPException(status_code=404, detail="Genre not found")
 
+    clear_home_cache()
     action = "hidden" if body.is_hidden else "visible"
     return {"message": f"Genre is now {action}", "genre_id": genre_id, "is_hidden": body.is_hidden}
 
