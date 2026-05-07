@@ -40,7 +40,7 @@ async def get_ratings(
 
     stats = (
         {"average": round(agg[0]["avg_rating"] * 10) / 10, "count": agg[0]["total_ratings"]}
-        if agg
+        if agg and agg[0].get("avg_rating") is not None
         else {"average": 0, "count": 0}
     )
 

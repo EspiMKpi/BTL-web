@@ -3,13 +3,27 @@ Movie service — mirrors database/src/movieService.ts.
 Two-tier fetch: MongoDB first, then TMDB API with upsert.
 """
 
-from typing import List, Optional
+from datetime import datetime
+from typing import Any, List, Optional
 
 import httpx
 from bson import ObjectId
 
 from app.core.config import settings
 from app.database import get_database
+
+
+def _sanitize(value: Any) -> Any:
+    """Recursively convert ObjectId and datetime to JSON-serializable types."""
+    if isinstance(value, ObjectId):
+        return str(value)
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, dict):
+        return {k: _sanitize(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_sanitize(v) for v in value]
+    return value
 
 
 async def get_movie_by_id(tmdb_id: int) -> dict:
@@ -19,8 +33,7 @@ async def get_movie_by_id(tmdb_id: int) -> dict:
     existing = await db.movies.find_one({"tmdb_id": tmdb_id})
     if existing and existing.get("raw_data") and existing.get("title"):
         print(f"Movie {tmdb_id} served from MongoDB")
-        existing["_id"] = str(existing["_id"])
-        return existing
+        return _sanitize(existing)
 
     print(f"Movie {tmdb_id} fetching from TMDB...")
     async with httpx.AsyncClient() as client:
@@ -99,13 +112,12 @@ async def get_movie_by_id(tmdb_id: int) -> dict:
         {"tmdb_id": data["id"]},
         {
             "$set": movie_doc,
-            "$setOnInsert": {"created_at": __import__("datetime").datetime.utcnow()},
+            "$setOnInsert": {"created_at": datetime.utcnow()},
         },
         upsert=True,
         return_document=True,
     )
-    result["_id"] = str(result["_id"])
-    return result
+    return _sanitize(result)
 
 
 async def get_movies_by_ids(tmdb_ids: List[int]) -> List[dict]:
@@ -113,8 +125,7 @@ async def get_movies_by_ids(tmdb_ids: List[int]) -> List[dict]:
     cursor = db.movies.find({"tmdb_id": {"$in": tmdb_ids}})
     docs = []
     async for doc in cursor:
-        doc["_id"] = str(doc["_id"])
-        docs.append(doc)
+        docs.append(_sanitize(doc))
     return docs
 
 
@@ -127,6 +138,5 @@ async def search_movies(query: str, limit: int = 20) -> List[dict]:
     )
     docs = []
     async for doc in cursor:
-        doc["_id"] = str(doc["_id"])
-        docs.append(doc)
+        docs.append(_sanitize(doc))
     return docs

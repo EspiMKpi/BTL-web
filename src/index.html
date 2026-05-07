@@ -32,18 +32,18 @@
             <button class="mobile-menu-btn" id="mobile-menu-btn">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
             </button>
-            <div class="avatar-wrapper" style="flex-shrink: 0; position: relative;">
-                <div class="avatar" id="avatar-toggle">
-                    <img src="https://i.pravatar.cc/150?u=marcuslee" alt="User Avatar" style="width: 100%; height: 100%; object-fit: cover; border-radius: 12px;">
+            <div class="avatar-wrapper" style="flex-shrink: 0; position: relative;" x-data="dropdown">
+                <div class="avatar" id="avatar-toggle" @click="toggle()">
+                    <img :src="$store.auth.user?.avatar_url || 'https://i.pravatar.cc/150?u=' + ($store.auth.user?.email || 'default')" alt="User Avatar" style="width: 100%; height: 100%; object-fit: cover; border-radius: 12px;">
                 </div>
-                <div class="profile-dropdown" id="profile-dropdown">
+                <div class="profile-dropdown" id="profile-dropdown" :class="{'show': open}" @click.outside="close()">
                     <div class="dropdown-header">
-                        <p class="dropdown-name">Marcus Lee</p>
-                        <p class="dropdown-handle">@marcuslee</p>
+                        <p class="dropdown-name" x-text="$store.auth.user?.username || 'User'"></p>
+                        <p class="dropdown-handle" x-text="'@' + ($store.auth.user?.username || 'user')"></p>
                     </div>
                     <div class="dropdown-divider"></div>
-                    <a href="#" class="dropdown-item">Profile</a>
-                    <a href="#" class="dropdown-item">Settings</a>
+                    <a href="#" class="dropdown-item" @click.prevent="close()">Profile</a>
+                    <a href="#" class="dropdown-item" @click.prevent="close()">Settings</a>
                     <div class="dropdown-divider"></div>
                     <a href="#" class="dropdown-item logout" id="logout-btn">
                         <div class="icon-wrapper" style="width: 16px; height: 16px; color: currentColor;">

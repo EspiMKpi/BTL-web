@@ -7,9 +7,23 @@ from datetime import datetime
 from functools import wraps
 from typing import Any, Dict, List, Optional
 
+from bson import ObjectId
 from cachetools import TTLCache
 
 from app.database import get_database
+
+
+def _sanitize(value: Any) -> Any:
+    """Recursively convert ObjectId and datetime to JSON-serializable types."""
+    if isinstance(value, ObjectId):
+        return str(value)
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, dict):
+        return {k: _sanitize(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_sanitize(v) for v in value]
+    return value
 
 # ── In-memory TTL cache for home rails (per-worker, 5 min TTL) ───────────
 _home_cache: TTLCache[str, dict] = TTLCache(maxsize=64, ttl=300)
@@ -38,12 +52,11 @@ async def get_home_rails(user_id: Optional[str] = None, rail_limit: int = 10) ->
     recent_series = await db.series.find().sort("first_air_date", -1).limit(rail_limit).to_list(rail_limit)
     genres = await db.genres.find().sort("name", 1).to_list(100)
 
-    # Convert ObjectId to string
+    # Sanitize all documents (convert ObjectId, datetime, etc.)
     for doc_list in (trending_movies, trending_series, top_rated_movies, top_rated_series, new_release_movies, recent_series):
-        for doc in doc_list:
-            doc["_id"] = str(doc["_id"])
-    for g in genres:
-        g["_id"] = str(g["_id"])
+        for i, doc in enumerate(doc_list):
+            doc_list[i] = _sanitize(doc)
+    genres = [_sanitize(g) for g in genres]
 
     rails: List[Dict[str, Any]] = [
         {"id": "trending_movies", "title": "Trending Movies", "content_type": "movie", "items": trending_movies},
@@ -74,10 +87,10 @@ async def get_home_rails(user_id: Optional[str] = None, rail_limit: int = 10) ->
 
             content_map: Dict[str, dict] = {}
             for m in movies:
-                m["_id"] = str(m["_id"])
+                m = _sanitize(m)
                 content_map[f"movie_{m['tmdb_id']}"] = m
             for s in series_list:
-                s["_id"] = str(s["_id"])
+                s = _sanitize(s)
                 content_map[f"series_{s['tmdb_id']}"] = s
 
             continue_watching = []
@@ -109,7 +122,7 @@ async def get_home_rails(user_id: Optional[str] = None, rail_limit: int = 10) ->
     if user_id is None:
         _home_cache[cache_key] = result
 
-    return result
+    return _sanitize(result)
 
 
 async def get_content_by_genre(genre_id: int, page: int = 1, limit: int = 20) -> dict:
@@ -122,8 +135,8 @@ async def get_content_by_genre(genre_id: int, page: int = 1, limit: int = 20) ->
     movie_total = await db.movies.count_documents({"genres.genre_id": genre_id})
     series_total = await db.series.count_documents({"genres.genre_id": genre_id})
 
-    for doc in movies + series_list:
-        doc["_id"] = str(doc["_id"])
+    movies = [_sanitize(d) for d in movies]
+    series_list = [_sanitize(d) for d in series_list]
 
     return {
         "movies": movies,
@@ -154,7 +167,8 @@ async def get_profile_stats(user_id: str) -> dict:
         {"$group": {"_id": None, "avg": {"$avg": "$rating"}}},
     ]
     avg_result = await db.user_ratings.aggregate(avg_pipeline).to_list(1)
-    average_rating = round(avg_result[0]["avg"] * 10) / 10 if avg_result else 0
+    avg_value = avg_result[0]["avg"] if avg_result and avg_result[0].get("avg") is not None else 0
+    average_rating = round(avg_value * 10) / 10
 
     return {
         "watchlist_count": watchlist_count,
@@ -174,9 +188,9 @@ async def get_recent_activity(user_id: str, limit: int = 20) -> dict:
     recent_ratings = await db.user_ratings.find({"user_id": user_id}).sort("created_at", -1).limit(limit).to_list(limit)
     recent_watchlist = await db.watchlist_items.find({"user_id": user_id}).sort("updated_at", -1).limit(limit).to_list(limit)
 
-    for doc_list in (recent_history, recent_ratings, recent_watchlist):
-        for doc in doc_list:
-            doc["_id"] = str(doc["_id"])
+    recent_history = [_sanitize(d) for d in recent_history]
+    recent_ratings = [_sanitize(d) for d in recent_ratings]
+    recent_watchlist = [_sanitize(d) for d in recent_watchlist]
 
     return {
         "recent_history": recent_history,

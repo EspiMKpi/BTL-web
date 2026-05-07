@@ -5,6 +5,7 @@ GET /home, GET /genres, GET /browse/:genre_id, GET /movie/:id, GET /series/:id, 
 
 from typing import Optional
 
+from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.core.deps import get_optional_current_user
@@ -12,6 +13,18 @@ from app.database import get_database
 from app.services.library_service import get_content_by_genre, get_home_rails
 from app.services.movie_service import get_movie_by_id, search_movies
 from app.services.series_service import get_series_by_id
+
+
+def _sanitize(value):
+    """Recursively convert ObjectId/datetime to JSON-safe types."""
+    if isinstance(value, ObjectId):
+        return str(value)
+    if isinstance(value, dict):
+        return {k: _sanitize(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_sanitize(v) for v in value]
+    return value
+
 
 router = APIRouter(prefix="/api/content", tags=["content"])
 
@@ -31,8 +44,7 @@ async def list_genres():
     cursor = db.genres.find().sort("name", 1)
     genres = []
     async for doc in cursor:
-        doc["_id"] = str(doc["_id"])
-        genres.append(doc)
+        genres.append(_sanitize(doc))
     return genres
 
 

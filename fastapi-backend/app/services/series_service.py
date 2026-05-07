@@ -4,12 +4,26 @@ Fetches TV series from MongoDB or TMDB API with full season/episode data.
 """
 
 from datetime import datetime
-from typing import List
+from typing import Any, List
 
 import httpx
+from bson import ObjectId
 
 from app.core.config import settings
 from app.database import get_database
+
+
+def _sanitize(value: Any) -> Any:
+    """Recursively convert ObjectId and datetime to JSON-serializable types."""
+    if isinstance(value, ObjectId):
+        return str(value)
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, dict):
+        return {k: _sanitize(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_sanitize(v) for v in value]
+    return value
 
 
 async def get_series_by_id(tmdb_id: int) -> dict:
@@ -19,8 +33,7 @@ async def get_series_by_id(tmdb_id: int) -> dict:
     existing = await db.series.find_one({"tmdb_id": tmdb_id})
     if existing and existing.get("raw_data") and existing.get("seasons"):
         print(f"Series {tmdb_id} served from MongoDB")
-        existing["_id"] = str(existing["_id"])
-        return existing
+        return _sanitize(existing)
 
     print(f"Series {tmdb_id} fetching from TMDB...")
     async with httpx.AsyncClient() as client:
@@ -160,8 +173,7 @@ async def get_series_by_id(tmdb_id: int) -> dict:
         upsert=True,
         return_document=True,
     )
-    result["_id"] = str(result["_id"])
-    return result
+    return _sanitize(result)
 
 
 async def get_series_by_ids(tmdb_ids: List[int]) -> List[dict]:
@@ -169,6 +181,5 @@ async def get_series_by_ids(tmdb_ids: List[int]) -> List[dict]:
     cursor = db.series.find({"tmdb_id": {"$in": tmdb_ids}})
     docs = []
     async for doc in cursor:
-        doc["_id"] = str(doc["_id"])
-        docs.append(doc)
+        docs.append(_sanitize(doc))
     return docs

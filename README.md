@@ -88,17 +88,19 @@ JWT_SECRET=your_super_secret_jwt_key
 
 ```bash
 # ── Frontend + FastAPI backend (recommended) ──
-npm run dev:all:python   # Vite :5173 + FastAPI :8000
+npm run dev:all          # Vite :5173 + FastAPI :8000
 
 # Or run them separately:
 npm run dev              # Frontend only  → http://localhost:5173
-npm run dev:fastapi      # FastAPI        → http://localhost:8000
+npm run dev:fastapi      # FastAPI only   → http://localhost:8000
 
 # Or use the startup script directly:
 cd fastapi-backend
 ./run.sh                 # Linux/macOS
 run.bat                  # Windows
 ```
+
+Open **http://localhost:5173** in your browser. Register a new account or use the [test account](#-test-account) below.
 
 Open [http://localhost:5173](http://localhost:5173) in your browser.
 
@@ -183,7 +185,8 @@ BTL-web/
 ├── src/                         # Frontend source
 │   ├── index.html               # Vite entry point
 │   ├── js/
-│   │   ├── main.js              # Alpine.js app state & auth store
+│   │   ├── main.js              # Alpine.js stores, components & app logic
+│   │   ├── api.js               # Centralized API client (JWT, error handling)
 │   │   ├── pages.js             # Page fragment loader
 │   │   ├── router.js            # SPA page switching
 │   │   └── actions.js           # Search, filters, toast
@@ -213,7 +216,17 @@ BTL-web/
     ├── tests/
     │   ├── conftest.py          # Shared fixtures (mongomock, httpx)
     │   ├── test_auth.py         # Auth endpoint tests
-    │   └── test_deps.py         # Dependency injection tests
+    │   ├── test_deps.py         # Dependency injection tests
+    │   ├── test_content.py      # Content router tests
+    │   ├── test_watchlist.py    # Watchlist CRUD tests
+    │   ├── test_history.py      # History & progress tests
+    │   ├── test_ratings.py      # Rating system tests
+    │   ├── test_profile.py      # Profile & stats tests
+    │   ├── test_library_service.py  # Library service tests
+    │   ├── test_movie_service.py    # Movie service tests (mocked TMDB)
+    │   ├── test_series_service.py   # Series service tests (mocked TMDB)
+    │   ├── test_security.py    # JWT & password tests
+    │   └── test_health.py       # Health check & CORS tests
     └── app/
         ├── main.py              # FastAPI app + CORS + rate limiting
         ├── database.py          # Motor async MongoDB client
@@ -292,7 +305,7 @@ The MongoDB database uses an **embedded document model** for content and **refer
 
 ## 🧪 Testing
 
-Tests use **pytest-asyncio** with **httpx.AsyncClient** (ASGI transport) and **mongomock-motor** for in-memory DB isolation — no external services needed.
+Tests use **pytest-asyncio** with **httpx.AsyncClient** (ASGI transport) and **mongomock-motor** for in-memory DB isolation — no external services or live database needed.
 
 ```bash
 cd fastapi-backend
@@ -308,7 +321,22 @@ cd fastapi-backend
 # Open htmlcov/index.html in browser
 ```
 
-Coverage target: **60%** minimum (configured in `pyproject.toml`).
+**142 tests** across 13 test files. Coverage: **94%** (minimum 60% enforced in `pyproject.toml`).
+
+| Test File | What it Covers |
+|-----------|---------------|
+| `test_auth.py` | Register, login, `/me` |
+| `test_deps.py` | JWT dependency injection, optional auth |
+| `test_content.py` | Home rails, genres, browse, search, movie/series detail |
+| `test_watchlist.py` | Watchlist CRUD, user isolation |
+| `test_history.py` | Continue watching, history, progress updates |
+| `test_ratings.py` | Public ratings, user ratings, create/delete |
+| `test_profile.py` | Profile stats, recent activity, update |
+| `test_library_service.py` | Home rails caching, genre browse, profile stats |
+| `test_movie_service.py` | DB cache hit, TMDB fetch + upsert (mocked HTTP) |
+| `test_series_service.py` | Series with seasons/episodes (mocked HTTP) |
+| `test_security.py` | Password hashing, JWT lifecycle |
+| `test_health.py` | Health check, CORS |
 
 ## 🗄️ Local MongoDB Setup
 
@@ -419,7 +447,7 @@ This project is for educational purposes (BTL — Bài Tập Lớn).
 
 <div align="center">
 
-**Built with ❤️ using Vite, Express, FastAPI, TypeScript, Python & MongoDB**
+**Built with ❤️ using Vite, FastAPI, Alpine.js, Python & MongoDB**
 
 [Report Bug](https://github.com/EspiMKpi/BTL-web/issues) · [Request Feature](https://github.com/EspiMKpi/BTL-web/issues)
 
