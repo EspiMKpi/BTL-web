@@ -48,20 +48,121 @@
         </div>
     </section>
 
-    <!-- Info Grid -->
-    <section class="detail-info-grid" x-show="!loading && content">
-        <article class="detail-info-card">
-            <p class="sidebar-label">Synopsis</p>
-            <p x-text="content?.overview || 'No synopsis available.'"></p>
-        </article>
-        <article class="detail-info-card">
-            <p class="sidebar-label">Cast</p>
-            <p x-text="castString"></p>
-        </article>
-        <article class="detail-info-card">
-            <p class="sidebar-label">Audio & Subtitles</p>
-            <p>English, Vietnamese, Korean, Spanish · Dolby Atmos · 4K HDR</p>
-        </article>
+    <!-- Info Grid + Tabs -->
+    <section x-show="!loading && content" style="margin-bottom: 34px;">
+        <!-- Tab Navigation -->
+        <div class="detail-tabs">
+            <button class="detail-tab" :class="{ active: activeTab === 'overview' }" @click="activeTab = 'overview'">Overview</button>
+            <button class="detail-tab" :class="{ active: activeTab === 'reviews' }" @click="activeTab = 'reviews'">
+                Reviews & Ratings
+                <span class="detail-tab-badge" x-show="stats.count > 0" x-text="stats.count"></span>
+            </button>
+        </div>
+
+        <!-- Overview Tab -->
+        <div x-show="activeTab === 'overview'">
+            <div class="detail-info-grid">
+                <article class="detail-info-card">
+                    <p class="sidebar-label">Synopsis</p>
+                    <p x-text="content?.overview || 'No synopsis available.'"></p>
+                </article>
+                <article class="detail-info-card">
+                    <p class="sidebar-label">Cast</p>
+                    <p x-text="castString"></p>
+                </article>
+                <article class="detail-info-card">
+                    <p class="sidebar-label">Audio & Subtitles</p>
+                    <p>English, Vietnamese, Korean, Spanish · Dolby Atmos · 4K HDR</p>
+                </article>
+            </div>
+        </div>
+
+        <!-- Reviews Tab -->
+        <div x-show="activeTab === 'reviews'" class="reviews-section">
+            <!-- Rating Summary -->
+            <div class="rating-summary">
+                <div class="rating-summary-score">
+                    <span class="rating-big-number" x-text="averageDisplay"></span>
+                    <div class="rating-stars-display">
+                        <template x-for="i in 5" :key="i">
+                            <span class="star-display" :class="{ filled: i <= Math.round(stats.average / 2), half: i === Math.ceil(stats.average / 2) && (stats.average / 2) % 1 >= 0.3 }">★</span>
+                        </template>
+                    </div>
+                    <span class="rating-count" x-text="stats.count + ' rating' + (stats.count !== 1 ? 's' : '')"></span>
+                </div>
+                <div class="rating-distribution">
+                    <template x-for="n in [10,9,8,7,6,5,4,3,2,1]" :key="n">
+                        <div class="dist-row">
+                            <span class="dist-label" x-text="n"></span>
+                            <div class="dist-bar-bg">
+                                <div class="dist-bar-fill" :style="'width: ' + (maxDistribution > 0 ? ((stats.distribution?.[String(n)] || 0) / maxDistribution * 100) : 0) + '%'"></div>
+                            </div>
+                            <span class="dist-count" x-text="stats.distribution?.[String(n)] || 0"></span>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- User Rating Widget -->
+            <div class="user-rating-widget" x-show="$store.auth.isLoggedIn">
+                <h3 class="widget-title" x-text="myRating ? 'Your Rating' : 'Rate This'"></h3>
+                <div class="star-input-row">
+                    <template x-for="n in 10" :key="n">
+                        <button class="star-input" :class="{ filled: n <= userRating, hover: n <= userRating }" @click="setUserRating(n)" x-text="n <= 5 ? '★' : '★'"></button>
+                    </template>
+                    <span class="star-input-label" x-text="userRating > 0 ? userRating + '/10' : ''"></span>
+                </div>
+                <!-- Review textarea toggle -->
+                <div class="review-form-area">
+                    <button class="btn-text" @click="showReviewForm = !showReviewForm" x-text="showReviewForm ? 'Hide review' : (myRating?.review ? 'Edit review' : 'Write a review (optional)')"></button>
+                    <div x-show="showReviewForm" x-transition style="margin-top: 12px;">
+                        <textarea class="review-textarea" x-model="userReview" placeholder="Share your thoughts about this movie..." rows="3" maxlength="2000"></textarea>
+                        <div class="review-form-actions">
+                            <span class="char-count" x-text="userReview.length + '/2000'"></span>
+                        </div>
+                    </div>
+                    <div class="review-submit-row">
+                        <button class="btn btn-primary btn-sm" @click="submitRating()" :disabled="submitting || userRating < 1">
+                            <span x-text="submitting ? 'Saving…' : (myRating ? 'Update Rating' : 'Submit Rating')"></span>
+                        </button>
+                        <button class="btn btn-ghost btn-sm" x-show="myRating" @click="deleteMyRating()">Remove</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="user-rating-widget login-prompt" x-show="!$store.auth.isLoggedIn">
+                <p><a href="#" @click.prevent="switchPage('login')" class="link-gold">Log in</a> to rate and review this title.</p>
+            </div>
+
+            <!-- Reviews List -->
+            <div class="reviews-list" x-show="reviewList.length > 0">
+                <h3 class="widget-title">Community Reviews</h3>
+                <template x-for="(r, idx) in reviewList" :key="r._id || idx">
+                    <div class="review-card">
+                        <div class="review-card-header">
+                            <div class="review-avatar" x-text="getInitial(r.username)"></div>
+                            <div class="review-meta">
+                                <span class="review-username" x-text="r.username || 'Anonymous'"></span>
+                                <span class="review-date" x-text="formatDate(r.created_at)"></span>
+                            </div>
+                            <div class="review-rating-badge">
+                                <span class="star-display filled" style="font-size: 12px;">★</span>
+                                <span x-text="r.rating.toFixed(1)"></span>
+                            </div>
+                        </div>
+                        <p class="review-text" x-text="r.review"></p>
+                    </div>
+                </template>
+                <button class="btn btn-ghost" x-show="hasMoreReviews" @click="loadMoreReviews()" style="margin-top: 16px;">Load More Reviews</button>
+            </div>
+
+            <div class="reviews-empty" x-show="reviewList.length === 0 && stats.count === 0">
+                <p>No ratings yet. Be the first to rate this title!</p>
+            </div>
+            <div class="reviews-empty" x-show="reviewList.length === 0 && stats.count > 0">
+                <p>No written reviews yet. Ratings have been submitted but no one has written a review.</p>
+            </div>
+        </div>
     </section>
 
     <!-- Episodes Section (series only) -->

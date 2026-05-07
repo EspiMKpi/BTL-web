@@ -56,6 +56,31 @@ export const historyApi = {
         }),
 };
 
+export const ratingsApi = {
+    get: (tmdbId, contentType, reviewsOnly = false, page = 1, limit = 50) => {
+        let url = `/api/ratings/?tmdb_id=${tmdbId}`;
+        if (contentType) url += `&content_type=${contentType}`;
+        if (reviewsOnly) url += `&reviews_only=true`;
+        url += `&page=${page}&limit=${limit}`;
+        return apiFetch(url);
+    },
+    getMine: (contentType) => {
+        let url = '/api/ratings/me';
+        if (contentType) url += `?content_type=${contentType}`;
+        return apiFetch(url);
+    },
+    create: (contentType, tmdbId, rating, review = null) =>
+        apiFetch('/api/ratings/', {
+            method: 'POST',
+            body: JSON.stringify({ content_type: contentType, tmdb_id: tmdbId, rating, review }),
+        }),
+    remove: (contentType, tmdbId) =>
+        apiFetch('/api/ratings/', {
+            method: 'DELETE',
+            body: JSON.stringify({ content_type: contentType, tmdb_id: tmdbId }),
+        }),
+};
+
 export const commentsApi = {
     get: (tmdbId, contentType) =>
         apiFetch(`/api/comments/${tmdbId}${contentType ? '?content_type=' + contentType : ''}`),

@@ -1,7 +1,7 @@
 import Alpine from 'alpinejs';
 import { pages_ready } from './pages.js';
 import { switchPage } from './router.js';
-import { contentApi, watchlistApi, historyApi, adminApi, apiFetch } from './api.js';
+import { contentApi, watchlistApi, historyApi, adminApi, ratingsApi, apiFetch } from './api.js';
 
 window.Alpine = Alpine;
 window.switchPage = switchPage;
@@ -384,6 +384,18 @@ Alpine.data('detailPage', () => ({
     watchlistItem: null,
     selectedSeason: 0,
 
+    // Rating & Review state
+    ratings: [],
+    stats: { average: 0, count: 0, distribution: {} },
+    myRating: null,
+    userRating: 0,
+    userReview: '',
+    submitting: false,
+    showReviewForm: false,
+    reviewsPage: 1,
+    hasMoreReviews: false,
+    activeTab: 'overview',  // 'overview' | 'reviews'
+
     init() {
         document.addEventListener('page:switch', (e) => {
             if (e.detail.pageId === 'detail') {
@@ -399,6 +411,10 @@ Alpine.data('detailPage', () => ({
         this.error = '';
         this.contentType = contentType;
         this.selectedSeason = 0;
+        this.activeTab = 'overview';
+        this.userRating = 0;
+        this.userReview = '';
+        this.myRating = null;
         try {
             if (contentType === 'series') {
                 this.content = await contentApi.getSeries(contentId);
@@ -406,11 +422,125 @@ Alpine.data('detailPage', () => ({
                 this.content = await contentApi.getMovie(contentId);
             }
             await this.checkWatchlistStatus(contentId, contentType);
+            await this.loadRatings(contentId, contentType);
         } catch (e) {
             this.error = 'Failed to load: ' + e.message;
         } finally {
             this.loading = false;
         }
+    },
+
+    async loadRatings(contentId, contentType) {
+        try {
+            const data = await ratingsApi.get(contentId, contentType, false, 1, 50);
+            this.ratings = data.ratings || [];
+            this.stats = data.stats || { average: 0, count: 0, distribution: {} };
+            this.hasMoreReviews = this.ratings.length >= 50;
+            this.reviewsPage = 1;
+        } catch { /* silent */ }
+
+        // Load user's own rating
+        if (Alpine.store('auth').isLoggedIn) {
+            try {
+                const mine = await ratingsApi.getMine(contentType);
+                const found = mine.find(r => r.tmdb_id === contentId && r.content_type === contentType);
+                if (found) {
+                    this.myRating = found;
+                    this.userRating = found.rating;
+                    this.userReview = found.review || '';
+                } else {
+                    this.myRating = null;
+                    this.userRating = 0;
+                    this.userReview = '';
+                }
+            } catch { /* silent */ }
+        }
+    },
+
+    async loadMoreReviews() {
+        this.reviewsPage++;
+        try {
+            const data = await ratingsApi.get(
+                Alpine.store('nav').contentId,
+                this.contentType, false, this.reviewsPage, 50
+            );
+            const newRatings = data.ratings || [];
+            this.ratings = [...this.ratings, ...newRatings];
+            this.hasMoreReviews = newRatings.length >= 50;
+        } catch { /* silent */ }
+    },
+
+    async submitRating() {
+        if (!Alpine.store('auth').isLoggedIn) { switchPage('login'); return; }
+        if (this.userRating < 1) {
+            Alpine.store('toast').show('Please select a rating first.');
+            return;
+        }
+        this.submitting = true;
+        try {
+            const contentId = Alpine.store('nav').contentId;
+            await ratingsApi.create(
+                this.contentType, contentId,
+                this.userRating,
+                this.userReview.trim() || null
+            );
+            Alpine.store('toast').show('Rating saved!');
+            await this.loadRatings(contentId, this.contentType);
+            this.showReviewForm = false;
+        } catch (e) {
+            Alpine.store('toast').show('Error: ' + e.message);
+        } finally {
+            this.submitting = false;
+        }
+    },
+
+    async deleteMyRating() {
+        if (!this.myRating) return;
+        try {
+            const contentId = Alpine.store('nav').contentId;
+            await ratingsApi.remove(this.contentType, contentId);
+            this.myRating = null;
+            this.userRating = 0;
+            this.userReview = '';
+            Alpine.store('toast').show('Rating removed.');
+            await this.loadRatings(contentId, this.contentType);
+        } catch (e) {
+            Alpine.store('toast').show('Error: ' + e.message);
+        }
+    },
+
+    setUserRating(n) {
+        this.userRating = this.userRating === n ? 0 : n;
+    },
+
+    get reviewList() {
+        return this.ratings.filter(r => r.review && r.review.trim().length > 0);
+    },
+
+    get displayRatings() {
+        return this.ratings;
+    },
+
+    get averageDisplay() {
+        return this.stats.average ? this.stats.average.toFixed(1) : '—';
+    },
+
+    get maxDistribution() {
+        const d = this.stats.distribution || {};
+        return Math.max(1, ...Object.values(d));
+    },
+
+    formatDate(dateStr) {
+        if (!dateStr) return '';
+        try {
+            return new Date(dateStr).toLocaleDateString('en-US', {
+                year: 'numeric', month: 'short', day: 'numeric'
+            });
+        } catch { return ''; }
+    },
+
+    getInitial(name) {
+        return (name || '?').charAt(0).toUpperCase();
     },
 
     async checkWatchlistStatus(contentId, contentType) {

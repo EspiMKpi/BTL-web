@@ -155,14 +155,13 @@ class TestUpdateWatchlist:
 
         resp = await client.patch(
             f"/api/watchlist/{item_id}",
-            json={"status": "completed", "rating": 8.5, "review": "Great movie!"},
+            json={"status": "completed", "is_bookmarked": True},
             headers=auth_headers,
         )
         assert resp.status_code == 200
         body = resp.json()
         assert body["status"] == "completed"
-        assert body["rating"] == 8.5
-        assert body["review"] == "Great movie!"
+        assert body["is_bookmarked"] is True
 
     async def test_update_empty_body(self, client, auth_headers):
         add_resp = await client.post(

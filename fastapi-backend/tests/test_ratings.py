@@ -213,27 +213,6 @@ class TestCreateRating:
         )
         assert resp.status_code == 401
 
-    async def test_create_rating_updates_watchlist(self, client, auth_headers):
-        """Creating a rating should also update the watchlist item if it exists."""
-        # First add to watchlist
-        await client.post(
-            "/api/watchlist/",
-            json={"content_type": "movie", "tmdb_id": 550},
-            headers=auth_headers,
-        )
-        # Then rate it
-        await client.post(
-            "/api/ratings/",
-            json={"content_type": "movie", "tmdb_id": 550, "rating": 8.5},
-            headers=auth_headers,
-        )
-        # Check watchlist item got the rating
-        wl_resp = await client.get("/api/watchlist/", headers=auth_headers)
-        assert wl_resp.status_code == 200
-        items = wl_resp.json()
-        assert len(items) == 1
-        assert items[0]["rating"] == 8.5
-
 
 # ── Delete Rating ─────────────────────────────────────────────────────────
 

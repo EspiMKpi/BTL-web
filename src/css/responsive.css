@@ -631,6 +631,39 @@
         padding: 16px;
     }
 
+    .rating-summary {
+        flex-direction: column;
+        gap: 20px;
+        padding: 18px;
+    }
+
+    .rating-summary-score {
+        flex-direction: row;
+        gap: 16px;
+        min-width: auto;
+    }
+
+    .rating-big-number {
+        font-size: 36px;
+    }
+
+    .star-input {
+        font-size: 20px;
+    }
+
+    .review-card {
+        padding: 14px 16px;
+    }
+
+    .detail-tabs {
+        gap: 0;
+    }
+
+    .detail-tab {
+        font-size: 14px;
+        padding: 10px 14px;
+    }
+
     .nf-hero {
         min-height: 56vh;
     }
@@ -791,6 +824,34 @@
 
     .detail-title {
         font-size: 22px;
+    }
+
+    .rating-summary-score {
+        flex-direction: column;
+    }
+
+    .rating-big-number {
+        font-size: 32px;
+    }
+
+    .star-input {
+        font-size: 18px;
+        padding: 1px;
+    }
+
+    .review-card-header {
+        gap: 8px;
+    }
+
+    .review-avatar {
+        width: 30px;
+        height: 30px;
+        font-size: 12px;
+    }
+
+    .review-rating-badge {
+        font-size: 11px;
+        padding: 3px 8px;
     }
 
     /* --- Episodes --- */

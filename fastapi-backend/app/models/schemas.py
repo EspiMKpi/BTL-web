@@ -200,8 +200,6 @@ class WatchlistItemOut(BaseModel):
     progress_seconds: int = 0
     current_season: Optional[int] = None
     current_episode: Optional[int] = None
-    rating: Optional[float] = None
-    review: Optional[str] = None
     is_bookmarked: bool = False
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
@@ -221,8 +219,6 @@ class WatchlistUpdateRequest(BaseModel):
     progress_seconds: Optional[int] = None
     current_season: Optional[int] = None
     current_episode: Optional[int] = None
-    rating: Optional[float] = None
-    review: Optional[str] = None
     is_bookmarked: Optional[bool] = None
 
 
