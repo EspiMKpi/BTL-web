@@ -117,7 +117,7 @@
                         </div>
                     </div>
                 </template>
-                <div x-show="searchResults.length === 0" style="color: rgba(255,255,255,0.4); padding: 40px;">No results found.</div>
+                <div x-show="searchResults.length === 0" style="color: rgba(255,255,255,0.4); padding: 40px;" x-text="'No results for “' + searchQuery + '”.'"></div>
             </div>
         </section>
     </div>

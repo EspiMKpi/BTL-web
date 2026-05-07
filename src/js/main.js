@@ -1,7 +1,7 @@
 import Alpine from 'alpinejs';
 import { pages_ready } from './pages.js';
 import { switchPage } from './router.js';
-import { contentApi, watchlistApi } from './api.js';
+import { contentApi, watchlistApi, historyApi } from './api.js';
 
 window.Alpine = Alpine;
 window.switchPage = switchPage;
@@ -84,6 +84,64 @@ Alpine.data('appState', () => ({
     }
 }));
 
+Alpine.data('discoverPage', () => ({
+    rails: [],
+    loading: false,
+    error: '',
+
+    init() {
+        document.addEventListener('page:switch', (e) => {
+            if (e.detail.pageId === 'discover') this.loadHome();
+        });
+        this.loadHome();
+    },
+
+    async loadHome() {
+        if (this.rails.length > 0) return;
+        this.loading = true;
+        this.error = '';
+        try {
+            const data = await contentApi.getHome();
+            this.rails = (data.rails || []).filter(r => r.items && r.items.length > 0);
+        } catch (e) {
+            this.error = e.message;
+        } finally {
+            this.loading = false;
+        }
+    },
+
+    get top10Rail() {
+        return this.rails.find(r => r.items && r.items.length >= 5) || this.rails[0] || null;
+    },
+    get top10() {
+        return (this.top10Rail?.items || []).slice(0, 10);
+    },
+    get top10ContentType() {
+        return this.top10Rail?.content_type || 'movie';
+    },
+    get otherRails() {
+        const top = this.top10Rail;
+        return this.rails.filter(r => r !== top).slice(0, 3);
+    },
+
+    navigateTo(item, contentType) {
+        switchPage('detail', { contentId: item.tmdb_id, contentType: contentType || 'movie' });
+    },
+
+    posterUrl(path) {
+        return path ? `https://image.tmdb.org/t/p/w500${path}` : 'https://placehold.co/300x450/1a1a2e/white?text=No+Image';
+    },
+
+    getTitle(item, ct) {
+        return ct === 'series' ? (item.name || item.title) : (item.title || item.name);
+    },
+
+    getYear(item, ct) {
+        const d = ct === 'series' ? item.first_air_date : item.release_date;
+        return d ? d.substring(0, 4) : '';
+    },
+}));
+
 Alpine.data('loginForm', () => ({
     email: '',
     password: '',
@@ -152,6 +210,7 @@ Alpine.data('moviesPage', () => ({
     searchResults: [],
     searching: false,
     isSearchMode: false,
+    _lastQuery: '',
     browsingGenre: null,
     browseResults: [],
     browseLoading: false,
@@ -186,15 +245,19 @@ Alpine.data('moviesPage', () => ({
     onSearchInput(value) {
         this.searchQuery = value;
         clearTimeout(this._debounceTimer);
-        if (!value.trim()) {
+        const trimmed = value.trim();
+        if (trimmed.length < 2) {
             this.isSearchMode = false;
             this.searchResults = [];
+            this._lastQuery = '';
             return;
         }
-        this._debounceTimer = setTimeout(() => this.runSearch(value), 400);
+        this._debounceTimer = setTimeout(() => this.runSearch(trimmed), 400);
     },
 
     async runSearch(q) {
+        if (q === this._lastQuery && this.isSearchMode) return;
+        this._lastQuery = q;
         this.searching = true;
         this.isSearchMode = true;
         this.browsingGenre = null;
@@ -230,6 +293,7 @@ Alpine.data('moviesPage', () => ({
         this.isSearchMode = false;
         this.searchQuery = '';
         this.searchResults = [];
+        this._lastQuery = '';
     },
 
     navigateTo(item, contentType) {
@@ -380,6 +444,137 @@ Alpine.data('detailPage', () => ({
     },
 }));
 
+Alpine.data('watchingPage', () => ({
+    content: null,
+    contentType: null,
+    loading: false,
+    error: '',
+    selectedEpisode: null,
+    selectedSeasonIndex: 0,
+    _lastPostAt: 0,
+
+    init() {
+        document.addEventListener('page:switch', (e) => {
+            if (e.detail.pageId !== 'watching') return;
+            const params = e.detail.params || {};
+            const contentId = params.contentId || Alpine.store('nav').contentId;
+            const contentType = params.contentType || Alpine.store('nav').contentType || 'movie';
+            this.load(contentId, contentType);
+        });
+    },
+
+    async load(contentId, contentType) {
+        if (!contentId) {
+            this.error = 'No content selected.';
+            return;
+        }
+        this.loading = true;
+        this.error = '';
+        this.contentType = contentType;
+        this.selectedEpisode = null;
+        this.selectedSeasonIndex = 0;
+        this._lastPostAt = 0;
+        try {
+            this.content = contentType === 'series'
+                ? await contentApi.getSeries(contentId)
+                : await contentApi.getMovie(contentId);
+            if (contentType === 'series') {
+                const eps = this.content?.seasons?.[0]?.episodes || [];
+                this.selectedEpisode = eps[0] || null;
+            }
+        } catch (e) {
+            this.error = 'Failed to load: ' + e.message;
+        } finally {
+            this.loading = false;
+        }
+    },
+
+    selectEpisode(ep) {
+        this.selectedEpisode = ep;
+        this._lastPostAt = 0;
+        const video = document.querySelector('#page-watching video');
+        if (video) {
+            video.currentTime = 0;
+            video.play().catch(() => {});
+        }
+    },
+
+    get title() {
+        if (!this.content) return '';
+        const base = this.contentType === 'series' ? (this.content.name || this.content.title) : (this.content.title || this.content.name);
+        if (this.selectedEpisode) {
+            const epLabel = this.selectedEpisode.name || `Episode ${this.selectedEpisode.episode_number}`;
+            return `${base} · ${epLabel}`;
+        }
+        return base || '';
+    },
+    get description() {
+        return this.selectedEpisode?.overview || this.content?.overview || '';
+    },
+    get rating() {
+        return (this.content?.vote_average ?? 0).toFixed(1);
+    },
+    get metaLine() {
+        if (!this.content) return '';
+        if (this.contentType === 'series') {
+            const season = this.content?.seasons?.[this.selectedSeasonIndex];
+            return season ? `Season ${season.season_number}` : '';
+        }
+        const m = this.content?.runtime;
+        return m ? `${Math.floor(m / 60)}h ${m % 60}m` : '';
+    },
+    get backdropUrl() {
+        return this.content?.backdrop_path
+            ? `https://image.tmdb.org/t/p/original${this.content.backdrop_path}`
+            : '';
+    },
+    get upNext() {
+        if (this.contentType !== 'series' || !this.selectedEpisode) return [];
+        const eps = this.content?.seasons?.[this.selectedSeasonIndex]?.episodes || [];
+        const idx = eps.findIndex(e => e.episode_number === this.selectedEpisode.episode_number);
+        return idx >= 0 ? eps.slice(idx + 1, idx + 5) : [];
+    },
+
+    episodeThumb(ep) {
+        if (ep?.still_path) return `https://image.tmdb.org/t/p/w500${ep.still_path}`;
+        if (this.content?.backdrop_path) return `https://image.tmdb.org/t/p/w500${this.content.backdrop_path}`;
+        return 'https://placehold.co/500x281/1a1a2e/white?text=Episode';
+    },
+
+    onTimeUpdate(ev) {
+        const now = Date.now();
+        if (now - this._lastPostAt < 10000) return;
+        this._lastPostAt = now;
+        if (!Alpine.store('auth').isLoggedIn || !this.content?.tmdb_id) return;
+        const seasonNumber = this.selectedEpisode
+            ? this.content?.seasons?.[this.selectedSeasonIndex]?.season_number ?? null
+            : null;
+        historyApi.postProgress({
+            content_type: this.contentType,
+            tmdb_id: this.content.tmdb_id,
+            progress_seconds: Math.floor(ev.target.currentTime || 0),
+            completed: false,
+            season_number: seasonNumber,
+            episode_number: this.selectedEpisode?.episode_number ?? null,
+        }).catch(() => {});
+    },
+
+    onEnded(ev) {
+        if (!Alpine.store('auth').isLoggedIn || !this.content?.tmdb_id) return;
+        const seasonNumber = this.selectedEpisode
+            ? this.content?.seasons?.[this.selectedSeasonIndex]?.season_number ?? null
+            : null;
+        historyApi.postProgress({
+            content_type: this.contentType,
+            tmdb_id: this.content.tmdb_id,
+            progress_seconds: Math.floor(ev.target.currentTime || 0),
+            completed: true,
+            season_number: seasonNumber,
+            episode_number: this.selectedEpisode?.episode_number ?? null,
+        }).catch(() => {});
+    },
+}));
+
 Alpine.data('watchlistPage', () => ({
     items: [],
     loading: false,
@@ -484,16 +679,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // 2. Watch Now Button or Episode Card -> Go to Watching
         const epCard = e.target.closest('.episode-card');
-        const watchBtn = e.target.closest('#btn-watch-now') || e.target.closest('.hero .btn-primary') || epCard;
+        const watchBtn = e.target.closest('#btn-watch-now') || epCard;
         if (watchBtn) {
-            if (epCard) {
-                const epTitle = epCard.querySelector('h3')?.innerText;
-                const epDesc = epCard.querySelector('p')?.innerText;
-                const playerTitle = document.querySelector('.player-title');
-                const playerDesc = document.querySelector('#page-watching .detail-desc');
-                if (playerTitle && epTitle) playerTitle.innerText = epTitle;
-                if (playerDesc && epDesc) playerDesc.innerText = epDesc;
-            }
             switchPage('watching');
             return;
         }

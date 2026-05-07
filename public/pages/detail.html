@@ -60,7 +60,6 @@
         <section class="episode-section" x-show="contentType === 'series' && content?.seasons && content.seasons.length > 0">
             <div class="section-header">
                 <h2 class="section-title">Episodes</h2>
-                <a href="#watching" class="see-all">Open Player</a>
             </div>
             <div class="season-tabs">
                 <template x-for="(season, idx) in (content?.seasons || [])" :key="idx">

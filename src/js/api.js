@@ -47,3 +47,11 @@ export const watchlistApi = {
         }),
     remove: (itemId) => apiFetch(`/api/watchlist/${itemId}`, { method: 'DELETE' }),
 };
+
+export const historyApi = {
+    postProgress: (body) =>
+        apiFetch('/api/history/progress', {
+            method: 'POST',
+            body: JSON.stringify(body),
+        }),
+};
