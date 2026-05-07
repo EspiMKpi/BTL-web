@@ -707,6 +707,25 @@ Alpine.data('watchingPage', () => ({
     selectedEpisode: null,
     selectedSeasonIndex: 0,
     _lastPostAt: 0,
+    activeProvider: 'vidlink',
+
+    providers: {
+        vidlink: {
+            name: 'Server #1',
+            movie: (id) => `https://vidlink.pro/movie/${id}?primaryColor=f4c84a&autoplay=true&title=true&poster=true`,
+            tv: (id, s, e) => `https://vidlink.pro/tv/${id}/${s}/${e}?primaryColor=f4c84a&autoplay=true&nextbutton=true&title=true&poster=true`,
+        },
+        '2embed': {
+            name: 'Server #2',
+            movie: (id) => `https://www.2embed.cc/embed/${id}`,
+            tv: (id, s, e) => `https://www.2embed.cc/embedtv/${id}&s=${s}&e=${e}`,
+        },
+        vidking: {
+            name: 'Server #3',
+            movie: (id) => `https://www.vidking.net/embed/movie/${id}?color=f4c84a&autoPlay=true`,
+            tv: (id, s, e) => `https://www.vidking.net/embed/tv/${id}/${s}/${e}?color=f4c84a&autoPlay=true&nextEpisode=true&episodeSelector=true`,
+        },
+    },
 
     init() {
         document.addEventListener('page:switch', (e) => {
@@ -717,7 +736,7 @@ Alpine.data('watchingPage', () => ({
             this.load(contentId, contentType);
         });
 
-        // VidKing player → parent postMessage bridge.
+        // Embed player → parent postMessage bridge.
         // One listener for the lifetime of the SPA; handler ignores events
         // when the iframe isn't loaded or the user is anonymous.
         window.addEventListener('message', (event) => this._onPlayerMessage(event));
@@ -746,28 +765,37 @@ Alpine.data('watchingPage', () => ({
             this.error = 'Failed to load: ' + e.message;
         } finally {
             this.loading = false;
+            // Reset click shield when new content/episode loads
+            window.dispatchEvent(new Event('content-loaded'));
         }
     },
 
     get playerSrc() {
         if (!this.content?.tmdb_id) return '';
         const id = this.content.tmdb_id;
-        const base = 'https://www.vidking.net/embed';
-        const color = 'f4c84a';
+        const provider = this.providers[this.activeProvider];
         if (this.contentType === 'series') {
-            // Series default to S1E1 unless an episode card has been clicked.
             const season = this.selectedEpisode
                 ? (this.content?.seasons?.[this.selectedSeasonIndex]?.season_number ?? 1)
                 : 1;
             const ep = this.selectedEpisode?.episode_number ?? 1;
-            return `${base}/tv/${id}/${season}/${ep}?color=${color}&autoPlay=true&nextEpisode=true&episodeSelector=true`;
+            return provider.tv(id, season, ep);
         }
-        return `${base}/movie/${id}?color=${color}&autoPlay=true`;
+        return provider.movie(id);
+    },
+
+    switchProvider(key) {
+        if (this.activeProvider === key) return;
+        this.activeProvider = key;
+        this._lastPostAt = 0;
+        window.dispatchEvent(new Event('content-loaded'));
     },
 
     selectEpisode(ep) {
         this.selectedEpisode = ep;
         this._lastPostAt = 0;
+        // Reset click shield for new episode
+        window.dispatchEvent(new Event('content-loaded'));
         // playerSrc getter recomputes; Alpine re-binds :src and the iframe reloads.
     },
 
@@ -814,16 +842,16 @@ Alpine.data('watchingPage', () => ({
     },
 
     _onPlayerMessage(event) {
+        // VidLink sends { type: 'PLAYER_EVENT', data: { event, currentTime, duration, season, episode } }
         if (!event.data || event.data.type !== 'PLAYER_EVENT') return;
         if (!Alpine.store('auth').isLoggedIn || !this.content?.tmdb_id) return;
 
         const payload = event.data.data || {};
-        const status = payload.player_status;
-        const progress = payload.player_progress;
-        const info = payload.player_info || {};
-        if (!status) return;
+        const eventType = payload.event;        // "play" | "pause" | "seeked" | "ended" | "timeupdate"
+        const currentTime = payload.currentTime; // seconds
+        if (!eventType) return;
 
-        const completed = status === 'completed';
+        const completed = eventType === 'ended';
         // 10s throttle for in-progress events; always post on completion.
         if (!completed) {
             const now = Date.now();
@@ -831,21 +859,19 @@ Alpine.data('watchingPage', () => ({
             this._lastPostAt = now;
         }
 
-        const rawSeason = info.season ?? null;
-        const rawEpisode = info.episode ?? null;
-        const seasonNumber = rawSeason != null && rawSeason !== ''
-            ? parseInt(rawSeason, 10)
+        const seasonNumber = payload.season != null
+            ? parseInt(payload.season, 10)
             : (this.selectedEpisode
                 ? this.content?.seasons?.[this.selectedSeasonIndex]?.season_number ?? null
                 : null);
-        const episodeNumber = rawEpisode != null && rawEpisode !== ''
-            ? parseInt(rawEpisode, 10)
+        const episodeNumber = payload.episode != null
+            ? parseInt(payload.episode, 10)
             : this.selectedEpisode?.episode_number ?? null;
 
         historyApi.postProgress({
             content_type: this.contentType,
             tmdb_id: this.content.tmdb_id,
-            progress_seconds: Math.round(Number(progress) || 0),
+            progress_seconds: Math.round(Number(currentTime) || 0),
             completed,
             season_number: Number.isFinite(seasonNumber) ? seasonNumber : null,
             episode_number: Number.isFinite(episodeNumber) ? episodeNumber : null,

@@ -6,9 +6,9 @@
     <div x-show="error" x-text="error" style="text-align:center; padding: 40px 20px; color: #ff6b6b;"></div>
 
     <section class="player-section" x-show="!loading && content">
-        <div class="video-player-container" style="background:#000; border-radius: var(--radius-sm); overflow:hidden;">
+        <div class="video-player-container" style="background:#000; border-radius: var(--radius-sm); overflow:hidden; position:relative;">
             <iframe
-                id="vidking-player"
+                id="embed-player"
                 :src="playerSrc"
                 width="100%"
                 height="100%"
@@ -17,6 +17,26 @@
                 allow="autoplay; fullscreen; picture-in-picture"
                 style="display:block; width:100%; height:100%; border:none;"
                 referrerpolicy="no-referrer"></iframe>
+            <!-- Click shield: absorbs first click per load to block ad popups -->
+            <div class="click-shield"
+                 x-data="{ show: true }"
+                 x-show="show"
+                 @click="show = false"
+                 @content-loaded.window="show = true"
+                 style="position:absolute; inset:0; z-index:10; cursor:pointer; background:transparent;">
+            </div>
+        </div>
+
+        <!-- Server selector -->
+        <div class="provider-selector">
+            <span class="provider-label">Server:</span>
+            <template x-for="(p, key) in providers" :key="key">
+                <button class="provider-btn"
+                        :class="{ active: activeProvider === key }"
+                        @click="switchProvider(key)"
+                        x-text="p.name">
+                </button>
+            </template>
         </div>
 
         <div class="player-metadata">

@@ -1831,13 +1831,54 @@
     background: #000;
     border-radius: var(--radius-sm);
     overflow: hidden;
-    margin-bottom: 30px;
+    margin-bottom: 10px;
     position: relative;
     box-shadow: 0 10px 40px rgba(0,0,0,0.5);
     max-height: 85vh;
 }
 
-/* Player overlay/control rules removed — VidKing renders its own controls. */
+/* Provider / Server Selector */
+.provider-selector {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.provider-label {
+    font-size: 13px;
+    color: var(--text-muted, rgba(255,255,255,0.5));
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.provider-btn {
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 6px;
+    background: rgba(255,255,255,0.05);
+    color: rgba(255,255,255,0.7);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.provider-btn:hover {
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+    border-color: rgba(255,255,255,0.3);
+}
+
+.provider-btn.active {
+    background: var(--accent, #f4c84a);
+    color: #000;
+    border-color: var(--accent, #f4c84a);
+}
+
+/* Player overlay/control rules removed — embed provider renders its own controls. */
 
 /* =========================================
    Admin Page

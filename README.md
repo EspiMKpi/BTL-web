@@ -31,6 +31,7 @@ A full-stack SPA that lets you discover, browse, and track movies and TV series 
 - 🛡️ **Rate Limiting** — slowapi protects login/register against brute-force
 - ⚡ **In-Memory Caching** — TTL-cached home rails for fast anonymous browsing
 - 📱 **Responsive Design** — Fully responsive UI with mobile-friendly navigation
+- 🎬 **Multi-Server Player** — 3 fallback streaming servers (Server #1, #2, #3) with server switching if a title is unavailable on one provider
 
 ## 🛠️ Tech Stack
 
@@ -41,6 +42,7 @@ A full-stack SPA that lets you discover, browse, and track movies and TV series 
 | **Backend** | FastAPI + Motor (async MongoDB driver) + Pydantic |
 | **Database** | MongoDB Atlas (or local MongoDB) |
 | **External API** | [TMDB (The Movie Database)](https://www.themoviedb.org/) |
+| **Video Embed** | VidLink.pro · 2Embed.cc · VidKing.net (multi-server fallback) |
 | **Auth** | JWT (PyJWT) + bcrypt (passlib) |
 | **Caching** | cachetools TTLCache (per-worker, 5 min) |
 | **Rate Limiting** | slowapi (in-memory) |
