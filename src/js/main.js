@@ -805,11 +805,14 @@ Alpine.data('adminPage', () => ({
     movies: [],
     comments: [],
     users: [],
+    genres: [],
     movieSearch: '',
     userSearch: '',
+    genreSearch: '',
     _moviesLoaded: false,
     _commentsLoaded: false,
     _usersLoaded: false,
+    _genresLoaded: false,
 
     init() {
         document.addEventListener('page:switch', (e) => {
@@ -817,6 +820,7 @@ Alpine.data('adminPage', () => ({
                 this._moviesLoaded = false;
                 this._commentsLoaded = false;
                 this._usersLoaded = false;
+                this._genresLoaded = false;
                 this.loadMovies();
             }
         });
@@ -864,6 +868,20 @@ Alpine.data('adminPage', () => ({
         }
     },
 
+    async loadGenres() {
+        if (this._genresLoaded) return;
+        this.loading = true;
+        this.error = '';
+        try {
+            this.genres = await adminApi.getGenres();
+            this._genresLoaded = true;
+        } catch (e) {
+            this.error = 'Failed to load genres: ' + e.message;
+        } finally {
+            this.loading = false;
+        }
+    },
+
     get filteredMovies() {
         if (!this.movieSearch.trim()) return this.movies;
         const q = this.movieSearch.toLowerCase();
@@ -882,7 +900,24 @@ Alpine.data('adminPage', () => ({
         );
     },
 
+    get filteredGenres() {
+        if (!this.genreSearch.trim()) return this.genres;
+        const q = this.genreSearch.toLowerCase();
+        return this.genres.filter(g =>
+            (g.name || '').toLowerCase().includes(q) ||
+            String(g.genre_id).includes(q)
+        );
+    },
 
+    async toggleGenreVisibility(genre) {
+        try {
+            const res = await adminApi.toggleGenreVisibility(genre.genre_id, !genre.is_hidden);
+            genre.is_hidden = res.is_hidden;
+            Alpine.store('toast').show(genre.is_hidden ? 'Genre hidden from users' : 'Genre is now visible');
+        } catch (e) {
+            Alpine.store('toast').show('Error: ' + e.message);
+        }
+    },
 
     async toggleMovieVisibility(movie) {
         try {

@@ -37,7 +37,7 @@ async def get_home_rails(user_id: Optional[str] = None, rail_limit: int = 10) ->
     top_rated_series = await db.series.find({"vote_count": {"$gte": 50}, **hidden_filter}).sort("vote_average", -1).limit(rail_limit).to_list(rail_limit)
     new_release_movies = await db.movies.find(hidden_filter).sort("release_date", -1).limit(rail_limit).to_list(rail_limit)
     recent_series = await db.series.find(hidden_filter).sort("first_air_date", -1).limit(rail_limit).to_list(rail_limit)
-    genres = await db.genres.find().sort("name", 1).to_list(100)
+    genres = await db.genres.find({"is_hidden": {"$ne": True}}).sort("name", 1).to_list(100)
 
     # Sanitize all documents (convert ObjectId, datetime, etc.)
     for doc_list in (trending_movies, trending_series, top_rated_movies, top_rated_series, new_release_movies, recent_series):

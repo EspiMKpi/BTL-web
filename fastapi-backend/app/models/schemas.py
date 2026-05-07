@@ -316,3 +316,7 @@ class BanUserRequest(BaseModel):
 
 class HideMovieRequest(BaseModel):
     is_hidden: bool
+
+
+class HideGenreRequest(BaseModel):
+    is_hidden: bool

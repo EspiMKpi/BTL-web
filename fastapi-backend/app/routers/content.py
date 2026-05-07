@@ -30,7 +30,7 @@ async def home(
 @router.get("/genres")
 async def list_genres():
     db = get_database()
-    cursor = db.genres.find().sort("name", 1)
+    cursor = db.genres.find({"is_hidden": {"$ne": True}}).sort("name", 1)
     genres = []
     async for doc in cursor:
         genres.append(sanitize(doc))
@@ -43,6 +43,10 @@ async def browse_genre(
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
 ):
+    db = get_database()
+    genre = await db.genres.find_one({"genre_id": genre_id})
+    if genre and genre.get("is_hidden"):
+        raise HTTPException(status_code=404, detail="Genre not found")
     return await get_content_by_genre(genre_id, page, limit)
 
 
