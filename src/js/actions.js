@@ -31,44 +31,6 @@ export function showNotification(message) {
     }, 3000);
 }
 
-export function initSearch() {
-    const searchInputs = document.querySelectorAll('.search-box input, .filter-search input');
-    searchInputs.forEach(input => {
-        input.addEventListener('input', (e) => {
-            const query = e.target.value.toLowerCase();
-            const allCards = document.querySelectorAll('.movie-card');
-            allCards.forEach(card => {
-                const titleText = card.querySelector('.card-title')?.innerText.toLowerCase() || "";
-                card.style.display = titleText.includes(query) ? 'block' : 'none';
-            });
-        });
-    });
-}
+export function initSearch() { /* search is now handled by moviesPage Alpine component */ }
 
-export function initFilters() {
-    const filterCheckboxes = document.querySelectorAll('.filter-group input[type="checkbox"]');
-    filterCheckboxes.forEach(cb => {
-        cb.addEventListener('change', () => {
-            const activeGenres = Array.from(document.querySelectorAll('.filter-group:nth-child(2) input:checked')).map(i => i.parentElement.innerText.trim().toLowerCase());
-            const activeYears = Array.from(document.querySelectorAll('.filter-group:nth-child(1) input:checked')).map(i => i.parentElement.innerText.trim().toLowerCase());
-            const activeTypes = Array.from(document.querySelectorAll('.filter-group:nth-child(3) input:checked')).map(i => i.parentElement.innerText.trim().toLowerCase());
-
-            const allCards = document.querySelectorAll('#search-results-grid .movie-card');
-            allCards.forEach(card => {
-                const infoText = card.querySelector('.card-info').innerText.toLowerCase();
-                const genreMatch = activeGenres.length === 0 || activeGenres.some(g => infoText.includes(g));
-                const yearMatch = activeYears.length === 0 || activeYears.some(y => infoText.includes(y));
-                const typeMatch = activeTypes.length === 0 || activeTypes.some(t => infoText.includes(t.replace(' series', '')));
-                card.style.display = (genreMatch && yearMatch && typeMatch) ? 'block' : 'none';
-            });
-        });
-    });
-
-    const filterToggle = document.getElementById('filter-dropdown-toggle');
-    const filterPanel = document.getElementById('filter-panel');
-    if (filterToggle && filterPanel) {
-        filterToggle.addEventListener('click', () => {
-            filterPanel.classList.toggle('active');
-        });
-    }
-}
+export function initFilters() { /* filters are now handled by moviesPage Alpine component */ }

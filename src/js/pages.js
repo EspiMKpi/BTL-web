@@ -42,6 +42,7 @@ export const pages_ready = (async function load_pages() {
             const page_element = wrapper.firstElementChild;
             if (page_element) {
                 page_host.appendChild(page_element);
+                if (window.Alpine) window.Alpine.initTree(page_element);
             }
         }
     });

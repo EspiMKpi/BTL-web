@@ -1,15 +1,10 @@
-/**
- * CineDrop Main
- * Application entry point with Alpine.js reactivity
- */
-
 import Alpine from 'alpinejs';
 import { pages_ready } from './pages.js';
 import { switchPage } from './router.js';
-import { showNotification, initSearch, initFilters } from './actions.js';
+import { contentApi, watchlistApi } from './api.js';
 
-// Make Alpine available globally
 window.Alpine = Alpine;
+window.switchPage = switchPage;
 
 // --- Alpine Stores ---
 Alpine.store('toast', {
@@ -34,7 +29,7 @@ Alpine.store('auth', {
             body: JSON.stringify({ email, password })
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error);
+        if (!res.ok) throw new Error(data.error || data.detail);
         this.token = data.token;
         this.user = data.user;
         localStorage.setItem('token', data.token);
@@ -48,7 +43,7 @@ Alpine.store('auth', {
             body: JSON.stringify({ email, password })
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error);
+        if (!res.ok) throw new Error(data.error || data.detail);
         this.token = data.token;
         this.user = data.user;
         localStorage.setItem('token', data.token);
@@ -76,6 +71,12 @@ Alpine.store('auth', {
     }
 });
 
+Alpine.store('nav', {
+    currentPage: 'login',
+    contentId: null,
+    contentType: null,
+});
+
 // --- Alpine Components ---
 Alpine.data('appState', () => ({
     init() {
@@ -93,7 +94,7 @@ Alpine.data('loginForm', () => ({
         this.error = '';
         try {
             await Alpine.store('auth').login(this.email, this.password);
-            switchPage('discover');
+            switchPage('movies');
         } catch (e) {
             this.error = e.message;
         } finally {
@@ -117,7 +118,7 @@ Alpine.data('registerForm', () => ({
         this.error = '';
         try {
             await Alpine.store('auth').register(this.email, this.password);
-            switchPage('discover');
+            switchPage('movies');
         } catch (e) {
             this.error = e.message;
         } finally {
@@ -142,6 +143,309 @@ Alpine.data('faqItem', () => ({
     toggle() { this.open = !this.open; }
 }));
 
+Alpine.data('moviesPage', () => ({
+    rails: [],
+    genres: [],
+    loading: false,
+    error: '',
+    searchQuery: '',
+    searchResults: [],
+    searching: false,
+    isSearchMode: false,
+    browsingGenre: null,
+    browseResults: [],
+    browseLoading: false,
+    browsePage: 1,
+    _debounceTimer: null,
+
+    async init() {
+        document.addEventListener('page:switch', (e) => {
+            if (e.detail.pageId === 'movies') this.loadHome();
+        });
+        this.loadHome();
+    },
+
+    async loadHome() {
+        if (this.rails.length > 0) return;
+        this.loading = true;
+        this.error = '';
+        try {
+            const [homeData, genresData] = await Promise.all([
+                contentApi.getHome(),
+                contentApi.getGenres(),
+            ]);
+            this.rails = (homeData.rails || []).filter(r => r.items && r.items.length > 0);
+            this.genres = genresData || [];
+        } catch (e) {
+            this.error = e.message;
+        } finally {
+            this.loading = false;
+        }
+    },
+
+    onSearchInput(value) {
+        this.searchQuery = value;
+        clearTimeout(this._debounceTimer);
+        if (!value.trim()) {
+            this.isSearchMode = false;
+            this.searchResults = [];
+            return;
+        }
+        this._debounceTimer = setTimeout(() => this.runSearch(value), 400);
+    },
+
+    async runSearch(q) {
+        this.searching = true;
+        this.isSearchMode = true;
+        this.browsingGenre = null;
+        try {
+            const data = await contentApi.search(q);
+            this.searchResults = data.results || data.movies || data || [];
+        } catch (e) {
+            Alpine.store('toast').show('Search failed: ' + e.message);
+        } finally {
+            this.searching = false;
+        }
+    },
+
+    async browseGenre(genreId, genreName) {
+        this.browsingGenre = { id: genreId, name: genreName };
+        this.isSearchMode = false;
+        this.browseLoading = true;
+        this.browsePage = 1;
+        try {
+            const data = await contentApi.browse(genreId, 1, 20);
+            const movies = (data.movies || []).map(m => ({ ...m, _ct: 'movie' }));
+            const series = (data.series || []).map(s => ({ ...s, _ct: 'series' }));
+            this.browseResults = [...movies, ...series];
+        } catch (e) {
+            Alpine.store('toast').show('Browse failed: ' + e.message);
+        } finally {
+            this.browseLoading = false;
+        }
+    },
+
+    clearBrowse() {
+        this.browsingGenre = null;
+        this.isSearchMode = false;
+        this.searchQuery = '';
+        this.searchResults = [];
+    },
+
+    navigateTo(item, contentType) {
+        switchPage('detail', { contentId: item.tmdb_id, contentType });
+    },
+
+    posterUrl(path) {
+        return path ? `https://image.tmdb.org/t/p/w500${path}` : 'https://placehold.co/300x450/1a1a2e/white?text=No+Image';
+    },
+
+    getTitle(item, contentType) {
+        return contentType === 'series' ? (item.name || item.title) : (item.title || item.name);
+    },
+
+    getYear(item, contentType) {
+        const d = contentType === 'series' ? item.first_air_date : item.release_date;
+        return d ? d.substring(0, 4) : '';
+    },
+}));
+
+Alpine.data('seriesPage', () => ({
+    rails: [],
+    loading: false,
+    error: '',
+
+    async init() {
+        document.addEventListener('page:switch', (e) => {
+            if (e.detail.pageId === 'series') this.loadSeries();
+        });
+        this.loadSeries();
+    },
+
+    async loadSeries() {
+        if (this.rails.length > 0) return;
+        this.loading = true;
+        this.error = '';
+        try {
+            const data = await contentApi.getHome();
+            this.rails = (data.rails || []).filter(r => r.content_type === 'series' && r.items && r.items.length > 0);
+        } catch (e) {
+            this.error = e.message;
+        } finally {
+            this.loading = false;
+        }
+    },
+
+    navigateTo(item) {
+        switchPage('detail', { contentId: item.tmdb_id, contentType: 'series' });
+    },
+
+    posterUrl(path) {
+        return path ? `https://image.tmdb.org/t/p/w500${path}` : 'https://placehold.co/300x450/1a1a2e/white?text=No+Image';
+    },
+}));
+
+Alpine.data('detailPage', () => ({
+    content: null,
+    contentType: null,
+    loading: false,
+    error: '',
+    watchlistItem: null,
+    selectedSeason: 0,
+
+    init() {
+        document.addEventListener('page:switch', (e) => {
+            if (e.detail.pageId === 'detail') {
+                this.load(e.detail.params.contentId, e.detail.params.contentType);
+            }
+        });
+    },
+
+    async load(contentId, contentType) {
+        if (!contentId) return;
+        this.loading = true;
+        this.content = null;
+        this.error = '';
+        this.contentType = contentType;
+        this.selectedSeason = 0;
+        try {
+            if (contentType === 'series') {
+                this.content = await contentApi.getSeries(contentId);
+            } else {
+                this.content = await contentApi.getMovie(contentId);
+            }
+            await this.checkWatchlistStatus(contentId, contentType);
+        } catch (e) {
+            this.error = 'Failed to load: ' + e.message;
+        } finally {
+            this.loading = false;
+        }
+    },
+
+    async checkWatchlistStatus(contentId, contentType) {
+        if (!Alpine.store('auth').isLoggedIn) { this.watchlistItem = null; return; }
+        try {
+            const items = await watchlistApi.getAll();
+            this.watchlistItem = items.find(i => i.tmdb_id === contentId && i.content_type === contentType) || null;
+        } catch { this.watchlistItem = null; }
+    },
+
+    get title() { return this.contentType === 'series' ? this.content?.name : this.content?.title; },
+    get year() {
+        const d = this.contentType === 'series' ? this.content?.first_air_date : this.content?.release_date;
+        return d ? d.substring(0, 4) : '';
+    },
+    get backdropUrl() {
+        return this.content?.backdrop_path
+            ? `https://image.tmdb.org/t/p/original${this.content.backdrop_path}`
+            : 'https://placehold.co/1280x720/1a1a2e/white?text=No+Backdrop';
+    },
+    get posterUrl() {
+        return this.content?.poster_path
+            ? `https://image.tmdb.org/t/p/w500${this.content.poster_path}`
+            : 'https://placehold.co/300x450/1a1a2e/white?text=No+Image';
+    },
+    get castString() { return (this.content?.cast || []).slice(0, 5).map(c => c.name).join(' · ') || '—'; },
+    get genreString() { return (this.content?.genres || []).map(g => g.name).join(', ') || '—'; },
+    get runtime() {
+        if (this.contentType === 'series') {
+            const n = this.content?.number_of_seasons;
+            return n ? `${n} season${n > 1 ? 's' : ''}` : '';
+        }
+        const m = this.content?.runtime;
+        return m ? `${Math.floor(m / 60)}h ${m % 60}m` : '';
+    },
+    get currentSeasonEpisodes() {
+        if (!this.content?.seasons) return [];
+        return this.content.seasons[this.selectedSeason]?.episodes || [];
+    },
+
+    async toggleBookmark() {
+        if (!Alpine.store('auth').isLoggedIn) { switchPage('login'); return; }
+        const contentId = Alpine.store('nav').contentId;
+        const contentType = Alpine.store('nav').contentType;
+        try {
+            if (this.watchlistItem) {
+                await watchlistApi.remove(this.watchlistItem._id);
+                this.watchlistItem = null;
+                Alpine.store('toast').show('Removed from Watchlist.');
+            } else {
+                const item = await watchlistApi.add(contentType, contentId, 'plan_to_watch');
+                this.watchlistItem = item;
+                Alpine.store('toast').show('Added to Watchlist!');
+            }
+        } catch (e) {
+            Alpine.store('toast').show('Error: ' + e.message);
+        }
+    },
+}));
+
+Alpine.data('watchlistPage', () => ({
+    items: [],
+    loading: false,
+    error: '',
+    activeFilter: 'all',
+
+    init() {
+        document.addEventListener('page:switch', (e) => {
+            if (e.detail.pageId === 'watchlists') this.loadWatchlist();
+        });
+    },
+
+    async loadWatchlist() {
+        if (!Alpine.store('auth').isLoggedIn) return;
+        this.loading = true;
+        this.error = '';
+        try {
+            const rawItems = await watchlistApi.getAll();
+            const enriched = await Promise.allSettled(
+                rawItems.map(async (item) => {
+                    try {
+                        const content = item.content_type === 'series'
+                            ? await contentApi.getSeries(item.tmdb_id)
+                            : await contentApi.getMovie(item.tmdb_id);
+                        item._title = content.title || content.name || 'Unknown';
+                        item._poster = content.poster_path
+                            ? `https://image.tmdb.org/t/p/w500${content.poster_path}`
+                            : null;
+                        item._rating = content.vote_average || null;
+                    } catch {
+                        item._title = item.content_type + ' ' + item.tmdb_id;
+                        item._poster = null;
+                        item._rating = null;
+                    }
+                    return item;
+                })
+            );
+            this.items = enriched.filter(r => r.status === 'fulfilled').map(r => r.value);
+        } catch (e) {
+            this.error = e.message;
+        } finally {
+            this.loading = false;
+        }
+    },
+
+    get filteredItems() {
+        const map = { continue: 'watching', wishlist: 'plan_to_watch', completed: 'completed', favorites: 'favorites' };
+        const status = map[this.activeFilter];
+        return status ? this.items.filter(i => i.status === status) : this.items;
+    },
+
+    async remove(item) {
+        try {
+            await watchlistApi.remove(item._id);
+            this.items = this.items.filter(i => i._id !== item._id);
+            Alpine.store('toast').show('Removed from Watchlist.');
+        } catch (e) {
+            Alpine.store('toast').show('Error: ' + e.message);
+        }
+    },
+
+    navigateTo(item) {
+        switchPage('detail', { contentId: item.tmdb_id, contentType: item.content_type });
+    },
+}));
+
 // Start Alpine
 Alpine.start();
 
@@ -149,8 +453,11 @@ Alpine.start();
 document.addEventListener('DOMContentLoaded', async () => {
     await pages_ready;
     switchPage('login');
-    initSearch();
-    initFilters();
+
+    document.addEventListener('auth:expired', () => {
+        Alpine.store('auth').logout();
+        switchPage('login');
+    });
 
     const navLinks = document.querySelectorAll('.nav-link');
     navLinks.forEach(link => {
@@ -165,7 +472,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         // 1. Movie Card Click -> Go to Detail
         const movieCard = e.target.closest('.movie-card');
         if (movieCard && !e.target.closest('.bookmark-btn') && !e.target.closest('.episode-card')) {
-            switchPage('detail');
+            const tmdbId = parseInt(movieCard.dataset.tmdbId);
+            const contentType = movieCard.dataset.contentType || 'movie';
+            if (tmdbId) {
+                switchPage('detail', { contentId: tmdbId, contentType });
+            } else {
+                switchPage('detail');
+            }
             return;
         }
 
@@ -174,21 +487,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         const watchBtn = e.target.closest('#btn-watch-now') || e.target.closest('.hero .btn-primary') || epCard;
         if (watchBtn) {
             if (epCard) {
-                const epTitle = epCard.querySelector('h3').innerText;
-                const epDesc = epCard.querySelector('p').innerText;
+                const epTitle = epCard.querySelector('h3')?.innerText;
+                const epDesc = epCard.querySelector('p')?.innerText;
                 const playerTitle = document.querySelector('.player-title');
                 const playerDesc = document.querySelector('#page-watching .detail-desc');
-                if (playerTitle) playerTitle.innerText = epTitle;
-                if (playerDesc) playerDesc.innerText = epDesc;
+                if (playerTitle && epTitle) playerTitle.innerText = epTitle;
+                if (playerDesc && epDesc) playerDesc.innerText = epDesc;
             }
             switchPage('watching');
             return;
         }
 
-        // 3. Login Button -> handled by Alpine x-data="loginForm"
-        // 4. Avatar Dropdown -> handled by Alpine x-data="dropdown"
-
-        // 5. Logout Button -> Go to Login
+        // 3. Logout Button -> Go to Login
         const logoutBtn = e.target.closest('#logout-btn');
         if (logoutBtn) {
             Alpine.store('auth').logout();
@@ -196,48 +506,51 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
-        // 6. Mobile Menu Toggle
+        // 4. Mobile Menu Toggle
         const mobileMenuBtn = e.target.closest('#mobile-menu-btn');
         if (mobileMenuBtn) {
             const navLinksContainer = document.querySelector('.nav-links');
             if (navLinksContainer) navLinksContainer.classList.toggle('active');
         }
 
-        // 7. Bookmarking Logic
+        // 5. Bookmarking from card grids (outside detailPage component)
         const bookmarkBtn = e.target.closest('.bookmark-btn');
         if (bookmarkBtn) {
-            bookmarkBtn.classList.toggle('active');
-            const icon = bookmarkBtn.querySelector('svg');
-            if (bookmarkBtn.classList.contains('active')) {
-                bookmarkBtn.style.background = 'var(--accent-gold)';
-                if (icon) icon.style.fill = 'black';
-                Alpine.store('toast').show("Added to Watchlist!");
-            } else {
-                bookmarkBtn.style.background = 'rgba(122, 120, 128, 0.5)';
-                if (icon) icon.style.fill = 'none';
-                Alpine.store('toast').show("Removed from Watchlist.");
+            const card = bookmarkBtn.closest('.movie-card');
+            if (!card) return;
+            const tmdbId = parseInt(card.dataset.tmdbId);
+            const contentType = card.dataset.contentType || 'movie';
+
+            if (!Alpine.store('auth').isLoggedIn) {
+                switchPage('login');
+                return;
             }
-        }
 
-        // 8. Generic Tab/Chip Switching
-        const chip = e.target.closest('.filter-chip');
-        if (chip) {
-            chip.parentElement.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
-            chip.classList.add('active');
-        }
+            bookmarkBtn.classList.toggle('active');
+            const isAdding = bookmarkBtn.classList.contains('active');
 
-        const tab = e.target.closest('.list-tab, .season-tab');
-        if (tab) {
-            tab.parentElement.querySelectorAll('.list-tab, .season-tab').forEach(t => t.classList.remove('active'));
-            tab.classList.add('active');
-            const tabName = tab.innerText.toLowerCase();
-            const watchlistGrid = document.querySelector('.watchlist-grid');
-            if (tab.classList.contains('list-tab') && watchlistGrid) {
-                const cards = watchlistGrid.querySelectorAll('.movie-card');
-                cards.forEach(card => {
-                    const status = card.querySelector('.card-status')?.innerText.toLowerCase();
-                    card.style.display = (tabName === 'all' || (status && status.includes(tabName))) ? 'block' : 'none';
-                });
+            if (isAdding) {
+                bookmarkBtn.style.background = 'var(--accent-gold)';
+                const icon = bookmarkBtn.querySelector('svg');
+                if (icon) icon.style.fill = 'black';
+                watchlistApi.add(contentType, tmdbId, 'plan_to_watch')
+                    .then(() => Alpine.store('toast').show('Added to Watchlist!'))
+                    .catch(err => {
+                        bookmarkBtn.classList.remove('active');
+                        bookmarkBtn.style.background = '';
+                        Alpine.store('toast').show('Error: ' + err.message);
+                    });
+            } else {
+                bookmarkBtn.style.background = '';
+                const icon = bookmarkBtn.querySelector('svg');
+                if (icon) icon.style.fill = 'none';
+                watchlistApi.getAll()
+                    .then(items => {
+                        const item = items.find(i => i.tmdb_id === tmdbId && i.content_type === contentType);
+                        if (item) return watchlistApi.remove(item._id);
+                    })
+                    .then(() => Alpine.store('toast').show('Removed from Watchlist.'))
+                    .catch(err => Alpine.store('toast').show('Error: ' + err.message));
             }
         }
     });

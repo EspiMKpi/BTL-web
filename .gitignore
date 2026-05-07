@@ -21,3 +21,23 @@ __pycache__/
 
 # Log files
 *.log
+
+#Claude
+*.claude/
+
+#opencode
+.opencode/
+
+
+# Node dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+#Spare md
+ADMIN_FEATURES_CHANGES.md
+IMPLEMENTATION.md
+README_CHANGES.md
+plan.txt

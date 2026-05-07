@@ -1,18 +1,20 @@
-<div id="page-movies" class="page-content">
+<div id="page-movies" class="page-content" x-data="moviesPage">
     <section class="catalog-hero">
         <div>
-            <p class="landing-eyebrow">Movies</p>
-            <h1 class="catalog-title">One Library. Every Mood.</h1>
-            <p class="catalog-copy">From big-screen event films to hidden international gems, discover your next obsession in seconds.</p>
+            <p class="landing-eyebrow" x-text="browsingGenre ? browsingGenre.name : (isSearchMode ? 'Search Results' : 'Movies & Series')">Movies & Series</p>
+            <h1 class="catalog-title" x-show="!isSearchMode && !browsingGenre">One Library. Every Mood.</h1>
+            <h1 class="catalog-title" x-show="isSearchMode" x-text="'Results for: ' + searchQuery"></h1>
+            <h1 class="catalog-title" x-show="browsingGenre" x-text="browsingGenre ? browsingGenre.name : ''"></h1>
+            <p class="catalog-copy" x-show="!isSearchMode && !browsingGenre">From big-screen event films to hidden international gems, discover your next obsession in seconds.</p>
         </div>
-        <div class="catalog-hero-metrics">
+        <div class="catalog-hero-metrics" x-show="!isSearchMode && !browsingGenre">
             <div class="catalog-metric">
-                <span>2,700+</span>
-                <p>Feature films</p>
+                <span x-text="rails.reduce((s, r) => s + r.items.length, 0) || '...'">...</span>
+                <p>Titles available</p>
             </div>
             <div class="catalog-metric">
-                <span>130+</span>
-                <p>New arrivals monthly</p>
+                <span x-text="genres.length || '...'">...</span>
+                <p>Genres</p>
             </div>
             <div class="catalog-metric">
                 <span>98%</span>
@@ -22,137 +24,135 @@
     </section>
 
     <div class="filter-bar">
-        <button class="btn-filter" id="filter-dropdown-toggle">
-            <div class="icon-wrapper" style="width: 18px; height: 18px; color: white;">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>
-            </div>
-            <span>Filters</span>
-        </button>
-
         <div class="filter-search">
-            <input type="text" placeholder="Search title, director, or keyword">
+            <input type="text" placeholder="Search title, director, or keyword"
+                   :value="searchQuery"
+                   @input="onSearchInput($event.target.value)">
             <div class="icon-wrapper" style="width: 14px; height: 14px; color: rgba(255,255,255,0.3);">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
             </div>
         </div>
-
-        <button class="btn btn-primary" style="height: 40px; border-radius: 12px;">
-            <div class="icon-wrapper" style="width: 18px; height: 18px; color: black;">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-            </div>
-            Search
+        <button class="btn btn-secondary" x-show="isSearchMode || browsingGenre" @click="clearBrowse()" style="height: 40px; border-radius: 12px;">
+            ← All
         </button>
     </div>
 
-    <div class="filter-panel" id="filter-panel">
-        <div class="filter-group" data-filter-group="year">
-            <h3>Year</h3>
-            <label class="custom-checkbox"><input type="checkbox" value="2026"> 2026</label>
-            <label class="custom-checkbox"><input type="checkbox" value="2025" checked> 2025</label>
-            <label class="custom-checkbox"><input type="checkbox" value="2024" checked> 2024</label>
-            <label class="custom-checkbox"><input type="checkbox" value="2023"> 2023</label>
-            <label class="custom-checkbox"><input type="checkbox" value="classic"> 2010 - 2022</label>
-        </div>
-        <div class="filter-group" data-filter-group="genre">
-            <h3>Genre</h3>
-            <label class="custom-checkbox"><input type="checkbox" value="action" checked> Action</label>
-            <label class="custom-checkbox"><input type="checkbox" value="drama" checked> Drama</label>
-            <label class="custom-checkbox"><input type="checkbox" value="sci-fi" checked> Sci-fi</label>
-            <label class="custom-checkbox"><input type="checkbox" value="thriller"> Thriller</label>
-            <label class="custom-checkbox"><input type="checkbox" value="animation"> Animation</label>
-        </div>
-        <div class="filter-group" data-filter-group="type">
-            <h3>Type</h3>
-            <label class="custom-checkbox"><input type="checkbox" value="movie" checked> Movie</label>
-            <label class="custom-checkbox"><input type="checkbox" value="mini-series"> Mini Series</label>
-            <label class="custom-checkbox"><input type="checkbox" value="event"> Event Premiere</label>
-        </div>
-        <div class="filter-group">
-            <h3>Duration</h3>
-            <label class="custom-checkbox"><input type="checkbox" value="short"> Under 90 min</label>
-            <label class="custom-checkbox"><input type="checkbox" value="medium" checked> 90 - 130 min</label>
-            <label class="custom-checkbox"><input type="checkbox" value="long"> 130+ min</label>
+    <div class="filters" x-show="!isSearchMode && genres.length > 0">
+        <template x-for="genre in genres" :key="genre.genre_id">
+            <button class="filter-chip"
+                    :class="{ active: browsingGenre && browsingGenre.id === genre.genre_id }"
+                    @click="browseGenre(genre.genre_id, genre.name)"
+                    x-text="genre.name"></button>
+        </template>
+    </div>
+
+    <!-- Loading state -->
+    <div x-show="loading" style="text-align:center; padding: 60px 20px; color: rgba(255,255,255,0.5);">
+        Loading...
+    </div>
+
+    <!-- Error state -->
+    <div x-show="error && !loading" style="text-align:center; padding: 40px 20px; color: #ff6b6b;" x-text="error"></div>
+
+    <!-- Home Rails -->
+    <div x-show="!isSearchMode && !browsingGenre && !loading">
+        <template x-for="rail in rails" :key="rail.id">
+            <section class="movie-section">
+                <div class="section-header">
+                    <h2 class="section-title" x-text="rail.title"></h2>
+                </div>
+                <div class="movie-grid">
+                    <template x-for="item in rail.items" :key="item.tmdb_id">
+                        <div class="movie-card"
+                             :data-tmdb-id="item.tmdb_id"
+                             :data-content-type="rail.content_type"
+                             @click="navigateTo(item, rail.content_type)">
+                            <div class="poster-container">
+                                <img :src="posterUrl(item.poster_path)" :alt="getTitle(item, rail.content_type)" loading="lazy">
+                                <span class="rating-badge" x-text="item.vote_average ? item.vote_average.toFixed(1) : 'N/A'"></span>
+                                <div class="bookmark-btn">
+                                    <div class="icon-wrapper" style="width: 14px; height: 14px;">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-info">
+                                <span class="card-title" x-text="getTitle(item, rail.content_type)"></span>
+                                <span class="card-status" x-text="getYear(item, rail.content_type)"></span>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </section>
+        </template>
+        <div x-show="!loading && rails.length === 0 && !error" style="text-align:center; padding: 60px 20px; color: rgba(255,255,255,0.4);">
+            No content available yet.
         </div>
     </div>
 
-    <section class="movie-section catalog-main-grid">
-        <div class="section-header">
-            <h2 class="section-title">Now on VozFlix</h2>
-            <a href="#discover" class="see-all">Go to Discover</a>
-        </div>
-
-        <div class="movie-grid" id="search-results-grid">
-            <div class="movie-card" data-year="2025" data-genre="action,sci-fi" data-type="movie">
-                <div class="poster-container">
-                    <img src="https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=800&auto=format&fit=crop" alt="Orbital Run">
-                    <span class="rating-badge">9.1</span>
-                    <div class="bookmark-btn"><div class="icon-wrapper" style="width: 14px; height: 14px;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg></div></div>
-                </div>
-                <div class="card-info"><span class="card-title">Orbital Run</span><span class="card-status">2025 · Sci-fi Action</span></div>
+    <!-- Search Results -->
+    <div x-show="isSearchMode && !searching">
+        <section class="movie-section">
+            <div class="section-header">
+                <h2 class="section-title" x-text="searchResults.length + ' results'"></h2>
             </div>
-
-            <div class="movie-card" data-year="2024" data-genre="drama,thriller" data-type="movie">
-                <div class="poster-container">
-                    <img src="https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=800&auto=format&fit=crop" alt="Glass District">
-                    <span class="rating-badge">8.8</span>
-                    <div class="bookmark-btn"><div class="icon-wrapper" style="width: 14px; height: 14px;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg></div></div>
-                </div>
-                <div class="card-info"><span class="card-title">Glass District</span><span class="card-status">2024 · Noir Thriller</span></div>
+            <div class="movie-grid" id="search-results-grid">
+                <template x-for="item in searchResults" :key="item.tmdb_id">
+                    <div class="movie-card"
+                         :data-tmdb-id="item.tmdb_id"
+                         data-content-type="movie"
+                         @click="navigateTo(item, 'movie')">
+                        <div class="poster-container">
+                            <img :src="posterUrl(item.poster_path)" :alt="item.title" loading="lazy">
+                            <span class="rating-badge" x-text="item.vote_average ? item.vote_average.toFixed(1) : 'N/A'"></span>
+                            <div class="bookmark-btn">
+                                <div class="icon-wrapper" style="width: 14px; height: 14px;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-info">
+                            <span class="card-title" x-text="item.title"></span>
+                            <span class="card-status" x-text="item.release_date ? item.release_date.substring(0,4) : ''"></span>
+                        </div>
+                    </div>
+                </template>
+                <div x-show="searchResults.length === 0" style="color: rgba(255,255,255,0.4); padding: 40px;">No results found.</div>
             </div>
+        </section>
+    </div>
+    <div x-show="isSearchMode && searching" style="text-align:center; padding: 40px; color: rgba(255,255,255,0.5);">Searching...</div>
 
-            <div class="movie-card" data-year="2025" data-genre="animation,drama" data-type="movie">
-                <div class="poster-container">
-                    <img src="https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?q=80&w=800&auto=format&fit=crop" alt="Paper Hearts">
-                    <span class="rating-badge">8.4</span>
-                    <div class="bookmark-btn"><div class="icon-wrapper" style="width: 14px; height: 14px;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg></div></div>
-                </div>
-                <div class="card-info"><span class="card-title">Paper Hearts</span><span class="card-status">2025 · Animated Drama</span></div>
+    <!-- Browse by Genre Results -->
+    <div x-show="browsingGenre && !browseLoading">
+        <section class="movie-section">
+            <div class="section-header">
+                <h2 class="section-title" x-text="browseResults.length + ' titles in ' + (browsingGenre ? browsingGenre.name : '')"></h2>
             </div>
-
-            <div class="movie-card" data-year="2023" data-genre="action,thriller" data-type="event">
-                <div class="poster-container">
-                    <img src="https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=800&auto=format&fit=crop" alt="Last Heist">
-                    <span class="rating-badge">8.7</span>
-                    <div class="bookmark-btn"><div class="icon-wrapper" style="width: 14px; height: 14px;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg></div></div>
-                </div>
-                <div class="card-info"><span class="card-title">Last Heist</span><span class="card-status">2023 · Event Premiere</span></div>
+            <div class="movie-grid">
+                <template x-for="item in browseResults" :key="item.tmdb_id + '-' + item._ct">
+                    <div class="movie-card"
+                         :data-tmdb-id="item.tmdb_id"
+                         :data-content-type="item._ct"
+                         @click="navigateTo(item, item._ct)">
+                        <div class="poster-container">
+                            <img :src="posterUrl(item.poster_path)" :alt="getTitle(item, item._ct)" loading="lazy">
+                            <span class="rating-badge" x-text="item.vote_average ? item.vote_average.toFixed(1) : 'N/A'"></span>
+                            <div class="bookmark-btn">
+                                <div class="icon-wrapper" style="width: 14px; height: 14px;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-info">
+                            <span class="card-title" x-text="getTitle(item, item._ct)"></span>
+                            <span class="card-status" x-text="getYear(item, item._ct)"></span>
+                        </div>
+                    </div>
+                </template>
+                <div x-show="browseResults.length === 0" style="color: rgba(255,255,255,0.4); padding: 40px;">No titles in this genre.</div>
             </div>
-
-            <div class="movie-card" data-year="2024" data-genre="sci-fi,drama" data-type="movie">
-                <div class="poster-container">
-                    <img src="https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=800&auto=format&fit=crop" alt="Project Sol">
-                    <span class="rating-badge">9.0</span>
-                    <div class="bookmark-btn"><div class="icon-wrapper" style="width: 14px; height: 14px;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg></div></div>
-                </div>
-                <div class="card-info"><span class="card-title">Project Sol</span><span class="card-status">2024 · Sci-fi Drama</span></div>
-            </div>
-
-            <div class="movie-card" data-year="2025" data-genre="drama" data-type="movie">
-                <div class="poster-container">
-                    <img src="https://images.unsplash.com/photo-1478720568477-152d9b164e26?q=80&w=800&auto=format&fit=crop" alt="Avenue 17">
-                    <span class="rating-badge">8.3</span>
-                    <div class="bookmark-btn"><div class="icon-wrapper" style="width: 14px; height: 14px;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg></div></div>
-                </div>
-                <div class="card-info"><span class="card-title">Avenue 17</span><span class="card-status">2025 · Character Drama</span></div>
-            </div>
-
-            <div class="movie-card" data-year="2024" data-genre="action,drama" data-type="movie">
-                <div class="poster-container">
-                    <img src="https://images.unsplash.com/photo-1524985069026-dd778a71c7b4?q=80&w=800&auto=format&fit=crop" alt="Kingfall">
-                    <span class="rating-badge">8.6</span>
-                    <div class="bookmark-btn"><div class="icon-wrapper" style="width: 14px; height: 14px;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg></div></div>
-                </div>
-                <div class="card-info"><span class="card-title">Kingfall</span><span class="card-status">2024 · Epic Action</span></div>
-            </div>
-
-            <div class="movie-card" data-year="2026" data-genre="sci-fi,thriller" data-type="event">
-                <div class="poster-container">
-                    <img src="https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?q=80&w=800&auto=format&fit=crop" alt="Outerline">
-                    <span class="rating-badge">9.2</span>
-                    <div class="bookmark-btn"><div class="icon-wrapper" style="width: 14px; height: 14px;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg></div></div>
-                </div>
-                <div class="card-info"><span class="card-title">Outerline</span><span class="card-status">2026 · Sci-fi Event</span></div>
-            </div>
-        </div>
-    </section>
+        </section>
+    </div>
+    <div x-show="browsingGenre && browseLoading" style="text-align:center; padding: 40px; color: rgba(255,255,255,0.5);">Loading...</div>
 </div>
