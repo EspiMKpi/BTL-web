@@ -19,6 +19,30 @@ def _cache_key(user_id: Optional[str], rail_limit: int) -> str:
     return f"home:{user_id or 'anon'}:{rail_limit}"
 
 
+def clear_home_cache() -> None:
+    """Drop all cached anonymous home rails (call after admin visibility toggles)."""
+    _home_cache.clear()
+
+
+async def get_hidden_genre_ids() -> List[int]:
+    """Genre IDs currently flagged is_hidden=True."""
+    db = get_database()
+    cursor = db.genres.find({"is_hidden": True}, {"genre_id": 1})
+    return [doc["genre_id"] async for doc in cursor]
+
+
+async def public_content_filter() -> Dict[str, Any]:
+    """
+    Mongo filter for movies/series visible to public users.
+    Excludes per-doc-hidden items AND items tagged with any hidden genre.
+    """
+    f: Dict[str, Any] = {"is_hidden": {"$ne": True}}
+    hidden_ids = await get_hidden_genre_ids()
+    if hidden_ids:
+        f["genres.genre_id"] = {"$nin": hidden_ids}
+    return f
+
+
 async def get_home_rails(user_id: Optional[str] = None, rail_limit: int = 10) -> dict:
     """Build Netflix-style home page rails."""
     cache_key = _cache_key(user_id, rail_limit)
@@ -29,15 +53,15 @@ async def get_home_rails(user_id: Optional[str] = None, rail_limit: int = 10) ->
 
     db = get_database()
 
-    # Fetch all rails concurrently — exclude hidden content
-    hidden_filter = {"is_hidden": {"$ne": True}}
+    # Fetch all rails concurrently — exclude hidden content (per-doc + hidden-genre cascade)
+    hidden_filter = await public_content_filter()
     trending_movies = await db.movies.find(hidden_filter).sort("popularity", -1).limit(rail_limit).to_list(rail_limit)
     trending_series = await db.series.find(hidden_filter).sort("popularity", -1).limit(rail_limit).to_list(rail_limit)
     top_rated_movies = await db.movies.find({"vote_count": {"$gte": 50}, **hidden_filter}).sort("vote_average", -1).limit(rail_limit).to_list(rail_limit)
     top_rated_series = await db.series.find({"vote_count": {"$gte": 50}, **hidden_filter}).sort("vote_average", -1).limit(rail_limit).to_list(rail_limit)
     new_release_movies = await db.movies.find(hidden_filter).sort("release_date", -1).limit(rail_limit).to_list(rail_limit)
     recent_series = await db.series.find(hidden_filter).sort("first_air_date", -1).limit(rail_limit).to_list(rail_limit)
-    genres = await db.genres.find().sort("name", 1).to_list(100)
+    genres = await db.genres.find({"is_hidden": {"$ne": True}}).sort("name", 1).to_list(100)
 
     # Sanitize all documents (convert ObjectId, datetime, etc.)
     for doc_list in (trending_movies, trending_series, top_rated_movies, top_rated_series, new_release_movies, recent_series):
@@ -69,8 +93,8 @@ async def get_home_rails(user_id: Optional[str] = None, rail_limit: int = 10) ->
             movie_ids = [h["tmdb_id"] for h in continue_items if h["content_type"] == "movie"]
             series_ids = [h["tmdb_id"] for h in continue_items if h["content_type"] == "series"]
 
-            movies = await db.movies.find({"tmdb_id": {"$in": movie_ids}}).to_list(50) if movie_ids else []
-            series_list = await db.series.find({"tmdb_id": {"$in": series_ids}}).to_list(50) if series_ids else []
+            movies = await db.movies.find({"tmdb_id": {"$in": movie_ids}, **hidden_filter}).to_list(50) if movie_ids else []
+            series_list = await db.series.find({"tmdb_id": {"$in": series_ids}, **hidden_filter}).to_list(50) if series_ids else []
 
             content_map: Dict[str, dict] = {}
             for m in movies:
@@ -117,7 +141,21 @@ async def get_content_by_genre(genre_id: int, page: int = 1, limit: int = 20) ->
     db = get_database()
     skip = (page - 1) * limit
 
-    genre_filter = {"genres.genre_id": genre_id, "is_hidden": {"$ne": True}}
+    # Exclude items tagged with any *other* hidden genre too (cross-tag cascade).
+    other_hidden = [g for g in await get_hidden_genre_ids() if g != genre_id]
+    genre_filter: Dict[str, Any] = {
+        "genres.genre_id": genre_id,
+        "is_hidden": {"$ne": True},
+    }
+    if other_hidden:
+        genre_filter = {
+            "$and": [
+                {"genres.genre_id": genre_id},
+                {"genres.genre_id": {"$nin": other_hidden}},
+                {"is_hidden": {"$ne": True}},
+            ]
+        }
+
     movies = await db.movies.find(genre_filter).sort("popularity", -1).skip(skip).limit(limit).to_list(limit)
     series_list = await db.series.find(genre_filter).sort("popularity", -1).skip(skip).limit(limit).to_list(limit)
     movie_total = await db.movies.count_documents(genre_filter)

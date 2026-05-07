@@ -9,7 +9,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.core.deps import get_optional_current_user
 from app.database import get_database
-from app.services.library_service import get_content_by_genre, get_home_rails
+from app.services.library_service import (
+    get_content_by_genre,
+    get_hidden_genre_ids,
+    get_home_rails,
+    public_content_filter,
+)
 from app.services.movie_service import get_movie_by_id
 from app.services.series_service import get_series_by_id
 from app.utils import sanitize
@@ -30,7 +35,7 @@ async def home(
 @router.get("/genres")
 async def list_genres():
     db = get_database()
-    cursor = db.genres.find().sort("name", 1)
+    cursor = db.genres.find({"is_hidden": {"$ne": True}}).sort("name", 1)
     genres = []
     async for doc in cursor:
         genres.append(sanitize(doc))
@@ -43,6 +48,10 @@ async def browse_genre(
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
 ):
+    db = get_database()
+    genre = await db.genres.find_one({"genre_id": genre_id})
+    if genre and genre.get("is_hidden"):
+        raise HTTPException(status_code=404, detail="Genre not found")
     return await get_content_by_genre(genre_id, page, limit)
 
 
@@ -55,14 +64,15 @@ async def search_content(
     skip = (page - 1) * limit
     db = get_database()
     escaped = q.replace(".", r"\.")
+    public_filter = await public_content_filter()
 
     # Search both movies and series
     movie_cursor = db.movies.find(
-        {"title": {"$regex": escaped, "$options": "i"}, "is_hidden": {"$ne": True}},
+        {"title": {"$regex": escaped, "$options": "i"}, **public_filter},
         {"tmdb_id": 1, "title": 1, "poster_path": 1, "backdrop_path": 1, "vote_average": 1, "release_date": 1, "overview": 1},
     ).limit(limit + skip)
     series_cursor = db.series.find(
-        {"name": {"$regex": escaped, "$options": "i"}, "is_hidden": {"$ne": True}},
+        {"name": {"$regex": escaped, "$options": "i"}, **public_filter},
         {"tmdb_id": 1, "name": 1, "poster_path": 1, "backdrop_path": 1, "vote_average": 1, "first_air_date": 1, "overview": 1},
     ).limit(limit + skip)
 
@@ -79,17 +89,31 @@ async def search_content(
     }
 
 
+def _has_hidden_genre(doc: dict, hidden_ids: list[int]) -> bool:
+    if not hidden_ids:
+        return False
+    return any(g.get("genre_id") in hidden_ids for g in (doc.get("genres") or []))
+
+
 @router.get("/movie/{movie_id}")
 async def movie_detail(movie_id: int):
     try:
-        return await get_movie_by_id(movie_id)
+        movie = await get_movie_by_id(movie_id)
     except Exception as exc:
         raise HTTPException(status_code=404, detail=str(exc))
+    hidden_ids = await get_hidden_genre_ids()
+    if movie.get("is_hidden") or _has_hidden_genre(movie, hidden_ids):
+        raise HTTPException(status_code=404, detail="Movie not found")
+    return movie
 
 
 @router.get("/series/{series_id}")
 async def series_detail(series_id: int):
     try:
-        return await get_series_by_id(series_id)
+        series = await get_series_by_id(series_id)
     except Exception as exc:
         raise HTTPException(status_code=404, detail=str(exc))
+    hidden_ids = await get_hidden_genre_ids()
+    if series.get("is_hidden") or _has_hidden_genre(series, hidden_ids):
+        raise HTTPException(status_code=404, detail="Series not found")
+    return series

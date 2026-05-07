@@ -116,4 +116,10 @@ export const adminApi = {
         apiFetch(`/api/admin/comments?page=${page}&limit=${limit}`),
     deleteComment: (commentId) =>
         apiFetch(`/api/admin/comments/${commentId}`, { method: 'DELETE' }),
+    getGenres: () => apiFetch('/api/admin/genres'),
+    toggleGenreVisibility: (genreId, isHidden) =>
+        apiFetch(`/api/admin/genres/${genreId}/visibility`, {
+            method: 'PATCH',
+            body: JSON.stringify({ is_hidden: isHidden }),
+        }),
 };

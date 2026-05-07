@@ -15,8 +15,10 @@ from app.models.schemas import (
     AdminUserOut,
     BanUserRequest,
     CommentOut,
+    HideGenreRequest,
     HideMovieRequest,
 )
+from app.services.library_service import clear_home_cache
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -104,8 +106,45 @@ async def toggle_movie_visibility(
     if not result:
         raise HTTPException(status_code=404, detail="Movie not found")
 
+    clear_home_cache()
     action = "hidden" if body.is_hidden else "visible"
     return {"message": f"Movie is now {action}", "tmdb_id": tmdb_id, "is_hidden": body.is_hidden}
+
+
+# ─── Genre visibility ────────────────────────────────────────────────────
+
+@router.get("/genres")
+async def list_genres(admin: dict = Depends(get_admin_user)):
+    """List all genres with visibility status (admin sees hidden ones too)."""
+    db = get_database()
+    cursor = db.genres.find().sort("name", 1)
+    genres = []
+    async for doc in cursor:
+        doc["_id"] = str(doc["_id"])
+        doc.setdefault("is_hidden", False)
+        genres.append(doc)
+    return genres
+
+
+@router.patch("/genres/{genre_id}/visibility")
+async def toggle_genre_visibility(
+    genre_id: int,
+    body: HideGenreRequest,
+    admin: dict = Depends(get_admin_user),
+):
+    """Show or hide a genre from regular users."""
+    db = get_database()
+    result = await db.genres.find_one_and_update(
+        {"genre_id": genre_id},
+        {"$set": {"is_hidden": body.is_hidden, "updated_at": datetime.utcnow()}},
+        return_document=True,
+    )
+    if not result:
+        raise HTTPException(status_code=404, detail="Genre not found")
+
+    clear_home_cache()
+    action = "hidden" if body.is_hidden else "visible"
+    return {"message": f"Genre is now {action}", "genre_id": genre_id, "is_hidden": body.is_hidden}
 
 
 # ─── Comment moderation ──────────────────────────────────────────────────

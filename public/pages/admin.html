@@ -41,6 +41,12 @@
                 </div>
                 Users
             </button>
+            <button class="admin-tab" :class="{ active: activeTab === 'genres' }" @click="activeTab = 'genres'; loadGenres()">
+                <div class="icon-wrapper" style="width:16px; height:16px; margin-right:6px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+                </div>
+                Genres
+            </button>
         </div>
 
         <!-- Loading -->
@@ -177,6 +183,46 @@
                 </table>
                 <div x-show="filteredUsers.length === 0 && !loading" style="text-align:center; padding:40px; color:rgba(255,255,255,0.4);">
                     No users found.
+                </div>
+            </div>
+        </div>
+
+        <!-- ====== Genres Tab ====== -->
+        <div x-show="activeTab === 'genres' && !loading">
+            <div class="admin-search-bar">
+                <input type="text" placeholder="Search genres..." x-model="genreSearch"
+                       class="admin-search-input">
+            </div>
+            <div class="admin-table-wrap">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Genre ID</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="genre in filteredGenres" :key="genre._id">
+                            <tr>
+                                <td x-text="genre.name || 'Unnamed'"></td>
+                                <td x-text="genre.genre_id"></td>
+                                <td>
+                                    <span class="admin-badge" :class="genre.is_hidden ? 'badge-hidden' : 'badge-visible'"
+                                          x-text="genre.is_hidden ? 'Hidden' : 'Visible'"></span>
+                                </td>
+                                <td>
+                                    <button class="admin-btn" :class="genre.is_hidden ? 'admin-btn-success' : 'admin-btn-danger'"
+                                            @click="toggleGenreVisibility(genre)"
+                                            x-text="genre.is_hidden ? 'Show' : 'Hide'"></button>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+                <div x-show="filteredGenres.length === 0 && !loading" style="text-align:center; padding:40px; color:rgba(255,255,255,0.4);">
+                    No genres found.
                 </div>
             </div>
         </div>
