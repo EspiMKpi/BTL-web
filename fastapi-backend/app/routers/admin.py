@@ -148,6 +148,7 @@ async def toggle_genre_visibility(
 
 
 # ─── Comment moderation ──────────────────────────────────────────────────
+# Reviews are stored in `user_ratings` (a `review` text field on each rating doc).
 
 @router.get("/comments")
 async def list_all_comments(
@@ -155,13 +156,23 @@ async def list_all_comments(
     limit: int = Query(50, ge=1, le=200),
     admin: dict = Depends(get_admin_user),
 ):
-    """List all comments across all content (paginated)."""
+    """List all reviews across all content (paginated)."""
     db = get_database()
     skip = (page - 1) * limit
-    cursor = db.comments.find().sort("created_at", -1).skip(skip).limit(limit)
+    query = {"review": {"$nin": [None, ""]}}
+    cursor = db.user_ratings.find(query).sort("created_at", -1).skip(skip).limit(limit)
     comments = []
     async for doc in cursor:
         doc["_id"] = str(doc["_id"])
+        doc["text"] = doc.get("review", "")
+        try:
+            user = await db.users.find_one({"_id": ObjectId(doc["user_id"])})
+        except Exception:
+            user = None
+        if user:
+            doc["username"] = user.get("username") or user.get("email") or "User"
+        else:
+            doc["username"] = "Anonymous"
         comments.append(doc)
     return comments
 
@@ -171,14 +182,14 @@ async def delete_comment(
     comment_id: str,
     admin: dict = Depends(get_admin_user),
 ):
-    """Delete a comment by admin."""
+    """Delete a review by admin (removes the user_ratings document)."""
     db = get_database()
     try:
         oid = ObjectId(comment_id)
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid comment ID")
 
-    result = await db.comments.delete_one({"_id": oid})
+    result = await db.user_ratings.delete_one({"_id": oid})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Comment not found")
 
