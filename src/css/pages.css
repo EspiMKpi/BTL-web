@@ -617,6 +617,23 @@
     padding: 18px 24px;
     cursor: pointer;
     transition: background 0.25s ease;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.nf-faq-question::after {
+    content: '+';
+    font-size: 24px;
+    font-weight: 300;
+    color: var(--text-muted);
+    transition: transform 0.3s ease;
+    flex-shrink: 0;
+    margin-left: 16px;
+}
+
+.nf-faq-item.open .nf-faq-question::after {
+    content: '−';
 }
 
 .nf-faq-question:hover {

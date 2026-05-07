@@ -4,26 +4,12 @@ Home rails, genre browsing, profile stats, recent activity.
 """
 
 from datetime import datetime
-from functools import wraps
 from typing import Any, Dict, List, Optional
 
-from bson import ObjectId
 from cachetools import TTLCache
 
 from app.database import get_database
-
-
-def _sanitize(value: Any) -> Any:
-    """Recursively convert ObjectId and datetime to JSON-serializable types."""
-    if isinstance(value, ObjectId):
-        return str(value)
-    if isinstance(value, datetime):
-        return value.isoformat()
-    if isinstance(value, dict):
-        return {k: _sanitize(v) for k, v in value.items()}
-    if isinstance(value, list):
-        return [_sanitize(v) for v in value]
-    return value
+from app.utils import sanitize as _sanitize
 
 # ── In-memory TTL cache for home rails (per-worker, 5 min TTL) ───────────
 _home_cache: TTLCache[str, dict] = TTLCache(maxsize=64, ttl=300)

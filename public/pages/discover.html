@@ -109,39 +109,39 @@
             <h2 class="section-title">Frequently Asked Questions</h2>
         </div>
         <div class="nf-faq-list">
-            <article class="nf-faq-item" x-data="faqItem">
+            <article class="nf-faq-item" x-data="faqItem" :class="{'open': open}">
                 <button class="nf-faq-question" type="button" :aria-expanded="open" @click="toggle()">What is VozFlix?</button>
-                <div class="nf-faq-answer" x-show="open">
+                <div class="nf-faq-answer">
                     <p>VozFlix is a free movie and TV series streaming platform powered by TMDB. Browse thousands of titles across every genre — from action blockbusters and gripping thrillers to heartwarming comedies and binge-worthy TV shows. Create a free account to build watchlists, track your viewing history, and pick up right where you left off on any device.</p>
                 </div>
             </article>
-            <article class="nf-faq-item" x-data="faqItem">
+            <article class="nf-faq-item" x-data="faqItem" :class="{'open': open}">
                 <button class="nf-faq-question" type="button" :aria-expanded="open" @click="toggle()">How much does VozFlix cost?</button>
-                <div class="nf-faq-answer" x-show="open">
+                <div class="nf-faq-answer">
                     <p>VozFlix is completely free to use. Sign up with just an email address and start streaming immediately — no credit card required, no hidden fees, and no paywalls. All movies and series are available to every registered user at no charge.</p>
                 </div>
             </article>
-            <article class="nf-faq-item" x-data="faqItem">
+            <article class="nf-faq-item" x-data="faqItem" :class="{'open': open}">
                 <button class="nf-faq-question" type="button" :aria-expanded="open" @click="toggle()">Where can I watch?</button>
-                <div class="nf-faq-answer" x-show="open">
+                <div class="nf-faq-answer">
                     <p>You can watch VozFlix on any device with a modern web browser. That includes laptops, desktops, tablets, and smartphones — no app download needed. Just visit the site, sign in, and start streaming. Your watchlist and viewing history sync automatically across all your devices.</p>
                 </div>
             </article>
-            <article class="nf-faq-item" x-data="faqItem">
+            <article class="nf-faq-item" x-data="faqItem" :class="{'open': open}">
                 <button class="nf-faq-question" type="button" :aria-expanded="open" @click="toggle()">Can I save movies to watch later?</button>
-                <div class="nf-faq-answer" x-show="open">
+                <div class="nf-faq-answer">
                     <p>Absolutely. Click the bookmark icon on any movie or series card to add it to your personal watchlist. Organise your saved titles by status — plan to watch, watching, completed, or favourites — and access them anytime from the Watchlists tab in the navigation bar.</p>
                 </div>
             </article>
-            <article class="nf-faq-item" x-data="faqItem">
+            <article class="nf-faq-item" x-data="faqItem" :class="{'open': open}">
                 <button class="nf-faq-question" type="button" :aria-expanded="open" @click="toggle()">How does the recommendation system work?</button>
-                <div class="nf-faq-answer" x-show="open">
+                <div class="nf-faq-answer">
                     <p>VozFlix curates personalised content rails on the Discover page based on trending titles, top-rated picks, and new releases sourced from TMDB. You can also browse by genre or use the search bar to find specific movies, series, or actors. The more you explore, the better your experience becomes.</p>
                 </div>
             </article>
-            <article class="nf-faq-item" x-data="faqItem">
+            <article class="nf-faq-item" x-data="faqItem" :class="{'open': open}">
                 <button class="nf-faq-question" type="button" :aria-expanded="open" @click="toggle()">Does VozFlix track my watch history?</button>
-                <div class="nf-faq-answer" x-show="open">
+                <div class="nf-faq-answer">
                     <p>Yes. When you're signed in, VozFlix automatically saves your viewing progress so you can resume playback from exactly where you left off. Your watch history is accessible from your profile and helps you keep track of what you've watched and what's next on your list.</p>
                 </div>
             </article>

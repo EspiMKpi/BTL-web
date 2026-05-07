@@ -4,27 +4,13 @@ Two-tier fetch: MongoDB first, then TMDB API with upsert.
 """
 
 from datetime import datetime
-from typing import Any, List, Optional
+from typing import List
 
 import httpx
-import re
-from bson import ObjectId
 
 from app.core.config import settings
 from app.database import get_database
-
-
-def _sanitize(value: Any) -> Any:
-    """Recursively convert ObjectId and datetime to JSON-serializable types."""
-    if isinstance(value, ObjectId):
-        return str(value)
-    if isinstance(value, datetime):
-        return value.isoformat()
-    if isinstance(value, dict):
-        return {k: _sanitize(v) for k, v in value.items()}
-    if isinstance(value, list):
-        return [_sanitize(v) for v in value]
-    return value
+from app.utils import sanitize as _sanitize
 
 
 async def get_movie_by_id(tmdb_id: int) -> dict:
@@ -33,10 +19,7 @@ async def get_movie_by_id(tmdb_id: int) -> dict:
 
     existing = await db.movies.find_one({"tmdb_id": tmdb_id})
     if existing and existing.get("raw_data") and existing.get("title"):
-        print(f"Movie {tmdb_id} served from MongoDB")
         return _sanitize(existing)
-
-    print(f"Movie {tmdb_id} fetching from TMDB...")
     async with httpx.AsyncClient() as client:
         resp = await client.get(
             f"https://api.themoviedb.org/3/movie/{tmdb_id}",
@@ -106,7 +89,7 @@ async def get_movie_by_id(tmdb_id: int) -> dict:
         "production_countries_json": data.get("production_countries", []),
         "spoken_languages_json": data.get("spoken_languages", []),
         "raw_data": data,
-        "updated_at": __import__("datetime").datetime.utcnow(),
+        "updated_at": datetime.utcnow(),
     }
 
     result = await db.movies.find_one_and_update(
@@ -130,16 +113,4 @@ async def get_movies_by_ids(tmdb_ids: List[int]) -> List[dict]:
     return docs
 
 
-async def search_movies(query: str, limit: int = 20) -> List[dict]:
-    db = get_database()
-    escaped_query = re.escape(query)
-    cursor = (
-        db.movies.find({"title": {"$regex": escaped_query, "$options": "i"}, "is_hidden": {"$ne": True}})
-        # Optional: You can't use textScore anymore, so sort alphabetically or by year
-        # .sort("title", 1) 
-        .limit(limit)
-    )
-    docs = []
-    async for doc in cursor:
-        docs.append(_sanitize(doc))
-    return docs
+

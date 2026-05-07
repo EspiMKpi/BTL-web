@@ -1,4 +1,4 @@
-async function apiFetch(endpoint, options = {}) {
+export async function apiFetch(endpoint, options = {}) {
     const token = localStorage.getItem('token');
     const headers = { ...options.headers };
 

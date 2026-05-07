@@ -6,7 +6,7 @@ import pytest
 from bson import ObjectId
 from unittest.mock import AsyncMock, patch, MagicMock
 
-from app.services.movie_service import get_movie_by_id, get_movies_by_ids, search_movies
+from app.services.movie_service import get_movie_by_id, get_movies_by_ids
 
 
 # ── get_movie_by_id ───────────────────────────────────────────────────────
@@ -140,12 +140,3 @@ class TestGetMoviesByIds:
         result = await get_movies_by_ids([9999])
         assert result == []
 
-
-# ── search_movies ─────────────────────────────────────────────────────────
-
-class TestSearchMovies:
-    @pytest.mark.skip(reason="mongomock does not support $text operator")
-    async def test_search_returns_list(self, db):
-        """$text search may not work in mongomock, but function should return a list."""
-        result = await search_movies("test query")
-        assert isinstance(result, list)

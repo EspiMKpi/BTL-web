@@ -1,7 +1,7 @@
 import Alpine from 'alpinejs';
 import { pages_ready } from './pages.js';
 import { switchPage } from './router.js';
-import { contentApi, watchlistApi, historyApi, adminApi, commentsApi } from './api.js';
+import { contentApi, watchlistApi, historyApi, adminApi, apiFetch } from './api.js';
 
 window.Alpine = Alpine;
 window.switchPage = switchPage;
@@ -752,8 +752,7 @@ Alpine.data('adminPage', () => ({
         );
     },
 
-    filterMovies() { /* triggers reactivity via filteredMovies getter */ },
-    filterUsers() { /* triggers reactivity via filteredUsers getter */ },
+
 
     async toggleMovieVisibility(movie) {
         try {
@@ -847,19 +846,6 @@ Alpine.data('profilePage', () => ({
     },
 }));
 
-// Helper used by profilePage
-async function apiFetch(endpoint, options = {}) {
-    const token = localStorage.getItem('token');
-    const headers = { ...options.headers };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-    if (options.body && typeof options.body === 'string') headers['Content-Type'] = 'application/json';
-    const res = await fetch(endpoint, { ...options, headers });
-    if (res.status === 401) { document.dispatchEvent(new CustomEvent('auth:expired')); throw new Error('Session expired'); }
-    if (!res.ok) { let msg = `HTTP ${res.status}`; try { const body = await res.json(); msg = body.detail || body.error || msg; } catch {} throw new Error(msg); }
-    if (res.status === 204) return null;
-    return res.json();
-}
-
 // Start Alpine
 Alpine.start();
 
@@ -913,15 +899,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
-        // 3. Logout Button -> Go to Login
-        const logoutBtn = e.target.closest('#logout-btn');
-        if (logoutBtn) {
-            Alpine.store('auth').logout();
-            switchPage('login');
-            return;
-        }
-
-        // 4. Mobile Menu Toggle
+        // 3. Mobile Menu Toggle
         const mobileMenuBtn = e.target.closest('#mobile-menu-btn');
         if (mobileMenuBtn) {
             const navLinksContainer = document.querySelector('.nav-links');

@@ -4,26 +4,13 @@ Fetches TV series from MongoDB or TMDB API with full season/episode data.
 """
 
 from datetime import datetime
-from typing import Any, List
+from typing import List
 
 import httpx
-from bson import ObjectId
 
 from app.core.config import settings
 from app.database import get_database
-
-
-def _sanitize(value: Any) -> Any:
-    """Recursively convert ObjectId and datetime to JSON-serializable types."""
-    if isinstance(value, ObjectId):
-        return str(value)
-    if isinstance(value, datetime):
-        return value.isoformat()
-    if isinstance(value, dict):
-        return {k: _sanitize(v) for k, v in value.items()}
-    if isinstance(value, list):
-        return [_sanitize(v) for v in value]
-    return value
+from app.utils import sanitize as _sanitize
 
 
 async def get_series_by_id(tmdb_id: int) -> dict:
@@ -32,10 +19,7 @@ async def get_series_by_id(tmdb_id: int) -> dict:
 
     existing = await db.series.find_one({"tmdb_id": tmdb_id})
     if existing and existing.get("raw_data") and existing.get("seasons"):
-        print(f"Series {tmdb_id} served from MongoDB")
         return _sanitize(existing)
-
-    print(f"Series {tmdb_id} fetching from TMDB...")
     async with httpx.AsyncClient() as client:
         resp = await client.get(
             f"https://api.themoviedb.org/3/tv/{tmdb_id}",
@@ -95,8 +79,8 @@ async def get_series_by_id(tmdb_id: int) -> dict:
                         ],
                     }
                 )
-            except Exception as exc:
-                print(f"Failed to fetch season {season['season_number']} for series {tmdb_id}: {exc}")
+            except Exception:
+                pass
                 enriched_seasons.append(
                     {
                         "season_number": season["season_number"],

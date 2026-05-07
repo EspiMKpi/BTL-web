@@ -5,25 +5,14 @@ GET /home, GET /genres, GET /browse/:genre_id, GET /movie/:id, GET /series/:id, 
 
 from typing import Optional
 
-from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.core.deps import get_optional_current_user
 from app.database import get_database
 from app.services.library_service import get_content_by_genre, get_home_rails
-from app.services.movie_service import get_movie_by_id, search_movies
+from app.services.movie_service import get_movie_by_id
 from app.services.series_service import get_series_by_id
-
-
-def _sanitize(value):
-    """Recursively convert ObjectId/datetime to JSON-safe types."""
-    if isinstance(value, ObjectId):
-        return str(value)
-    if isinstance(value, dict):
-        return {k: _sanitize(v) for k, v in value.items()}
-    if isinstance(value, list):
-        return [_sanitize(v) for v in value]
-    return value
+from app.utils import sanitize
 
 
 router = APIRouter(prefix="/api/content", tags=["content"])
@@ -44,7 +33,7 @@ async def list_genres():
     cursor = db.genres.find().sort("name", 1)
     genres = []
     async for doc in cursor:
-        genres.append(_sanitize(doc))
+        genres.append(sanitize(doc))
     return genres
 
 
@@ -77,8 +66,8 @@ async def search_content(
         {"tmdb_id": 1, "name": 1, "poster_path": 1, "backdrop_path": 1, "vote_average": 1, "first_air_date": 1, "overview": 1},
     ).limit(limit + skip)
 
-    movies = [dict(_sanitize(d), content_type="movie") async for d in movie_cursor]
-    series = [dict(_sanitize(d), content_type="series") async for d in series_cursor]
+    movies = [dict(sanitize(d), content_type="movie") async for d in movie_cursor]
+    series = [dict(sanitize(d), content_type="series") async for d in series_cursor]
 
     # Merge and paginate
     all_results = movies + series
