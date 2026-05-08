@@ -331,6 +331,88 @@ Alpine.data('dropdown', () => ({
     close() { this.open = false; }
 }));
 
+Alpine.data('navSearch', () => ({
+    query: '',
+    results: [],
+    loading: false,
+    open: false,
+    _debounceTimer: null,
+    _lastQuery: '',
+    _searchSeq: 0,
+
+    onInput() {
+        clearTimeout(this._debounceTimer);
+        const trimmed = this.query.trim();
+        if (trimmed.length < 2) {
+            this.results = [];
+            this.loading = false;
+            this._lastQuery = '';
+            this.open = false;
+            return;
+        }
+        this.open = true;
+        this.loading = true;
+        this._debounceTimer = setTimeout(() => this._runSearch(trimmed), 150);
+    },
+
+    async _runSearch(q) {
+        if (q === this._lastQuery) {
+            this.loading = false;
+            return;
+        }
+        this._lastQuery = q;
+        const seq = ++this._searchSeq;
+        try {
+            const data = await contentApi.search(q, 1, 8);
+            if (seq !== this._searchSeq) return;
+            this.results = (data.results || []).slice(0, 8);
+        } catch (e) {
+            if (seq !== this._searchSeq) return;
+            this.results = [];
+            Alpine.store('toast').show('Search failed: ' + e.message);
+        } finally {
+            if (seq === this._searchSeq) this.loading = false;
+        }
+    },
+
+    submit() {
+        const trimmed = this.query.trim();
+        if (!trimmed) return;
+        switchPage('movies', { searchQuery: trimmed });
+        document.dispatchEvent(new CustomEvent('nav:search', { detail: { query: trimmed } }));
+        this.close();
+    },
+
+    goToResult(item) {
+        switchPage('detail', {
+            contentId: item.tmdb_id,
+            contentType: item.content_type || 'movie',
+        });
+        this.close();
+    },
+
+    close() {
+        this.open = false;
+    },
+
+    getTitle(item) {
+        return item.content_type === 'series'
+            ? (item.name || item.title)
+            : (item.title || item.name);
+    },
+
+    getYear(item) {
+        const d = item.content_type === 'series' ? item.first_air_date : item.release_date;
+        return d ? d.substring(0, 4) : '';
+    },
+
+    posterUrl(path) {
+        return path
+            ? `https://image.tmdb.org/t/p/w92${path}`
+            : 'https://placehold.co/46x69/1a1a2e/white?text=%3F';
+    },
+}));
+
 Alpine.data('filterPanel', () => ({
     open: false,
     toggle() { this.open = !this.open; }
