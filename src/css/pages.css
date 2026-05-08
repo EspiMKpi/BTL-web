@@ -1082,9 +1082,9 @@
    =================================== */
 .hero-carousel {
     position: relative;
-    height: 85vh;
-    min-height: 520px;
-    max-height: 860px;
+    height: 75vh;
+    min-height: 480px;
+    max-height: 720px;
     margin: 0 calc(50% - 50vw) 0;
     overflow: hidden;
     background: var(--bg-main);
@@ -1120,32 +1120,12 @@
 
 .hero-slide-content {
     position: absolute;
-    bottom: 14%;
+    bottom: 12%;
     left: 80px;
     z-index: 10;
-    width: min(580px, 50vw);
-}
-
-/* Ambient gold glow behind hero content */
-.hero-slide-content::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: -40px;
-    transform: translateY(-50%);
-    width: 350px;
-    height: 350px;
-    border-radius: 50%;
-    background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
-    pointer-events: none;
-    z-index: -1;
-    opacity: 0.6;
-    animation: ambientGlow 4s ease-in-out infinite alternate;
-}
-
-@keyframes ambientGlow {
-    from { opacity: 0.4; transform: translateY(-50%) scale(0.95); }
-    to   { opacity: 0.7; transform: translateY(-50%) scale(1.05); }
+    width: min(560px, 50vw);
+    animation: heroContentIn 0.6s ease-out both;
+    animation-delay: 0.15s;
 }
 
 @keyframes heroContentIn {
@@ -1157,12 +1137,12 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: var(--type-kicker, 13px);
+    font-size: 13px;
     font-weight: 600;
     color: rgba(255, 255, 255, 0.7);
     margin-bottom: 12px;
     text-transform: uppercase;
-    letter-spacing: var(--letter-spacing-wide, 0.5px);
+    letter-spacing: 0.5px;
 }
 
 .hero-slide-type {
@@ -1179,13 +1159,12 @@
 }
 
 .hero-slide-title {
-    font-size: var(--type-hero);
-    font-weight: 900;
-    line-height: 1;
-    margin-bottom: 16px;
+    font-size: clamp(32px, 4.5vw, 56px);
+    font-weight: 800;
+    line-height: 1.05;
+    margin-bottom: 14px;
     color: #fff;
-    letter-spacing: var(--letter-spacing-tight);
-    text-shadow: 0 2px 30px rgba(0, 0, 0, 0.6);
+    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.5);
 }
 
 .hero-slide-desc {
