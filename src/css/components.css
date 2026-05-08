@@ -320,6 +320,13 @@
     background: rgba(255, 255, 255, 0.15);
 }
 
+.btn-sm {
+    height: 34px;
+    padding: 6px 16px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
 /* Filters & Chips */
 .filters {
     display: flex;
@@ -742,7 +749,6 @@
     align-items: center;
     justify-content: space-between;
     margin-bottom: 12px;
-    animation: detailContentUp 0.5s 0.15s ease-out both;
 }
 
 .section-title {
@@ -1000,6 +1006,21 @@
 .episode-card:hover {
     border-color: rgba(255, 255, 255, 0.15);
     background: var(--bg-surface-2);
+}
+
+.episode-card.current-episode {
+    border-color: var(--accent-gold);
+    background: rgba(244, 200, 74, 0.06);
+    box-shadow: 0 0 0 1px var(--accent-gold), 0 4px 16px rgba(244, 200, 74, 0.1);
+}
+
+.episode-card.current-episode .ep-number {
+    background: var(--accent-gold);
+    color: #140f06;
+}
+
+.episode-card.current-episode .ep-info h3 {
+    color: var(--accent-gold);
 }
 
 .ep-thumbnail {

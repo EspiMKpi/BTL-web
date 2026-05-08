@@ -2,9 +2,36 @@ import Alpine from 'alpinejs';
 import { pages_ready } from './pages.js';
 import { switchPage } from './router.js';
 import { contentApi, watchlistApi, historyApi, adminApi, ratingsApi, apiFetch } from './api.js';
+import { initPreloader } from './preloader.js';
+import {
+    animateHeroContent,
+    initHeroParallax,
+    staggerCards,
+    animateRanks,
+    animateDetailHero,
+    animateCast,
+    animatePlayerEntry,
+    initScrollReveals,
+    animateCounter,
+    prefersReducedMotion,
+    showPageLoader,
+} from './animations.js';
 
 window.Alpine = Alpine;
 window.switchPage = switchPage;
+window.vozAnimations = {
+    animateHeroContent,
+    initHeroParallax,
+    staggerCards,
+    animateRanks,
+    animateDetailHero,
+    animateCast,
+    animatePlayerEntry,
+    initScrollReveals,
+    animateCounter,
+    prefersReducedMotion,
+    showPageLoader,
+};
 
 // --- Netflix-style navbar scroll effect ---
 window.addEventListener('scroll', () => {
@@ -147,7 +174,7 @@ Alpine.data('discoverPage', () => ({
         this.error = '';
         try {
             const data = await contentApi.getHome();
-            this.rails = (data.rails || []).filter(r => r.items && r.items.length > 0);
+            this.rails = (data.rails || []).filter(r => r.items && r.items.length > 0 && r.id !== 'continue_watching');
         } catch (e) {
             this.error = e.message;
         } finally {
@@ -513,18 +540,53 @@ Alpine.data('detailPage', () => ({
         this.userRating = 0;
         this.userReview = '';
         this.myRating = null;
+
+        // Show branded page preloader
+        const loaderContainer = document.getElementById('detail-loader');
+        const va = window.vozAnimations;
+        let pageLoader = null;
+        if (loaderContainer && va) {
+            loaderContainer.innerHTML = '';
+            pageLoader = va.showPageLoader(loaderContainer, 'Loading details…');
+        }
+
         try {
             if (contentType === 'series') {
                 this.content = await contentApi.getSeries(contentId);
             } else {
-                this.content = await contentApi.getMovie(contentId);
+                try {
+                    this.content = await contentApi.getMovie(contentId);
+                } catch (movieErr) {
+                    // If movie fetch fails (e.g. 404 — stale content_type in history),
+                    // retry as series. This handles entries incorrectly stored as "movie".
+                    if (String(movieErr.message).includes('404')) {
+                        this.contentType = 'series';
+                        this.content = await contentApi.getSeries(contentId);
+                    } else {
+                        throw movieErr;
+                    }
+                }
             }
             await this.checkWatchlistStatus(contentId, contentType);
             await this.loadRatings(contentId, contentType);
         } catch (e) {
             this.error = 'Failed to load: ' + e.message;
         } finally {
+            // Hide the branded preloader, then reveal content
+            if (pageLoader) {
+                await pageLoader.hide();
+            }
             this.loading = false;
+            // Trigger detail hero animation
+            this.$nextTick(() => {
+                if (va) {
+                    const container = document.getElementById('page-detail');
+                    if (container) {
+                        va.animateDetailHero(container);
+                        va.initScrollReveals(container);
+                    }
+                }
+            });
         }
     },
 
@@ -747,6 +809,9 @@ Alpine.data('watchingPage', () => ({
     selectedEpisode: null,
     selectedSeasonIndex: 0,
     _lastPostAt: 0,
+    _lastMessageAt: 0,
+    _everReceivedMsg: false,
+    _fallbackPollId: null,
     activeProvider: 'vidlink',
 
     providers: {
@@ -793,11 +858,26 @@ Alpine.data('watchingPage', () => ({
         this.selectedEpisode = null;
         this.selectedSeasonIndex = 0;
         this._lastPostAt = 0;
+        this._lastMessageAt = 0;
+        this._everReceivedMsg = false;
+        this._stopFallbackPoll();
         try {
-            this.content = contentType === 'series'
-                ? await contentApi.getSeries(contentId)
-                : await contentApi.getMovie(contentId);
-            if (contentType === 'series') {
+            try {
+                this.content = contentType === 'series'
+                    ? await contentApi.getSeries(contentId)
+                    : await contentApi.getMovie(contentId);
+            } catch (fetchErr) {
+                // If 404, retry with the other content type (stale content_type in history)
+                if (String(fetchErr.message).includes('404')) {
+                    this.contentType = contentType === 'series' ? 'movie' : 'series';
+                    this.content = this.contentType === 'series'
+                        ? await contentApi.getSeries(contentId)
+                        : await contentApi.getMovie(contentId);
+                } else {
+                    throw fetchErr;
+                }
+            }
+            if (this.contentType === 'series') {
                 const eps = this.content?.seasons?.[0]?.episodes || [];
                 this.selectedEpisode = eps[0] || null;
             }
@@ -807,6 +887,16 @@ Alpine.data('watchingPage', () => ({
             this.loading = false;
             // Reset click shield when new content/episode loads
             window.dispatchEvent(new Event('content-loaded'));
+            // Start fallback poll for providers that don't send postMessage
+            this._startFallbackPoll();
+            // Trigger player entry animation
+            this.$nextTick(() => {
+                const va = window.vozAnimations;
+                if (va) {
+                    const container = document.getElementById('page-watching');
+                    if (container) va.animatePlayerEntry(container);
+                }
+            });
         }
     },
 
@@ -828,14 +918,22 @@ Alpine.data('watchingPage', () => ({
         if (this.activeProvider === key) return;
         this.activeProvider = key;
         this._lastPostAt = 0;
+        this._lastMessageAt = 0;
+        this._everReceivedMsg = false;
+        this._stopFallbackPoll();
         window.dispatchEvent(new Event('content-loaded'));
+        this._startFallbackPoll();
     },
 
     selectEpisode(ep) {
         this.selectedEpisode = ep;
         this._lastPostAt = 0;
+        this._lastMessageAt = 0;
+        this._everReceivedMsg = false;
+        this._stopFallbackPoll();
         // Reset click shield for new episode
         window.dispatchEvent(new Event('content-loaded'));
+        this._startFallbackPoll();
         // playerSrc getter recomputes; Alpine re-binds :src and the iframe reloads.
     },
 
@@ -871,8 +969,7 @@ Alpine.data('watchingPage', () => ({
     get upNext() {
         if (this.contentType !== 'series' || !this.selectedEpisode) return [];
         const eps = this.content?.seasons?.[this.selectedSeasonIndex]?.episodes || [];
-        const idx = eps.findIndex(e => e.episode_number === this.selectedEpisode.episode_number);
-        return idx >= 0 ? eps.slice(idx + 1, idx + 5) : [];
+        return eps;
     },
 
     episodeThumb(ep) {
@@ -881,15 +978,108 @@ Alpine.data('watchingPage', () => ({
         return 'https://placehold.co/500x281/1a1a2e/white?text=Episode';
     },
 
+    // ─── Fallback progress polling ───────────────────────────────
+    // For providers (e.g. 2embed) that don't send postMessage events.
+    // If no message is received within 20s of starting playback,
+    // poll every 15s and post a best-effort progress estimate.
+
+    _startFallbackPoll() {
+        this._stopFallbackPoll();
+        // Give the provider 20s to send at least one message
+        this._fallbackPollId = setTimeout(() => {
+            // If we already received a message from the provider, no need to poll
+            if (this._everReceivedMsg) return;
+
+            // Start periodic polling
+            this._fallbackPollId = setInterval(() => {
+                if (!Alpine.store('auth').isLoggedIn || !this.content?.tmdb_id) return;
+                // Only poll if the document is visible (user is actually watching)
+                if (document.visibilityState !== 'visible') return;
+                // If the provider started sending messages, stop polling
+                if (this._everReceivedMsg) {
+                    this._stopFallbackPoll();
+                    return;
+                }
+
+                // Post a keep-alive so the entry stays in "Continue Watching".
+                // Use progress_seconds: 1 (not 0) because the backend filters
+                // for progress_seconds > 0. The backend $set will only update
+                // last_watched_at — it won't clobber a higher progress value
+                // because we never decrease it here.
+                historyApi.postProgress({
+                    content_type: this.contentType,
+                    tmdb_id: this.content.tmdb_id,
+                    progress_seconds: 1,
+                    completed: false,
+                    season_number: this.selectedEpisode
+                        ? (this.content?.seasons?.[this.selectedSeasonIndex]?.season_number ?? null)
+                        : null,
+                    episode_number: this.selectedEpisode?.episode_number ?? null,
+                }).catch(() => {});
+            }, 15000);
+        }, 20000);
+    },
+
+    _stopFallbackPoll() {
+        if (this._fallbackPollId) {
+            clearTimeout(this._fallbackPollId);
+            clearInterval(this._fallbackPollId);
+            this._fallbackPollId = null;
+        }
+    },
+
     _onPlayerMessage(event) {
-        // VidLink sends { type: 'PLAYER_EVENT', data: { event, currentTime, duration, season, episode } }
-        if (!event.data || event.data.type !== 'PLAYER_EVENT') return;
         if (!Alpine.store('auth').isLoggedIn || !this.content?.tmdb_id) return;
 
-        const payload = event.data.data || {};
-        const eventType = payload.event;        // "play" | "pause" | "seeked" | "ended" | "timeupdate"
-        const currentTime = payload.currentTime; // seconds
-        if (!eventType) return;
+        // --- Normalize message data ---
+        // VidLink sends structured objects: { type: 'PLAYER_EVENT', data: {...} }
+        // VidKing may send a JSON string that needs parsing.
+        let msg = event.data;
+        if (typeof msg === 'string') {
+            try { msg = JSON.parse(msg); } catch { return; }
+        }
+        if (!msg || typeof msg !== 'object') return;
+
+        // --- Extract payload from different provider formats ---
+        let payload = null;
+        let eventType = null;
+        let currentTime = null;
+
+        // Format 1: { type: 'PLAYER_EVENT', data: { event, currentTime, ... } }
+        // Used by VidLink and VidKing (when sending structured objects)
+        if (msg.type === 'PLAYER_EVENT' && msg.data) {
+            payload = msg.data;
+            eventType = payload.event;
+            currentTime = payload.currentTime;
+        }
+        // Format 2: { type: 'MEDIA_DATA', data: { id, type, progress: { watched, duration }, ... } }
+        // VidLink sends this on pause/seek/end with detailed progress
+        else if (msg.type === 'MEDIA_DATA' && msg.data) {
+            payload = msg.data;
+            const progress = payload.progress || {};
+            currentTime = progress.watched;
+            // MEDIA_DATA doesn't include an event type — treat as a progress sync
+            eventType = 'timeupdate';
+            // For TV shows, extract season/episode from show_progress
+            if (payload.type === 'tv' && payload.last_season_watched && payload.last_episode_watched) {
+                payload.season = parseInt(payload.last_season_watched, 10);
+                payload.episode = parseInt(payload.last_episode_watched, 10);
+            }
+        }
+        // Format 3: VidKing stringified payload with top-level event field
+        // { event: 'timeupdate', currentTime, duration, id, mediaType, ... }
+        else if (msg.event && msg.currentTime != null) {
+            payload = msg;
+            eventType = msg.event;
+            currentTime = msg.currentTime;
+        }
+
+        if (!eventType || currentTime == null) return;
+
+        // Provider sends messages — disable fallback polling
+        this._lastMessageAt = Date.now();
+        this._everReceivedMsg = true;
+        this._stopFallbackPoll();
 
         const completed = eventType === 'ended';
         // 10s throttle for in-progress events; always post on completion.
@@ -944,9 +1134,21 @@ Alpine.data('watchlistPage', () => ({
             const enriched = await Promise.allSettled(
                 rawItems.map(async (item) => {
                     try {
-                        const content = item.content_type === 'series'
-                            ? await contentApi.getSeries(item.tmdb_id)
-                            : await contentApi.getMovie(item.tmdb_id);
+                        let content;
+                        try {
+                            content = item.content_type === 'series'
+                                ? await contentApi.getSeries(item.tmdb_id)
+                                : await contentApi.getMovie(item.tmdb_id);
+                        } catch (fetchErr) {
+                            if (String(fetchErr.message).includes('404')) {
+                                content = item.content_type === 'series'
+                                    ? await contentApi.getMovie(item.tmdb_id)
+                                    : await contentApi.getSeries(item.tmdb_id);
+                                item.content_type = item.content_type === 'series' ? 'movie' : 'series';
+                            } else {
+                                throw fetchErr;
+                            }
+                        }
                         item._title = content.title || content.name || 'Unknown';
                         item._poster = content.poster_path
                             ? `https://image.tmdb.org/t/p/w500${content.poster_path}`
@@ -977,9 +1179,23 @@ Alpine.data('watchlistPage', () => ({
             const enriched = await Promise.allSettled(
                 historyItems.map(async (item) => {
                     try {
-                        const content = item.content_type === 'series'
-                            ? await contentApi.getSeries(item.tmdb_id)
-                            : await contentApi.getMovie(item.tmdb_id);
+                        let content;
+                        try {
+                            content = item.content_type === 'series'
+                                ? await contentApi.getSeries(item.tmdb_id)
+                                : await contentApi.getMovie(item.tmdb_id);
+                        } catch (fetchErr) {
+                            // If fetch fails with 404, try the other content type
+                            if (String(fetchErr.message).includes('404')) {
+                                content = item.content_type === 'series'
+                                    ? await contentApi.getMovie(item.tmdb_id)
+                                    : await contentApi.getSeries(item.tmdb_id);
+                                // Correct the content_type for future navigations
+                                item.content_type = item.content_type === 'series' ? 'movie' : 'series';
+                            } else {
+                                throw fetchErr;
+                            }
+                        }
                         item._title = content.title || content.name || 'Unknown';
                         item._poster = content.poster_path
                             ? `https://image.tmdb.org/t/p/w500${content.poster_path}`
@@ -1324,7 +1540,8 @@ Alpine.start();
 
 // --- DOM Ready ---
 document.addEventListener('DOMContentLoaded', async () => {
-    await pages_ready;
+    // Run preloader animation while pages load
+    await initPreloader(pages_ready);
 
     // Wait for fetchUser (started by appState.init) to settle
     // so we know the auth state before choosing the initial page.

@@ -1,9 +1,7 @@
 <div id="page-detail" class="page-content" x-data="detailPage">
 
-    <!-- Loading State -->
-    <div x-show="loading" style="text-align:center; padding: 120px 20px; color: rgba(255,255,255,0.5);">
-        Loading details…
-    </div>
+    <!-- Loading State (branded preloader injected by JS) -->
+    <div id="detail-loader" x-show="loading"></div>
 
     <!-- Error State -->
     <div x-show="error" x-text="error" style="text-align:center; padding: 80px 20px; color: #ff6b6b;"></div>
@@ -11,21 +9,21 @@
     <!-- Hero Section -->
     <section class="detail-hero" x-show="!loading && content">
         <div class="detail-hero-poster">
-            <img :src="backdropUrl" :alt="title + ' key art'">
+            <img :src="backdropUrl" :alt="title + ' key art'" class="detail-hero-bg">
         </div>
 
         <div class="detail-hero-scrim"></div>
         <div class="detail-hero-content">
-            <p class="landing-eyebrow" x-text="contentType === 'series' ? 'TV Series' : 'Movie'"></p>
+            <p class="landing-eyebrow detail-kicker" x-text="contentType === 'series' ? 'TV Series' : 'Movie'"></p>
             <h1 class="detail-title" x-text="title"></h1>
-            <div class="detail-meta-row">
+            <div class="detail-meta-row detail-meta">
                 <span class="rating" x-text="'★ ' + (content?.vote_average?.toFixed(1) || '—')"></span>
                 <span x-text="year"></span>
                 <span x-text="runtime"></span>
                 <span x-text="genreString"></span>
             </div>
-            <p class="detail-desc" x-text="content?.overview || 'No description available.'"></p>
-            <div class="detail-cta-row">
+            <p class="detail-desc detail-overview" x-text="content?.overview || 'No description available.'"></p>
+            <div class="detail-cta-row detail-actions">
                 <button class="btn btn-primary" @click="switchPage('watching')">
                     <div class="icon-wrapper" style="width: 18px; height: 18px; color: black;">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="m7 3 14 9-14 9V3z"/></svg>
@@ -74,15 +72,15 @@
         <!-- Overview Tab -->
         <div x-show="activeTab === 'overview'" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0">
             <div class="detail-info-grid">
-                <article class="detail-info-card">
+                <article class="detail-info-card" data-scroll-reveal="fade-up">
                     <p class="sidebar-label">Synopsis</p>
                     <p x-text="content?.overview || 'No synopsis available.'"></p>
                 </article>
-                <article class="detail-info-card">
+                <article class="detail-info-card" data-scroll-reveal="fade-up" data-scroll-delay="100">
                     <p class="sidebar-label">Cast</p>
                     <p x-text="castString"></p>
                 </article>
-                <article class="detail-info-card">
+                <article class="detail-info-card" data-scroll-reveal="fade-up" data-scroll-delay="200">
                     <p class="sidebar-label">Audio & Subtitles</p>
                     <p>English, Vietnamese, Korean, Spanish · Dolby Atmos · 4K HDR</p>
                 </article>

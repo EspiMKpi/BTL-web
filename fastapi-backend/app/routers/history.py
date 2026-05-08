@@ -90,8 +90,10 @@ async def _persist_progress(user_id: str, body: ProgressUpdateRequest) -> None:
                 "episode_number": body.episode_number,
             },
             {
-                "$set": {
+                "$max": {
                     "progress_seconds": body.progress_seconds,
+                },
+                "$set": {
                     "completed": body.completed,
                     "last_watched_at": now,
                 },

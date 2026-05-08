@@ -6,7 +6,7 @@
     <div x-show="error" x-text="error" style="text-align:center; padding: 40px 20px; color: #ff6b6b;"></div>
 
     <section class="player-section" x-show="!loading && content">
-        <div class="video-player-container" style="background:#000; border-radius: var(--radius-sm); overflow:hidden; position:relative;">
+        <div class="video-player-container player-container" style="background:#000; border-radius: var(--radius-sm); overflow:hidden; position:relative;">
             <iframe
                 id="embed-player"
                 :src="playerSrc"
@@ -50,14 +50,14 @@
         </div>
     </section>
 
-    <section class="watching-next-up" x-show="!loading && upNext.length > 0">
+    <section class="watching-next-up up-next-section" x-show="!loading && upNext.length > 0">
         <div class="section-header">
-            <h2 class="section-title">Up Next</h2>
-            <button class="see-all" type="button" @click="switchPage('detail')">Back to details</button>
+            <h2 class="section-title">Episodes</h2>
+            <button class="btn btn-primary btn-sm" type="button" @click="switchPage('detail')">Back to details</button>
         </div>
         <div class="episode-grid">
             <template x-for="ep in upNext" :key="ep.episode_number">
-                <div class="episode-card" @click.stop="selectEpisode(ep)">
+                <div class="episode-card" :class="{ 'current-episode': selectedEpisode && ep.episode_number === selectedEpisode.episode_number }" @click.stop="selectEpisode(ep)">
                     <div class="ep-thumbnail">
                         <img :src="episodeThumb(ep)" :alt="ep.name || ('Episode ' + ep.episode_number)">
                         <div class="ep-number" x-text="ep.episode_number"></div>

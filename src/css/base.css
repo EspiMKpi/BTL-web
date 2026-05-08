@@ -19,11 +19,23 @@
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-fast: all 0.18s ease;
     --transition-spring: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    --transition-cinematic: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
     --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.6);
     --shadow-elevated: 0 12px 40px rgba(0, 0, 0, 0.7);
     --radius-sm: 6px;
     --radius-md: 10px;
     --radius-lg: 14px;
+
+    /* Cinematic typography scale */
+    --type-hero: clamp(2.8rem, 7vw, 5.5rem);
+    --type-section: clamp(1.5rem, 3vw, 2.2rem);
+    --type-kicker: 0.75rem;
+    --letter-spacing-tight: -0.03em;
+    --letter-spacing-wide: 0.15em;
+
+    /* Cinematic spacing */
+    --section-padding: clamp(2.5rem, 5vw, 5rem);
+    --accent-glow: rgba(244, 200, 74, 0.2);
 }
 
 * {
