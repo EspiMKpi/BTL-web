@@ -58,6 +58,7 @@ async def add_to_watchlist(
             "$set": {
                 "status": body.status,
                 "is_bookmarked": body.is_bookmarked,
+                "is_favorite": body.is_favorite,
                 "updated_at": now,
             },
         },

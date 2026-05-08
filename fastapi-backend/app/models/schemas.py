@@ -201,6 +201,7 @@ class WatchlistItemOut(BaseModel):
     current_season: Optional[int] = None
     current_episode: Optional[int] = None
     is_bookmarked: bool = False
+    is_favorite: bool = False
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
@@ -212,6 +213,7 @@ class WatchlistAddRequest(BaseModel):
     tmdb_id: int
     status: str = "plan_to_watch"
     is_bookmarked: bool = True
+    is_favorite: bool = False
 
 
 class WatchlistUpdateRequest(BaseModel):
@@ -220,6 +222,7 @@ class WatchlistUpdateRequest(BaseModel):
     current_season: Optional[int] = None
     current_episode: Optional[int] = None
     is_bookmarked: Optional[bool] = None
+    is_favorite: Optional[bool] = None
 
 
 # ─── User Rating ──────────────────────────────────────────────────────────

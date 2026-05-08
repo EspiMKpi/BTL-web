@@ -18,7 +18,7 @@
                 <div class="stat-divider"></div>
                 <div class="main-stat">
                     <span class="stat-num" x-text="items.filter(i => i.status === 'plan_to_watch').length">0</span>
-                    <span class="stat-txt">Wishlist</span>
+                    <span class="stat-txt">Watchlist</span>
                 </div>
                 <div class="stat-divider"></div>
                 <div class="main-stat">
@@ -27,7 +27,7 @@
                 </div>
                 <div class="stat-divider"></div>
                 <div class="main-stat">
-                    <span class="stat-num" x-text="items.filter(i => i.status === 'favorites').length">0</span>
+                    <span class="stat-num" x-text="items.filter(i => i.is_favorite).length">0</span>
                     <span class="stat-txt">Favorites</span>
                 </div>
             </div>
@@ -41,7 +41,7 @@
 
             <div class="list-tabs">
                 <button class="list-tab" :class="{ active: activeFilter === 'continue' }" @click="activeFilter = 'continue'" data-filter="continue">Continue Watching</button>
-                <button class="list-tab" :class="{ active: activeFilter === 'wishlist' }" @click="activeFilter = 'wishlist'" data-filter="wishlist">Wishlist</button>
+                <button class="list-tab" :class="{ active: activeFilter === 'watchlist' }" @click="activeFilter = 'watchlist'" data-filter="watchlist">Watchlist</button>
                 <button class="list-tab" :class="{ active: activeFilter === 'completed' }" @click="activeFilter = 'completed'" data-filter="completed">Completed</button>
                 <button class="list-tab" :class="{ active: activeFilter === 'favorites' }" @click="activeFilter = 'favorites'" data-filter="favorites">Favorites</button>
                 <button class="list-tab" :class="{ active: activeFilter === 'all' }" @click="activeFilter = 'all'" data-filter="all">All</button>
@@ -67,9 +67,17 @@
                                     <span class="progress-label" x-text="getProgressLabel(item)"></span>
                                 </div>
                             </template>
-                            <!-- Bookmark button only for watchlist items -->
+                            <!-- Favorite toggle (top-right) — only for watchlist items -->
                             <template x-if="activeFilter !== 'continue'">
-                                <div class="bookmark-btn" @click.stop="remove(item)">
+                                <div class="bookmark-btn" style="left: auto; right: 8px;" :style="item.is_favorite ? 'left:auto;right:8px;color:var(--accent-red,#ff5d6c);opacity:1;transform:scale(1);' : 'left:auto;right:8px;'" @click.stop="toggleFavorite(item)" title="Favorite">
+                                    <div class="icon-wrapper" style="width: 14px; height: 14px;">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" :fill="item.is_favorite ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                                    </div>
+                                </div>
+                            </template>
+                            <!-- Bookmark/remove (top-left) — only for watchlist items -->
+                            <template x-if="activeFilter !== 'continue'">
+                                <div class="bookmark-btn" @click.stop="remove(item)" title="Remove from list">
                                     <div class="icon-wrapper" style="width: 14px; height: 14px;">
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>
                                     </div>
@@ -78,7 +86,7 @@
                         </div>
                         <div class="card-info">
                             <span class="card-title" x-text="item._title || 'Unknown'"></span>
-                            <span class="card-status" x-show="activeFilter !== 'continue'" x-text="(item.status || '').replace(/_/g, ' ')"></span>
+                            <span class="card-status" x-show="activeFilter !== 'continue'" x-text="statusLabel(item)"></span>
                             <span class="card-status" x-show="activeFilter === 'continue'" x-text="item.season_number ? 'S' + item.season_number + ' E' + (item.episode_number || '?') : 'Continue watching'"></span>
                         </div>
                     </div>

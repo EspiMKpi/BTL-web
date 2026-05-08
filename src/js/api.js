@@ -44,10 +44,15 @@ export const contentApi = {
 
 export const watchlistApi = {
     getAll: () => apiFetch('/api/watchlist/'),
-    add: (contentType, tmdbId, status = 'plan_to_watch') =>
+    add: (contentType, tmdbId, status = 'plan_to_watch', extras = {}) =>
         apiFetch('/api/watchlist/', {
             method: 'POST',
-            body: JSON.stringify({ content_type: contentType, tmdb_id: tmdbId, status }),
+            body: JSON.stringify({ content_type: contentType, tmdb_id: tmdbId, status, ...extras }),
+        }),
+    update: (itemId, fields) =>
+        apiFetch(`/api/watchlist/${itemId}`, {
+            method: 'PATCH',
+            body: JSON.stringify(fields),
         }),
     remove: (itemId) => apiFetch(`/api/watchlist/${itemId}`, { method: 'DELETE' }),
 };

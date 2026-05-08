@@ -697,6 +697,46 @@ Alpine.data('detailPage', () => ({
             Alpine.store('toast').show('Error: ' + e.message);
         }
     },
+
+    async toggleCompleted() {
+        if (!Alpine.store('auth').isLoggedIn) { switchPage('login'); return; }
+        const contentId = Alpine.store('nav').contentId;
+        const contentType = Alpine.store('nav').contentType;
+        try {
+            if (this.watchlistItem) {
+                const nextStatus = this.watchlistItem.status === 'completed' ? 'plan_to_watch' : 'completed';
+                const updated = await watchlistApi.update(this.watchlistItem._id, { status: nextStatus });
+                this.watchlistItem = updated;
+                Alpine.store('toast').show(nextStatus === 'completed' ? 'Marked as watched.' : 'Moved back to Watchlist.');
+            } else {
+                const item = await watchlistApi.add(contentType, contentId, 'completed');
+                this.watchlistItem = item;
+                Alpine.store('toast').show('Marked as watched.');
+            }
+        } catch (e) {
+            Alpine.store('toast').show('Error: ' + e.message);
+        }
+    },
+
+    async toggleFavorite() {
+        if (!Alpine.store('auth').isLoggedIn) { switchPage('login'); return; }
+        const contentId = Alpine.store('nav').contentId;
+        const contentType = Alpine.store('nav').contentType;
+        try {
+            if (this.watchlistItem) {
+                const next = !this.watchlistItem.is_favorite;
+                const updated = await watchlistApi.update(this.watchlistItem._id, { is_favorite: next });
+                this.watchlistItem = updated;
+                Alpine.store('toast').show(next ? 'Added to Favorites!' : 'Removed from Favorites.');
+            } else {
+                const item = await watchlistApi.add(contentType, contentId, 'plan_to_watch', { is_favorite: true });
+                this.watchlistItem = item;
+                Alpine.store('toast').show('Added to Favorites!');
+            }
+        } catch (e) {
+            Alpine.store('toast').show('Error: ' + e.message);
+        }
+    },
 }));
 
 Alpine.data('watchingPage', () => ({
@@ -963,9 +1003,27 @@ Alpine.data('watchlistPage', () => ({
 
     get filteredItems() {
         if (this.activeFilter === 'continue') return this.continueItems;
-        const map = { wishlist: 'plan_to_watch', completed: 'completed', favorites: 'favorites' };
+        if (this.activeFilter === 'favorites') return this.items.filter(i => i.is_favorite);
+        const map = { watchlist: 'plan_to_watch', completed: 'completed' };
         const status = map[this.activeFilter];
         return status ? this.items.filter(i => i.status === status) : this.items;
+    },
+
+    statusLabel(item) {
+        if (item.status === 'completed') return 'Completed';
+        if (item.status === 'plan_to_watch') return 'Watchlist';
+        return (item.status || '').replace(/_/g, ' ');
+    },
+
+    async toggleFavorite(item) {
+        const next = !item.is_favorite;
+        try {
+            await watchlistApi.update(item._id, { is_favorite: next });
+            item.is_favorite = next;
+            Alpine.store('toast').show(next ? 'Added to Favorites!' : 'Removed from Favorites.');
+        } catch (e) {
+            Alpine.store('toast').show('Error: ' + e.message);
+        }
     },
 
     getProgressPercent(item) {
