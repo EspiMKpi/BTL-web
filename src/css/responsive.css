@@ -1302,4 +1302,20 @@
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
     }
+
+    /* Ensure elements hidden for anime.js are visible with reduced motion */
+    .detail-hero-content .detail-kicker,
+    .detail-hero-content .detail-title,
+    .detail-hero-content .detail-meta,
+    .detail-hero-content .detail-overview,
+    .detail-hero-content .detail-actions,
+    [data-scroll-reveal] {
+        opacity: 1 !important;
+        transform: none !important;
+    }
+
+    /* Hide preloader immediately */
+    #preloader {
+        display: none !important;
+    }
 }

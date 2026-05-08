@@ -1,11 +1,13 @@
 /**
  * CineDrop Router
- * Handles page switching with smooth fade transitions
+ * Handles page switching with anime.js-powered transitions
  */
+
+import { pageTransitionOut, pageTransitionIn, initScrollReveals, cleanupScrollReveals } from './animations.js';
 
 let isTransitioning = false;
 
-export function switchPage(pageId, params = {}) {
+export async function switchPage(pageId, params = {}) {
     if (isTransitioning) return;
 
     const pages = document.querySelectorAll('.page-content');
@@ -25,25 +27,25 @@ export function switchPage(pageId, params = {}) {
         return;
     }
 
-    // --- Animated transition ---
+    // --- Animated transition with anime.js ---
     isTransitioning = true;
 
-    // 1. Fade out current page
-    currentPage.classList.add('page-fade-out');
+    // 1. Clean up scroll observers on current page
+    cleanupScrollReveals();
 
-    setTimeout(() => {
-        // 2. Swap pages
-        applySwitch(pages, pageId, params, nav, footer, dropdown, navLinksContainer);
+    // 2. Animate out current page
+    await pageTransitionOut(currentPage);
 
-        // 3. Prepare target for fade-in
-        targetPage.classList.add('page-fade-in');
+    // 3. Swap pages
+    applySwitch(pages, pageId, params, nav, footer, dropdown, navLinksContainer);
 
-        // 4. Clean up after animation
-        setTimeout(() => {
-            targetPage.classList.remove('page-fade-in');
-            isTransitioning = false;
-        }, 300);
-    }, 200);
+    // 4. Animate in new page
+    await pageTransitionIn(targetPage);
+
+    // 5. Initialize scroll reveals on the new page
+    initScrollReveals(targetPage);
+
+    isTransitioning = false;
 }
 
 function applySwitch(pages, pageId, params, nav, footer, dropdown, navLinksContainer) {

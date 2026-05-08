@@ -742,13 +742,13 @@
     align-items: center;
     justify-content: space-between;
     margin-bottom: 12px;
-    animation: detailContentUp 0.5s 0.15s ease-out both;
 }
 
 .section-title {
-    font-size: 22px;
-    font-weight: 700;
+    font-size: var(--type-section, 22px);
+    font-weight: 800;
     color: var(--text-primary);
+    letter-spacing: var(--letter-spacing-tight, -0.01em);
 }
 
 .see-all {

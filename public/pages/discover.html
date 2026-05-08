@@ -68,8 +68,8 @@
     <div class="nf-error" x-show="error" x-text="error" style="text-align:center; padding: 40px 20px; color: #ff6b6b;"></div>
 
     <!-- Top 10 Rail -->
-    <section class="movie-section nf-content-section" x-show="!loading && top10.length > 0">
-        <div class="section-header">
+    <section class="movie-section nf-content-section" x-show="!loading && top10.length > 0" data-scroll-reveal="fade-up">
+        <div class="section-header" data-scroll-reveal="fade-up">
             <h2 class="section-title" x-text="top10Rail ? top10Rail.title : 'Top 10 Today'">Top 10 Today</h2>
             <button class="see-all" type="button" @click="switchPage('movies')">Browse all</button>
         </div>
@@ -107,8 +107,8 @@
 
     <!-- Trending / Genre Rails -->
     <template x-for="rail in otherRails" :key="rail.id">
-        <section class="movie-section nf-content-section">
-            <div class="section-header">
+        <section class="movie-section nf-content-section" data-scroll-reveal="fade-up">
+            <div class="section-header" data-scroll-reveal="fade-up">
                 <h2 class="section-title" x-text="rail.title"></h2>
                 <button class="see-all" type="button" @click="switchPage(rail.content_type === 'series' ? 'series' : 'movies')">See all</button>
             </div>
@@ -143,7 +143,7 @@
     </template>
 
     <!-- Final CTA -->
-    <section class="nf-final-cta" x-show="!$store.auth.isLoggedIn" x-transition:enter="transition ease-out duration-500" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+    <section class="nf-final-cta" x-show="!$store.auth.isLoggedIn" data-scroll-reveal="scale-in">
         <h2>Ready to watch?</h2>
         <p>Choose your first story and start streaming in minutes.</p>
         <button class="btn btn-primary" type="button" @click="switchPage('register')">Create Your Account</button>

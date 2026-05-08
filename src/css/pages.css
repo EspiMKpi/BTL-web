@@ -1082,9 +1082,9 @@
    =================================== */
 .hero-carousel {
     position: relative;
-    height: 75vh;
-    min-height: 480px;
-    max-height: 720px;
+    height: 85vh;
+    min-height: 520px;
+    max-height: 860px;
     margin: 0 calc(50% - 50vw) 0;
     overflow: hidden;
     background: var(--bg-main);
@@ -1120,12 +1120,32 @@
 
 .hero-slide-content {
     position: absolute;
-    bottom: 12%;
+    bottom: 14%;
     left: 80px;
     z-index: 10;
-    width: min(560px, 50vw);
-    animation: heroContentIn 0.6s ease-out both;
-    animation-delay: 0.15s;
+    width: min(580px, 50vw);
+}
+
+/* Ambient gold glow behind hero content */
+.hero-slide-content::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: -40px;
+    transform: translateY(-50%);
+    width: 350px;
+    height: 350px;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: -1;
+    opacity: 0.6;
+    animation: ambientGlow 4s ease-in-out infinite alternate;
+}
+
+@keyframes ambientGlow {
+    from { opacity: 0.4; transform: translateY(-50%) scale(0.95); }
+    to   { opacity: 0.7; transform: translateY(-50%) scale(1.05); }
 }
 
 @keyframes heroContentIn {
@@ -1137,12 +1157,12 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 13px;
+    font-size: var(--type-kicker, 13px);
     font-weight: 600;
     color: rgba(255, 255, 255, 0.7);
     margin-bottom: 12px;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: var(--letter-spacing-wide, 0.5px);
 }
 
 .hero-slide-type {
@@ -1159,12 +1179,13 @@
 }
 
 .hero-slide-title {
-    font-size: clamp(32px, 4.5vw, 56px);
-    font-weight: 800;
-    line-height: 1.05;
-    margin-bottom: 14px;
+    font-size: var(--type-hero);
+    font-weight: 900;
+    line-height: 1;
+    margin-bottom: 16px;
     color: #fff;
-    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.5);
+    letter-spacing: var(--letter-spacing-tight);
+    text-shadow: 0 2px 30px rgba(0, 0, 0, 0.6);
 }
 
 .hero-slide-desc {
@@ -1821,24 +1842,15 @@
     overflow: hidden;
     margin: 0 -60px 40px;
     background: #000;
-    animation: detailHeroIn 0.6s ease-out both;
 }
 
-@keyframes detailHeroIn {
-    from { opacity: 0; }
-    to   { opacity: 1; }
-}
+/* anime.js handles hero content animations now — no CSS keyframes needed */
 
 .detail-hero-poster img {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    animation: detailHeroZoom 12s ease-out forwards;
-}
-
-@keyframes detailHeroZoom {
-    from { transform: scale(1.08); }
-    to   { transform: scale(1); }
+    will-change: transform;
 }
 
 .detail-hero-content {
@@ -1848,35 +1860,23 @@
     right: 0;
     padding: 80px 60px 60px;
     z-index: 2;
-    animation: detailContentUp 0.7s 0.3s ease-out both;
 }
 
-@keyframes detailContentUp {
-    from { opacity: 0; transform: translateY(32px); }
-    to   { opacity: 1; transform: translateY(0); }
-}
-
-.detail-hero-content .detail-title {
-    animation: detailContentUp 0.7s 0.45s ease-out both;
-}
-
-.detail-hero-content .detail-meta-row {
-    animation: detailContentUp 0.6s 0.55s ease-out both;
-}
-
-.detail-hero-content .detail-desc {
-    animation: detailContentUp 0.6s 0.65s ease-out both;
-}
-
-.detail-hero-content .detail-cta-row {
-    animation: detailContentUp 0.6s 0.75s ease-out both;
+/* Elements start hidden — anime.js reveals them */
+.detail-hero-content .detail-kicker,
+.detail-hero-content .detail-title,
+.detail-hero-content .detail-meta,
+.detail-hero-content .detail-overview,
+.detail-hero-content .detail-actions {
+    opacity: 0;
 }
 
 .detail-title {
-    font-size: 48px;
+    font-size: var(--type-hero);
     margin-bottom: 16px;
-    letter-spacing: -0.5px;
-    font-weight: 800;
+    letter-spacing: var(--letter-spacing-tight);
+    font-weight: 900;
+    line-height: 1;
 }
 
 /* Player Styles */
