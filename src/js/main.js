@@ -132,6 +132,25 @@ Alpine.data('appState', () => ({
 Alpine.data('scrollRail', () => ({
     canScrollLeft: false,
     canScrollRight: false,
+    _resizeObs: null,
+
+    init() {
+        this.$nextTick(() => {
+            this.checkArrows();
+            const el = this.$refs.scrollContainer;
+            if (el && typeof ResizeObserver !== 'undefined') {
+                this._resizeObs = new ResizeObserver(() => this.checkArrows());
+                this._resizeObs.observe(el);
+            }
+        });
+    },
+
+    destroy() {
+        if (this._resizeObs) {
+            this._resizeObs.disconnect();
+            this._resizeObs = null;
+        }
+    },
 
     checkArrows() {
         const el = this.$refs.scrollContainer;

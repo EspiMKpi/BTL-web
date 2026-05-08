@@ -901,7 +901,7 @@
 }
 
 .nf-row-grid::-webkit-scrollbar {
-    height: 6px;
+    display: none;
 }
 
 .nf-row-grid::-webkit-scrollbar-thumb {
@@ -938,6 +938,7 @@
     gap: 14px;
     overflow-x: auto;
     padding: 6px 2px 8px;
+    scrollbar-width: none;
 }
 
 .nf-row-grid .movie-card {

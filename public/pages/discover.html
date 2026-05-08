@@ -73,7 +73,7 @@
             <h2 class="section-title" x-text="top10Rail ? top10Rail.title : 'Top 10 Today'">Top 10 Today</h2>
             <button class="see-all" type="button" @click="switchPage('movies')">Browse all</button>
         </div>
-        <div class="content-rail-wrapper" x-data="scrollRail" x-init="$nextTick(() => checkArrows())">
+        <div class="content-rail-wrapper" x-data="scrollRail">
             <div class="rail-scroll-container">
                 <button class="rail-arrow rail-arrow-left" :class="{ 'rail-arrow-visible': canScrollLeft }" @click="scrollLeft()" type="button" aria-label="Scroll left">
                     <span class="rail-arrow-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></span>
@@ -112,12 +112,12 @@
                 <h2 class="section-title" x-text="rail.title"></h2>
                 <button class="see-all" type="button" @click="switchPage(rail.content_type === 'series' ? 'series' : 'movies')">See all</button>
             </div>
-            <div class="content-rail-wrapper" x-data="scrollRail" x-init="$nextTick(() => checkArrows())">
+            <div class="content-rail-wrapper" x-data="scrollRail">
                 <div class="rail-scroll-container">
                     <button class="rail-arrow rail-arrow-left" :class="{ 'rail-arrow-visible': canScrollLeft }" @click="scrollLeft()" type="button" aria-label="Scroll left">
                         <span class="rail-arrow-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></span>
                     </button>
-                    <div class="movie-grid nf-row-grid" x-ref="scrollContainer" @scroll="checkArrows()">
+                    <div class="nf-row-grid" x-ref="scrollContainer" @scroll="checkArrows()">
                         <template x-for="item in rail.items.slice(0, 12)" :key="item.tmdb_id">
                             <div class="movie-card"
                                  :data-tmdb-id="item.tmdb_id"
