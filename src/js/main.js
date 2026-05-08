@@ -292,7 +292,7 @@ Alpine.data('loginForm', () => ({
         this.error = '';
         try {
             await Alpine.store('auth').login(this.email, this.password);
-            switchPage('movies');
+            switchPage('discover');
         } catch (e) {
             this.error = e.message;
         } finally {
@@ -316,7 +316,7 @@ Alpine.data('registerForm', () => ({
         this.error = '';
         try {
             await Alpine.store('auth').register(this.email, this.password);
-            switchPage('movies');
+            switchPage('discover');
         } catch (e) {
             this.error = e.message;
         } finally {
