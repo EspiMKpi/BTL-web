@@ -254,7 +254,7 @@ Alpine.data('discoverPage', () => ({
         return this.rails.find(r => r.items && r.items.length >= 5) || this.rails[0] || null;
     },
     get top10() {
-        return (this.top10Rail?.items || []).slice(0, 10);
+        return (this.top10Rail?.items || []).slice(0, 9);
     },
     get top10ContentType() {
         return this.top10Rail?.content_type || 'movie';

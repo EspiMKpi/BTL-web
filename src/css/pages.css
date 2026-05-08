@@ -893,15 +893,17 @@
     gap: 18px;
     overflow-x: auto;
     padding: 8px 2px 10px;
-    scrollbar-width: thin;
+    scrollbar-width: none;
 }
 
-.nf-top10-grid::-webkit-scrollbar,
+.nf-top10-grid::-webkit-scrollbar {
+    display: none;
+}
+
 .nf-row-grid::-webkit-scrollbar {
     height: 6px;
 }
 
-.nf-top10-grid::-webkit-scrollbar-thumb,
 .nf-row-grid::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.2);
     border-radius: 99px;
@@ -1121,7 +1123,10 @@
 .hero-slide-content {
     position: absolute;
     bottom: 12%;
-    left: 80px;
+    /* Align h1 + description with the rail .section-title:
+       .page-content is max-width 1500px (centered) with 60px horizontal padding,
+       and .hero-carousel breaks out to full viewport via negative margins. */
+    left: max(60px, calc((100vw - 1500px) / 2 + 60px));
     z-index: 10;
     width: min(560px, 50vw);
     animation: heroContentIn 0.6s ease-out both;
