@@ -43,12 +43,47 @@
                 <a href="#watchlists" class="nav-link" data-page="watchlists">Watchlists</a>
                 <a href="#admin" class="nav-link admin-link" data-page="admin" x-show="$store.auth.user?.role === 'admin'" style="color: var(--accent-gold); font-weight: 700;">Admin</a>
             </div>
-            <div class="search-box hide-mobile">
-                <div class="icon-wrapper" style="width: 14px; height: 14px; flex-shrink: 0; color: rgba(255,255,255,0.3);">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <div class="search-wrapper hide-mobile" x-data="navSearch" @click.outside="close()">
+                <div class="search-box">
+                    <div class="icon-wrapper" style="width: 14px; height: 14px; flex-shrink: 0; color: rgba(255,255,255,0.3);">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                    </div>
+                    <input type="text" placeholder="Search films, series..."
+                           x-model="query"
+                           @input="onInput()"
+                           @focus="if (results.length > 0 || query.trim().length >= 2) open = true"
+                           @keydown.enter="submit(); $event.target.blur()"
+                           @keydown.escape="close(); $event.target.blur()">
                 </div>
-                <input type="text" placeholder="Search films, series..."
-                       @keydown.enter="if ($event.target.value.trim()) { window.switchPage('movies', { searchQuery: $event.target.value.trim() }); document.dispatchEvent(new CustomEvent('nav:search', { detail: { query: $event.target.value.trim() } })); $event.target.blur(); }">
+                <div class="search-dropdown" x-show="open" x-cloak x-transition.opacity.duration.150ms>
+                    <template x-if="loading">
+                        <div class="search-dropdown-status">Searching&hellip;</div>
+                    </template>
+                    <template x-if="!loading && results.length === 0 && query.trim().length >= 2">
+                        <div class="search-dropdown-status">
+                            No results for &ldquo;<span x-text="query.trim()"></span>&rdquo;
+                        </div>
+                    </template>
+                    <template x-for="item in results" :key="item.content_type + '-' + item.tmdb_id">
+                        <a href="#" class="search-dropdown-item" @click.prevent="goToResult(item)">
+                            <img :src="posterUrl(item.poster_path)" alt="" class="search-dropdown-poster" loading="lazy">
+                            <div class="search-dropdown-meta">
+                                <div class="search-dropdown-title" x-text="getTitle(item)"></div>
+                                <div class="search-dropdown-sub">
+                                    <span x-text="item.content_type === 'series' ? 'Series' : 'Movie'"></span>
+                                    <template x-if="getYear(item)">
+                                        <span> &middot; <span x-text="getYear(item)"></span></span>
+                                    </template>
+                                </div>
+                            </div>
+                        </a>
+                    </template>
+                    <template x-if="!loading && results.length > 0">
+                        <a href="#" class="search-dropdown-footer" @click.prevent="submit()">
+                            See all results for &ldquo;<span x-text="query.trim()"></span>&rdquo;
+                        </a>
+                    </template>
+                </div>
             </div>
             <button class="mobile-menu-btn" id="mobile-menu-btn">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
