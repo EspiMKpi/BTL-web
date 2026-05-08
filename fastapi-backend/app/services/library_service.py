@@ -80,14 +80,26 @@ async def get_home_rails(user_id: Optional[str] = None, rail_limit: int = 10) ->
 
     # Continue watching rail (authenticated users only)
     if user_id:
-        continue_items = (
-            await db.watch_history.find(
-                {"user_id": user_id, "completed": False, "progress_seconds": {"$gt": 0}}
-            )
-            .sort("last_watched_at", -1)
-            .limit(10)
-            .to_list(10)
-        )
+        cw_pipeline = [
+            {
+                "$match": {
+                    "user_id": user_id,
+                    "completed": False,
+                    "progress_seconds": {"$gt": 0},
+                }
+            },
+            {"$sort": {"last_watched_at": -1}},
+            {
+                "$group": {
+                    "_id": {"content_type": "$content_type", "tmdb_id": "$tmdb_id"},
+                    "doc": {"$first": "$$ROOT"},
+                }
+            },
+            {"$replaceRoot": {"newRoot": "$doc"}},
+            {"$sort": {"last_watched_at": -1}},
+            {"$limit": 10},
+        ]
+        continue_items = await db.watch_history.aggregate(cw_pipeline).to_list(10)
 
         if continue_items:
             movie_ids = [h["tmdb_id"] for h in continue_items if h["content_type"] == "movie"]
