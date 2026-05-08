@@ -742,6 +742,7 @@
     align-items: center;
     justify-content: space-between;
     margin-bottom: 12px;
+    animation: detailContentUp 0.5s 0.15s ease-out both;
 }
 
 .section-title {
@@ -934,6 +935,7 @@
         linear-gradient(to right, rgba(20, 20, 20, 0.92) 30%, rgba(20, 20, 20, 0.3) 60%, transparent),
         linear-gradient(transparent 40%, rgba(20, 20, 20, 1) 90%);
     z-index: 1;
+    animation: detailHeroIn 0.8s 0.2s ease-out both;
 }
 
 .detail-meta-row {
@@ -963,6 +965,7 @@
 /* Episodes */
 .episode-section {
     margin-bottom: 40px;
+    animation: cardReveal 0.6s 0.3s ease-out both;
 }
 
 .episode-grid {
@@ -980,7 +983,19 @@
     overflow: hidden;
     cursor: pointer;
     transition: var(--transition-fast);
+    animation: cardReveal 0.5s ease-out both;
 }
+
+.episode-card:nth-child(1)  { animation-delay: 0.05s; }
+.episode-card:nth-child(2)  { animation-delay: 0.1s; }
+.episode-card:nth-child(3)  { animation-delay: 0.15s; }
+.episode-card:nth-child(4)  { animation-delay: 0.2s; }
+.episode-card:nth-child(5)  { animation-delay: 0.25s; }
+.episode-card:nth-child(6)  { animation-delay: 0.3s; }
+.episode-card:nth-child(7)  { animation-delay: 0.35s; }
+.episode-card:nth-child(8)  { animation-delay: 0.4s; }
+.episode-card:nth-child(9)  { animation-delay: 0.45s; }
+.episode-card:nth-child(10) { animation-delay: 0.5s; }
 
 .episode-card:hover {
     border-color: rgba(255, 255, 255, 0.15);
@@ -1046,6 +1061,7 @@
     display: flex;
     gap: 10px;
     margin-bottom: 20px;
+    animation: detailContentUp 0.5s 0.2s ease-out both;
 }
 
 .season-tab {

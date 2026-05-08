@@ -143,7 +143,7 @@
     </template>
 
     <!-- Final CTA -->
-    <section class="nf-final-cta">
+    <section class="nf-final-cta" x-show="!$store.auth.isLoggedIn" x-transition:enter="transition ease-out duration-500" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
         <h2>Ready to watch?</h2>
         <p>Choose your first story and start streaming in minutes.</p>
         <button class="btn btn-primary" type="button" @click="switchPage('register')">Create Your Account</button>
