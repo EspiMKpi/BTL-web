@@ -80,7 +80,6 @@ async def get_series_by_id(tmdb_id: int) -> dict:
                     }
                 )
             except Exception:
-                pass
                 enriched_seasons.append(
                     {
                         "season_number": season["season_number"],

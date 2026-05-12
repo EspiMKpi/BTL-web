@@ -49,6 +49,4 @@ export const pages_ready = (async function load_pages() {
             }
         }
     });
-
-    console.log("Pages loaded");
 })();

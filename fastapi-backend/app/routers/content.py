@@ -19,7 +19,7 @@ from app.services.library_service import (
 )
 from app.services.movie_service import get_movie_by_id
 from app.services.series_service import get_series_by_id
-from app.utils import sanitize
+from app.utils import escape_mongo_regex, sanitize
 
 
 router = APIRouter(prefix="/api/content", tags=["content"])
@@ -65,7 +65,7 @@ async def search_content(
 ):
     skip = (page - 1) * limit
     db = get_database()
-    escaped = q.replace(".", r"\.")
+    escaped = escape_mongo_regex(q)
     public_filter = await public_content_filter()
 
     # Search both movies and series
