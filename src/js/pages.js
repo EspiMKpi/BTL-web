@@ -4,6 +4,7 @@
  */
 
 const PAGE_FILES = [
+    "landing",
     "login",
     "register",
     "discover",

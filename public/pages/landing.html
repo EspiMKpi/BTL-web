@@ -1,0 +1,192 @@
+<div id="page-landing" class="page-content landing-page" x-data="landingPage">
+
+    <!-- ─── Landing Nav (custom, transparent → solid on scroll) ─── -->
+    <nav class="landing-nav" id="landing-nav">
+        <div class="logo">
+            <span class="logo-text">Voz</span><span class="logo-text gold">Flix</span>
+        </div>
+        <div class="landing-nav-actions">
+            <button class="landing-btn-ghost" @click="goToLogin()">Sign In</button>
+            <button class="landing-btn-primary" @click="goToRegister()">Get Started</button>
+        </div>
+    </nav>
+
+    <!-- ─── Hero Section ─── -->
+    <section class="landing-hero" id="landing-hero">
+        <div class="landing-hero-bg" id="landing-hero-bg">
+            <img
+                :src="heroBackdrop"
+                alt=""
+                class="landing-hero-bg-img"
+                loading="eager"
+                @error="heroFallback = true"
+                x-show="!heroFallback"
+            />
+            <div class="landing-hero-bg-fallback" x-show="heroFallback"></div>
+        </div>
+        <div class="landing-hero-scrim"></div>
+
+        <div class="landing-hero-content" id="landing-hero-content">
+            <p class="landing-kicker" data-anim="hero">STREAMING CINEMA</p>
+            <h1 class="landing-title" data-anim="hero">
+                Unlimited Movies<br/>&amp; Series
+            </h1>
+            <p class="landing-subtitle" data-anim="hero">
+                Discover thousands of titles. Build your watchlist. Stream everything in one place.
+            </p>
+            <div class="landing-hero-btns" data-anim="hero">
+                <button class="landing-btn-primary landing-btn-lg" @click="goToRegister()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <polygon points="5 3 19 12 5 21 5 3"/>
+                    </svg>
+                    Start Watching Free
+                </button>
+                <button class="landing-btn-secondary landing-btn-lg" @click="goToLogin()">
+                    Sign In
+                </button>
+            </div>
+        </div>
+
+        <div class="landing-scroll-indicator" id="landing-scroll-indicator" data-anim="hero">
+            <span>Scroll to explore</span>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9"/>
+            </svg>
+        </div>
+    </section>
+
+    <!-- ─── Features Section ─── -->
+    <section class="landing-section landing-features">
+        <div class="landing-container">
+            <p class="landing-section-kicker" data-scroll-reveal="fade-up">WHY VOZFLIX</p>
+            <h2 class="landing-section-title" data-scroll-reveal="fade-up">Everything You Need to Stream</h2>
+            <p class="landing-section-desc" data-scroll-reveal="fade-up">
+                A premium movie and series platform designed for true cinema lovers.
+            </p>
+
+            <div class="landing-features-grid">
+                <div class="landing-feature-card" data-scroll-reveal="fade-up" data-scroll-delay="0">
+                    <div class="landing-feature-icon">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <rect x="2" y="2" width="20" height="20" rx="2" ry="2"/>
+                            <path d="M7 2v20"/>
+                            <path d="M17 2v20"/>
+                            <path d="M2 12h20"/>
+                            <path d="M2 7h5"/>
+                            <path d="M2 17h5"/>
+                            <path d="M17 17h5"/>
+                            <path d="M17 7h5"/>
+                        </svg>
+                    </div>
+                    <h3 class="landing-feature-title">Vast Library</h3>
+                    <p class="landing-feature-desc">
+                        Thousands of movies and series from every genre, powered by TMDB's comprehensive database.
+                    </p>
+                </div>
+
+                <div class="landing-feature-card" data-scroll-reveal="fade-up" data-scroll-delay="100">
+                    <div class="landing-feature-icon">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                        </svg>
+                    </div>
+                    <h3 class="landing-feature-title">Personal Watchlist</h3>
+                    <p class="landing-feature-desc">
+                        Save titles to your watchlist, track progress, and pick up right where you left off.
+                    </p>
+                </div>
+
+                <div class="landing-feature-card" data-scroll-reveal="fade-up" data-scroll-delay="200">
+                    <div class="landing-feature-icon">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                        </svg>
+                    </div>
+                    <h3 class="landing-feature-title">Lightning Fast</h3>
+                    <p class="landing-feature-desc">
+                        Instant search, smart recommendations, and a blazing-fast interface built for speed.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ─── Content Showcase ─── -->
+    <section class="landing-section landing-showcase">
+        <div class="landing-container">
+            <p class="landing-section-kicker" data-scroll-reveal="fade-up">EXPLORE</p>
+            <h2 class="landing-section-title" data-scroll-reveal="fade-up">Discover Your Next Favorite</h2>
+        </div>
+
+        <div class="landing-showcase-rail" data-scroll-reveal="fade-up">
+            <template x-for="item in featuredContent" :key="item.tmdb_id">
+                <div class="landing-showcase-card">
+                    <img
+                        :src="posterUrl(item.poster_path)"
+                        :alt="getTitle(item)"
+                        loading="lazy"
+                        class="landing-showcase-poster"
+                    />
+                    <div class="landing-showcase-overlay">
+                        <p class="landing-showcase-card-title" x-text="getTitle(item)"></p>
+                        <p class="landing-showcase-card-year" x-text="getYear(item)"></p>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </section>
+
+    <!-- ─── Stats Section ─── -->
+    <section class="landing-section landing-stats">
+        <div class="landing-container">
+            <div class="landing-stats-grid">
+                <div class="landing-stat-card" data-scroll-reveal="scale-in" data-scroll-delay="0">
+                    <div class="landing-stat-number" x-text="stats.movie_count.toLocaleString()">0</div>
+                    <div class="landing-stat-label">Movies</div>
+                </div>
+                <div class="landing-stat-card" data-scroll-reveal="scale-in" data-scroll-delay="100">
+                    <div class="landing-stat-number" x-text="stats.series_count.toLocaleString()">0</div>
+                    <div class="landing-stat-label">Series</div>
+                </div>
+                <div class="landing-stat-card" data-scroll-reveal="scale-in" data-scroll-delay="200">
+                    <div class="landing-stat-number" x-text="stats.genre_count.toLocaleString()">0</div>
+                    <div class="landing-stat-label">Genres</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ─── Final CTA ─── -->
+    <section class="landing-section landing-cta">
+        <div class="landing-container landing-cta-inner">
+            <div class="landing-cta-glow"></div>
+            <h2 class="landing-cta-title" data-scroll-reveal="fade-up">Ready to Start Watching?</h2>
+            <p class="landing-cta-desc" data-scroll-reveal="fade-up">
+                Create a free account and dive into thousands of movies and series today.
+            </p>
+            <button
+                class="landing-btn-primary landing-btn-lg"
+                data-scroll-reveal="fade-up"
+                @click="goToRegister()"
+            >
+                Create Free Account
+            </button>
+        </div>
+    </section>
+
+    <!-- ─── Landing Footer ─── -->
+    <footer class="landing-footer">
+        <div class="landing-container landing-footer-inner">
+            <div class="logo">
+                <span class="logo-text">Voz</span><span class="logo-text gold">Flix</span>
+            </div>
+            <p class="landing-footer-copy">&copy; 2026 VozFlix. All rights reserved.</p>
+            <div class="landing-footer-links">
+                <a href="#" @click.prevent>Terms</a>
+                <a href="#" @click.prevent>Privacy</a>
+                <a href="#" @click.prevent>Contact</a>
+            </div>
+        </div>
+    </footer>
+
+</div>

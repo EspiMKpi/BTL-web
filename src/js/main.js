@@ -15,6 +15,7 @@ import {
     animateCounter,
     prefersReducedMotion,
     showPageLoader,
+    animateLandingHero,
 } from './animations.js';
 
 window.Alpine = Alpine;
@@ -31,6 +32,7 @@ window.vozAnimations = {
     animateCounter,
     prefersReducedMotion,
     showPageLoader,
+    animateLandingHero,
 };
 
 // --- Netflix-style navbar scroll effect ---
@@ -297,6 +299,97 @@ Alpine.data('discoverPage', () => ({
 
     getYear(item, ct) {
         const d = ct === 'series' ? item.first_air_date : item.release_date;
+        return d ? d.substring(0, 4) : '';
+    },
+}));
+
+Alpine.data('landingPage', () => ({
+    featuredContent: [],
+    heroBackdrop: '',
+    heroFallback: false,
+    _scrollHandler: null,
+    stats: { movie_count: 0, series_count: 0, genre_count: 0 },
+
+    async init() {
+        // Fetch featured content and stats in parallel
+        const [homeResult, statsResult] = await Promise.allSettled([
+            contentApi.getHome(),
+            contentApi.getStats(),
+        ]);
+
+        // Populate featured content
+        if (homeResult.status === 'fulfilled') {
+            const data = homeResult.value;
+            const allItems = [];
+            (data.rails || []).forEach(rail => {
+                (rail.items || []).forEach(item => {
+                    if (item.poster_path && item.backdrop_path) allItems.push(item);
+                });
+            });
+            const seen = new Set();
+            this.featuredContent = allItems.filter(i => {
+                if (seen.has(i.tmdb_id)) return false;
+                seen.add(i.tmdb_id);
+                return true;
+            }).slice(0, 15);
+            const heroItem = allItems.find(i => i.backdrop_path);
+            if (heroItem) {
+                this.heroBackdrop = `https://image.tmdb.org/t/p/original${heroItem.backdrop_path}`;
+            }
+        }
+
+        // Populate real stats from database
+        if (statsResult.status === 'fulfilled') {
+            this.stats = statsResult.value;
+        }
+
+        // Landing nav scroll effect
+        const nav = document.getElementById('landing-nav');
+        this._scrollHandler = () => {
+            if (nav) {
+                nav.classList.toggle('scrolled', window.scrollY > 60);
+            }
+            // Fade scroll indicator
+            const scrollInd = document.getElementById('landing-scroll-indicator');
+            if (scrollInd) {
+                scrollInd.style.opacity = window.scrollY > 200 ? '0' : '1';
+            }
+        };
+        window.addEventListener('scroll', this._scrollHandler, { passive: true });
+
+        // Trigger hero animation
+        this.$nextTick(() => {
+            const container = document.getElementById('page-landing');
+            if (container && window.vozAnimations) {
+                window.vozAnimations.animateLandingHero(container);
+            }
+            // Initialize scroll reveals
+            if (container && window.vozAnimations) {
+                window.vozAnimations.initScrollReveals(container);
+            }
+        });
+    },
+
+    destroy() {
+        if (this._scrollHandler) {
+            window.removeEventListener('scroll', this._scrollHandler);
+        }
+        if (window.vozAnimations) {
+            window.vozAnimations.cleanupScrollReveals?.();
+        }
+    },
+
+    goToLogin() { switchPage('login'); },
+    goToRegister() { switchPage('register'); },
+
+    posterUrl(path) {
+        return path ? `https://image.tmdb.org/t/p/w342${path}` : 'https://placehold.co/180x270/1a1a2e/white?text=No+Image';
+    },
+    getTitle(item) {
+        return item.title || item.name || 'Untitled';
+    },
+    getYear(item) {
+        const d = item.release_date || item.first_air_date;
         return d ? d.substring(0, 4) : '';
     },
 }));
@@ -1641,18 +1734,17 @@ Alpine.start();
 
 // --- DOM Ready ---
 document.addEventListener('DOMContentLoaded', async () => {
-    // Run preloader animation while pages load
-    await initPreloader(pages_ready);
+    // Determine target page before preloader finishes
+    // so we can reveal it beneath the preloader slide-up.
+    await new Promise(r => setTimeout(r, 300)); // let fetchUser settle
+    const targetPage = Alpine.store('auth').isLoggedIn ? 'discover' : 'landing';
 
-    // Wait for fetchUser (started by appState.init) to settle
-    // so we know the auth state before choosing the initial page.
-    await new Promise(r => setTimeout(r, 300));
-
-    if (Alpine.store('auth').isLoggedIn) {
-        switchPage('discover');
-    } else {
-        switchPage('login');
-    }
+    // Run preloader animation while pages load.
+    // The callback fires just before the preloader slides up,
+    // making the target page visible underneath — no black gap.
+    await initPreloader(pages_ready, () => {
+        switchPage(targetPage);
+    });
 
     document.addEventListener('auth:expired', () => {
         Alpine.store('auth').logout();

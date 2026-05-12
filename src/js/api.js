@@ -34,6 +34,7 @@ export async function apiFetch(endpoint, options = {}) {
 export const contentApi = {
     getHome: () => apiFetch('/api/content/home'),
     getGenres: () => apiFetch('/api/content/genres'),
+    getStats: () => apiFetch('/api/content/stats'),
     browse: (genreId, page = 1, limit = 20) =>
         apiFetch(`/api/content/browse/${genreId}?page=${page}&limit=${limit}`),
     search: (query, page = 1, limit = 20) =>

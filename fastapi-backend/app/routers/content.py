@@ -5,6 +5,8 @@ GET /home, GET /genres, GET /browse/:genre_id, GET /movie/:id, GET /series/:id, 
 
 from typing import Optional
 
+import asyncio
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.core.deps import get_optional_current_user
@@ -93,6 +95,22 @@ def _has_hidden_genre(doc: dict, hidden_ids: list[int]) -> bool:
     if not hidden_ids:
         return False
     return any(g.get("genre_id") in hidden_ids for g in (doc.get("genres") or []))
+
+
+@router.get("/stats")
+async def content_stats():
+    """Return global content counts from the database."""
+    db = get_database()
+    movie_count, series_count, genre_count = await asyncio.gather(
+        db.movies.count_documents({}),
+        db.series.count_documents({}),
+        db.genres.count_documents({}),
+    )
+    return {
+        "movie_count": movie_count,
+        "series_count": series_count,
+        "genre_count": genre_count,
+    }
 
 
 @router.get("/movie/{movie_id}")

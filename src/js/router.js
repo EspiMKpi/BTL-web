@@ -58,7 +58,7 @@ function applySwitch(pages, pageId, params, nav, footer, dropdown, navLinksConta
         }
     });
 
-    if (pageId === 'login' || pageId === 'register') {
+    if (pageId === 'login' || pageId === 'register' || pageId === 'landing') {
         if (nav) nav.classList.add('hide');
         if (footer) footer.classList.add('hide');
     } else {

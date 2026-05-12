@@ -16,9 +16,10 @@ export const prefersReducedMotion = () => motionQuery.matches;
 /**
  * Animate the VozFlix preloader text and reveal the app.
  * @param {HTMLElement} preloaderEl - the #preloader overlay
+ * @param {Function} [onBeforeReveal] - called just before the preloader slides up, so the page beneath can be made visible
  * @returns {Promise} resolves when preloader is hidden
  */
-export function animatePreloader(preloaderEl) {
+export function animatePreloader(preloaderEl, onBeforeReveal) {
     return new Promise((resolve) => {
         if (!preloaderEl || prefersReducedMotion()) {
             if (preloaderEl) preloaderEl.style.display = 'none';
@@ -32,6 +33,9 @@ export function animatePreloader(preloaderEl) {
 
         const tl = createTimeline({
             onComplete: () => {
+                // Show the page beneath BEFORE sliding the preloader away
+                if (onBeforeReveal) onBeforeReveal();
+
                 // Slide preloader up and out
                 animate(preloaderEl, {
                     translateY: '-100%',
@@ -290,7 +294,7 @@ export function animateCounter(el, target, opts = {}) {
         textContent: [0, target],
         round: decimals > 0 ? Math.pow(10, decimals) : 1,
         duration,
-        ease: 'outExpo',
+        ease: 'outQuad',
     });
 }
 
@@ -488,10 +492,10 @@ const _pageLoaderHTML = `
         <div class="page-preloader-text">
             <span class="page-preloader-letter">V</span>
             <span class="page-preloader-letter">O</span>
-            <span class="page-preloader-letter gold">Z</span>
-            <span class="page-preloader-letter">F</span>
-            <span class="page-preloader-letter">L</span>
-            <span class="page-preloader-letter">I</span>
+            <span class="page-preloader-letter">Z</span>
+            <span class="page-preloader-letter gold">F</span>
+            <span class="page-preloader-letter gold">L</span>
+            <span class="page-preloader-letter gold">I</span>
             <span class="page-preloader-letter gold">X</span>
         </div>
         <div class="page-preloader-bar-track">
@@ -584,4 +588,65 @@ export function showPageLoader(container, label) {
             });
         }),
     };
+}
+
+// ─── Landing Page Hero ─────────────────────────────────────────────
+
+/**
+ * Cinematic landing hero entrance: staggered reveal of nav → kicker → title → subtitle → CTAs → scroll indicator.
+ * @param {HTMLElement} container - the #page-landing element
+ */
+export function animateLandingHero(container) {
+    if (!container || prefersReducedMotion()) return;
+
+    const nav = container.querySelector('#landing-nav');
+    const heroContent = container.querySelector('#landing-hero-content');
+    const scrollInd = container.querySelector('#landing-scroll-indicator');
+
+    if (!heroContent) return;
+
+    const animEls = heroContent.querySelectorAll('[data-anim="hero"]');
+
+    const tl = createTimeline();
+
+    // Nav fades in
+    if (nav) {
+        nav.style.opacity = '0';
+        tl.add(nav, {
+            opacity: [0, 1],
+            translateY: [-20, 0],
+            duration: 500,
+            ease: 'outQuint',
+        });
+    }
+
+    // Hero content elements stagger in
+    animEls.forEach((el, i) => {
+        el.style.opacity = '0';
+        tl.add(el, {
+            opacity: [0, 1],
+            translateY: [35, 0],
+            duration: 600,
+            ease: 'outQuint',
+        }, i === 0 ? '+=150' : '-=350');
+    });
+
+    // Scroll indicator bounces in
+    if (scrollInd) {
+        scrollInd.style.opacity = '0';
+        tl.add(scrollInd, {
+            opacity: [0, 1],
+            translateY: [20, 0],
+            duration: 500,
+            ease: 'outQuint',
+        }, '-=200');
+
+        // Continuous bounce
+        animate(scrollInd.querySelector('svg'), {
+            translateY: [0, 8, 0],
+            duration: 1500,
+            ease: 'inOutQuad',
+            loop: true,
+        });
+    }
 }
