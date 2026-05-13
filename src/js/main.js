@@ -536,6 +536,7 @@ Alpine.data('faqItem', () => ({
 Alpine.data('moviesPage', () => ({
     rails: [],
     genres: [],
+    stats: { movie_count: 0, series_count: 0, genre_count: 0 },
     loading: false,
     error: '',
     searchQuery: '',
@@ -573,12 +574,14 @@ Alpine.data('moviesPage', () => ({
         this.loading = true;
         this.error = '';
         try {
-            const [homeData, genresData] = await Promise.all([
+            const [homeData, genresData, statsData] = await Promise.all([
                 contentApi.getHome(),
                 contentApi.getGenres(),
+                contentApi.getStats(),
             ]);
             this.rails = (homeData.rails || []).filter(r => r.items && r.items.length > 0);
             this.genres = genresData || [];
+            if (statsData) this.stats = statsData;
         } catch (e) {
             this.error = e.message;
         } finally {
@@ -660,6 +663,7 @@ Alpine.data('moviesPage', () => ({
 
 Alpine.data('seriesPage', () => ({
     rails: [],
+    stats: { movie_count: 0, series_count: 0, genre_count: 0 },
     loading: false,
     error: '',
 
@@ -675,8 +679,12 @@ Alpine.data('seriesPage', () => ({
         this.loading = true;
         this.error = '';
         try {
-            const data = await contentApi.getHome();
+            const [data, statsData] = await Promise.all([
+                contentApi.getHome(),
+                contentApi.getStats(),
+            ]);
             this.rails = (data.rails || []).filter(r => r.content_type === 'series' && r.items && r.items.length > 0);
+            if (statsData) this.stats = statsData;
         } catch (e) {
             this.error = e.message;
         } finally {

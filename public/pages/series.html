@@ -7,7 +7,7 @@
         </div>
         <div class="catalog-hero-metrics">
             <div class="catalog-metric">
-                <span x-text="rails.reduce((s, r) => s + r.items.length, 0) || '...'">...</span>
+                <span x-text="stats.series_count ? stats.series_count.toLocaleString() : '...'">...</span>
                 <p>TV series</p>
             </div>
             <div class="catalog-metric">
