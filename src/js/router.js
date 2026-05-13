@@ -82,6 +82,8 @@ function applySwitch(pages, pageId, params, nav, footer, dropdown, navLinksConta
             alpineNav.currentPage = pageId;
             if (params.contentId !== undefined) alpineNav.contentId = params.contentId;
             if (params.contentType !== undefined) alpineNav.contentType = params.contentType;
+            if (params.seasonIndex !== undefined) alpineNav.seasonIndex = params.seasonIndex;
+            if (params.episodeNumber !== undefined) alpineNav.episodeNumber = params.episodeNumber;
         }
     }
 

@@ -24,7 +24,7 @@
             </div>
             <p class="detail-desc detail-overview" x-text="content?.overview || 'No description available.'"></p>
             <div class="detail-cta-row detail-actions">
-                <button class="btn btn-primary" @click="switchPage('watching')">
+                <button class="btn btn-primary" @click="switchPage('watching', { seasonIndex: selectedSeason, episodeNumber: 1 })">
                     <div class="icon-wrapper" style="width: 18px; height: 18px; color: black;">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="m7 3 14 9-14 9V3z"/></svg>
                     </div>
@@ -179,7 +179,7 @@
     <section class="episode-section" x-ref="episodes" x-show="!loading && content && contentType === 'series' && content?.seasons?.length > 0">
         <div class="section-header">
             <h2 class="section-title">Episodes</h2>
-            <a href="#watching" class="see-all" @click.prevent="switchPage('watching')">Open Player</a>
+            <a href="#watching" class="see-all" @click.prevent="switchPage('watching', { seasonIndex: selectedSeason, episodeNumber: 1 })">Open Player</a>
         </div>
         <div class="season-tabs" x-show="content?.seasons?.length > 1">
             <template x-for="(season, idx) in (content?.seasons || [])" :key="season.season_number">
@@ -191,7 +191,7 @@
         </div>
         <div class="episode-grid">
             <template x-for="ep in visibleEpisodes" :key="ep.episode_number">
-                <div class="episode-card" @click="switchPage('watching')">
+                <div class="episode-card" @click="switchPage('watching', { seasonIndex: selectedSeason, episodeNumber: ep.episode_number })">
                     <div class="ep-thumbnail">
                         <img :src="ep.still_path ? 'https://image.tmdb.org/t/p/w500' + ep.still_path : backdropUrl"
                              :alt="ep.name || ('Episode ' + ep.episode_number)">

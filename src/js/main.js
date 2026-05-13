@@ -119,6 +119,8 @@ Alpine.store('nav', {
     currentPage: 'login',
     contentId: null,
     contentType: null,
+    seasonIndex: null,
+    episodeNumber: null,
 });
 
 /**
@@ -1201,7 +1203,12 @@ Alpine.data('watchingPage', () => ({
             const params = e.detail.params || {};
             const contentId = params.contentId || Alpine.store('nav').contentId;
             const contentType = params.contentType || Alpine.store('nav').contentType || 'movie';
-            this.load(contentId, contentType);
+            const seasonIndex = params.seasonIndex ?? Alpine.store('nav').seasonIndex;
+            const episodeNumber = params.episodeNumber ?? Alpine.store('nav').episodeNumber;
+            // Clear consumed params so they don't persist for future navigations
+            Alpine.store('nav').seasonIndex = null;
+            Alpine.store('nav').episodeNumber = null;
+            this.load(contentId, contentType, seasonIndex, episodeNumber);
         });
 
         // Embed player → parent postMessage bridge.
@@ -1210,7 +1217,35 @@ Alpine.data('watchingPage', () => ({
         window.addEventListener('message', (event) => this._onPlayerMessage(event));
     },
 
-    async load(contentId, contentType) {
+    selectSeason(idx) {
+        this.selectedSeasonIndex = idx;
+        this.showAllEpisodes = false;
+        // Select first episode of the new season
+        const eps = this.content?.seasons?.[idx]?.episodes || [];
+        this.selectedEpisode = eps[0] || null;
+        this._lastPostAt = 0;
+        this._lastMessageAt = 0;
+        this._everReceivedMsg = false;
+        this._stopFallbackPoll();
+        window.dispatchEvent(new Event('content-loaded'));
+        this._startFallbackPoll();
+    },
+
+    EPISODE_LIMIT: 12,
+    showAllEpisodes: false,
+
+    get visibleEpisodes() {
+        const eps = this.content?.seasons?.[this.selectedSeasonIndex]?.episodes || [];
+        if (this.showAllEpisodes) return eps;
+        return eps.slice(0, this.EPISODE_LIMIT);
+    },
+
+    get hasMoreEpisodes() {
+        const eps = this.content?.seasons?.[this.selectedSeasonIndex]?.episodes || [];
+        return eps.length > this.EPISODE_LIMIT;
+    },
+
+    async load(contentId, contentType, seasonIndex, episodeNumber) {
         if (!contentId) {
             this.error = 'No content selected.';
             return;
@@ -1220,6 +1255,7 @@ Alpine.data('watchingPage', () => ({
         this.contentType = contentType;
         this.selectedEpisode = null;
         this.selectedSeasonIndex = 0;
+        this.showAllEpisodes = false;
         this._lastPostAt = 0;
         this._lastMessageAt = 0;
         this._everReceivedMsg = false;
@@ -1241,8 +1277,24 @@ Alpine.data('watchingPage', () => ({
                 }
             }
             if (this.contentType === 'series') {
-                const eps = this.content?.seasons?.[0]?.episodes || [];
-                this.selectedEpisode = eps[0] || null;
+                // Resolve season index: use passed param, or find matching season, or default to 0
+                let resolvedSeasonIdx = 0;
+                if (seasonIndex !== undefined && seasonIndex !== null) {
+                    const idx = Number(seasonIndex);
+                    if (idx >= 0 && idx < (this.content?.seasons?.length || 0)) {
+                        resolvedSeasonIdx = idx;
+                    }
+                }
+                this.selectedSeasonIndex = resolvedSeasonIdx;
+
+                const eps = this.content?.seasons?.[resolvedSeasonIdx]?.episodes || [];
+                // If an episode number was passed, find it; otherwise default to first
+                if (episodeNumber != null) {
+                    const found = eps.find(ep => ep.episode_number === Number(episodeNumber));
+                    this.selectedEpisode = found || eps[0] || null;
+                } else {
+                    this.selectedEpisode = eps[0] || null;
+                }
             }
         } catch (e) {
             this.error = 'Failed to load: ' + e.message;
@@ -1947,6 +1999,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const epCard = e.target.closest('.episode-card');
         const watchBtn = e.target.closest('#btn-watch-now') || epCard;
         if (watchBtn) {
+            // If inside an Alpine component (detail page), let Alpine handle it
+            if (epCard && epCard.closest('[x-data]')) return;
             switchPage('watching');
             return;
         }

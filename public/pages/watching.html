@@ -55,8 +55,17 @@
             <h2 class="section-title">Episodes</h2>
             <button class="btn btn-primary btn-sm" type="button" @click="switchPage('detail')">Back to details</button>
         </div>
+        <!-- Season tabs -->
+        <div class="season-tabs" x-show="content?.seasons?.length > 1">
+            <template x-for="(season, idx) in (content?.seasons || [])" :key="season.season_number">
+                <button class="season-tab"
+                        :class="{ active: selectedSeasonIndex === idx }"
+                        @click="selectSeason(idx)"
+                        x-text="'Season ' + season.season_number"></button>
+            </template>
+        </div>
         <div class="episode-grid">
-            <template x-for="ep in upNext" :key="ep.episode_number">
+            <template x-for="ep in visibleEpisodes" :key="ep.episode_number">
                 <div class="episode-card" :class="{ 'current-episode': selectedEpisode && ep.episode_number === selectedEpisode.episode_number }" @click.stop="selectEpisode(ep)">
                     <div class="ep-thumbnail">
                         <img :src="episodeThumb(ep)" :alt="ep.name || ('Episode ' + ep.episode_number)">
@@ -68,6 +77,15 @@
                     </div>
                 </div>
             </template>
+        </div>
+        <div class="episodes-toggle-wrap" x-show="hasMoreEpisodes">
+            <button class="btn btn-secondary episodes-toggle-btn" @click="showAllEpisodes = !showAllEpisodes">
+                <span x-text="showAllEpisodes ? 'Show Less' : 'Show All ' + upNext.length + ' Episodes'"></span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+                     :style="showAllEpisodes ? 'transform: rotate(180deg)' : ''" style="transition: transform 0.25s ease;">
+                    <polyline points="6 9 12 15 18 9"/>
+                </svg>
+            </button>
         </div>
     </section>
 </div>
