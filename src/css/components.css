@@ -1225,6 +1225,34 @@
     overflow: hidden;
 }
 
+/* Episodes Toggle (Show More / Show Less) */
+.episodes-toggle-wrap {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.episodes-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 24px;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.episodes-toggle-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
 /* Season Tabs */
 .season-tabs {
     display: flex;

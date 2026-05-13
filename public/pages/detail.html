@@ -185,12 +185,12 @@
             <template x-for="(season, idx) in (content?.seasons || [])" :key="season.season_number">
                 <button class="season-tab"
                         :class="{ active: selectedSeason === idx }"
-                        @click="selectedSeason = idx"
+                        @click="selectSeason(idx)"
                         x-text="'Season ' + season.season_number"></button>
             </template>
         </div>
         <div class="episode-grid">
-            <template x-for="ep in currentSeasonEpisodes" :key="ep.episode_number">
+            <template x-for="ep in visibleEpisodes" :key="ep.episode_number">
                 <div class="episode-card" @click="switchPage('watching')">
                     <div class="ep-thumbnail">
                         <img :src="ep.still_path ? 'https://image.tmdb.org/t/p/w500' + ep.still_path : backdropUrl"
@@ -203,6 +203,15 @@
                     </div>
                 </div>
             </template>
+        </div>
+        <div class="episodes-toggle-wrap" x-show="shouldShowToggle()">
+            <button class="btn btn-secondary episodes-toggle-btn" @click="showAllEpisodes = !showAllEpisodes">
+                <span x-text="showAllEpisodes ? 'Show Less' : 'Show All ' + currentSeasonEpisodes.length + ' Episodes'"></span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+                     :style="showAllEpisodes ? 'transform: rotate(180deg)' : ''" style="transition: transform 0.25s ease;">
+                    <polyline points="6 9 12 15 18 9"/>
+                </svg>
+            </button>
         </div>
     </section>
 </div>

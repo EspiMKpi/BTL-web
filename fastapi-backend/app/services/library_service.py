@@ -70,6 +70,22 @@ async def get_home_rails(user_id: Optional[str] = None, rail_limit: int = 10) ->
             doc_list[i] = _sanitize(doc)
     genres = [_sanitize(g) for g in genres]
 
+    # Filter out misplaced documents (series in movies collection, movies in series collection)
+    def _keep_movies(doc: dict) -> bool:
+        return not (doc.get("seasons") or doc.get("number_of_seasons")
+                    or (doc.get("first_air_date") and not doc.get("release_date")))
+
+    def _keep_series(doc: dict) -> bool:
+        return not (doc.get("title") and not doc.get("name")
+                    or (doc.get("release_date") and not doc.get("first_air_date")))
+
+    trending_movies = [d for d in trending_movies if _keep_movies(d)]
+    top_rated_movies = [d for d in top_rated_movies if _keep_movies(d)]
+    new_release_movies = [d for d in new_release_movies if _keep_movies(d)]
+    trending_series = [d for d in trending_series if _keep_series(d)]
+    top_rated_series = [d for d in top_rated_series if _keep_series(d)]
+    recent_series = [d for d in recent_series if _keep_series(d)]
+
     rails: List[Dict[str, Any]] = [
         {"id": "trending_movies", "title": "Trending Movies", "content_type": "movie", "items": trending_movies},
         {"id": "trending_series", "title": "Trending TV Shows", "content_type": "series", "items": trending_series},
@@ -177,6 +193,16 @@ async def get_series_rails(rail_limit: int = 12) -> dict:
     for doc_list in (currently_airing, completed_gems, mini_series, most_episodes, trending, top_rated, recent):
         for i, doc in enumerate(doc_list):
             doc_list[i] = _sanitize(doc)
+
+    # Filter out misplaced movie documents from series collection
+    def _keep_series(doc: dict) -> bool:
+        return not (doc.get("title") and not doc.get("name")
+                    or (doc.get("release_date") and not doc.get("first_air_date")))
+
+    for doc_list in (currently_airing, completed_gems, mini_series, most_episodes, trending, top_rated, recent):
+        filtered = [d for d in doc_list if _keep_series(d)]
+        doc_list.clear()
+        doc_list.extend(filtered)
 
     rails: List[Dict[str, Any]] = []
 

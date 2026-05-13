@@ -80,20 +80,45 @@ async def search_content(
     # Search both movies and series
     movie_cursor = db.movies.find(
         {"title": {"$regex": escaped, "$options": "i"}, **public_filter},
-        {"tmdb_id": 1, "title": 1, "poster_path": 1, "backdrop_path": 1, "vote_average": 1, "release_date": 1, "overview": 1},
-    ).limit(limit + skip)
+        {"tmdb_id": 1, "title": 1, "name": 1, "poster_path": 1, "backdrop_path": 1, "vote_average": 1, "release_date": 1, "first_air_date": 1, "overview": 1, "seasons": 1, "number_of_seasons": 1},
+    ).skip(skip).limit(limit)
     series_cursor = db.series.find(
         {"name": {"$regex": escaped, "$options": "i"}, **public_filter},
-        {"tmdb_id": 1, "name": 1, "poster_path": 1, "backdrop_path": 1, "vote_average": 1, "first_air_date": 1, "overview": 1},
-    ).limit(limit + skip)
+        {"tmdb_id": 1, "name": 1, "title": 1, "poster_path": 1, "backdrop_path": 1, "vote_average": 1, "first_air_date": 1, "release_date": 1, "overview": 1},
+    ).skip(skip).limit(limit)
 
-    movies = [dict(sanitize(d), content_type="movie") async for d in movie_cursor]
-    series = [dict(sanitize(d), content_type="series") async for d in series_cursor]
+    movies = []
+    async for d in movie_cursor:
+        d = sanitize(d)
+        # Detect series documents misplaced in movies collection
+        if d.get("seasons") or d.get("number_of_seasons") or (d.get("first_air_date") and not d.get("release_date")):
+            d["content_type"] = "series"
+        else:
+            d["content_type"] = "movie"
+        movies.append(d)
 
-    # Merge and paginate
-    all_results = movies + series
+    series = []
+    async for d in series_cursor:
+        d = sanitize(d)
+        # Detect movie documents misplaced in series collection
+        if d.get("title") and not d.get("name") and d.get("release_date") and not d.get("first_air_date"):
+            d["content_type"] = "movie"
+        else:
+            d["content_type"] = "series"
+        series.append(d)
+
+    # Merge and deduplicate by tmdb_id (prefer correct collection)
+    seen: dict[int, str] = {}
+    all_results = []
+    for item in movies + series:
+        tid = item.get("tmdb_id")
+        key = f"{tid}_{item['content_type']}"
+        if key not in seen:
+            seen[key] = True
+            all_results.append(item)
+
     return {
-        "results": all_results[skip : skip + limit],
+        "results": all_results[:limit],
         "page": page,
         "limit": limit,
         "total": len(all_results),

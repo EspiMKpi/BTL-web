@@ -839,6 +839,8 @@ Alpine.data('detailPage', () => ({
     error: '',
     watchlistItem: null,
     selectedSeason: 0,
+    showAllEpisodes: false,
+    EPISODE_LIMIT: 12,
 
     // Rating & Review state
     ratings: [],
@@ -867,6 +869,7 @@ Alpine.data('detailPage', () => ({
         this.error = '';
         this.contentType = contentType;
         this.selectedSeason = 0;
+        this.showAllEpisodes = false;
         this.activeTab = 'overview';
         this.userRating = 0;
         this.userReview = '';
@@ -884,6 +887,13 @@ Alpine.data('detailPage', () => ({
         try {
             if (contentType === 'series') {
                 this.content = await contentApi.getSeries(contentId);
+                // If series fetch returns movie-like data, try movie endpoint
+                if (this.content && this.content.title && !this.content.name && this.content.release_date) {
+                    this.contentType = 'movie';
+                    try {
+                        this.content = await contentApi.getMovie(contentId);
+                    } catch { /* keep series data */ }
+                }
             } else {
                 try {
                     this.content = await contentApi.getMovie(contentId);
@@ -896,6 +906,14 @@ Alpine.data('detailPage', () => ({
                     } else {
                         throw movieErr;
                     }
+                }
+                // If movie fetch succeeded but data looks like a series, retry as series
+                if (this.content && (this.content.seasons || this.content.number_of_seasons
+                    || (this.content.first_air_date && !this.content.release_date))) {
+                    this.contentType = 'series';
+                    try {
+                        this.content = await contentApi.getSeries(contentId);
+                    } catch { /* keep movie data as fallback */ }
                 }
             }
             await this.checkWatchlistStatus(contentId, contentType);
@@ -1070,6 +1088,20 @@ Alpine.data('detailPage', () => ({
     get currentSeasonEpisodes() {
         if (!this.content?.seasons) return [];
         return this.content.seasons[this.selectedSeason]?.episodes || [];
+    },
+    get visibleEpisodes() {
+        if (this.showAllEpisodes) return this.currentSeasonEpisodes;
+        return this.currentSeasonEpisodes.slice(0, this.EPISODE_LIMIT);
+    },
+    get hasMoreEpisodes() {
+        return this.currentSeasonEpisodes.length > this.EPISODE_LIMIT;
+    },
+    selectSeason(idx) {
+        this.selectedSeason = idx;
+        this.showAllEpisodes = false;
+    },
+    shouldShowToggle() {
+        return this.currentSeasonEpisodes.length > this.EPISODE_LIMIT;
     },
 
     async toggleBookmark() {

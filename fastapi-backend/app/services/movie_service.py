@@ -13,12 +13,25 @@ from app.database import get_database
 from app.utils import sanitize as _sanitize
 
 
+def _is_movie_doc(doc: dict) -> bool:
+    """Return True if a document from the movies collection is actually a movie."""
+    # Series documents use 'name' and have 'seasons'; movies use 'title' and have 'release_date'
+    if doc.get("seasons") or doc.get("number_of_seasons"):
+        return False
+    if doc.get("first_air_date") and not doc.get("release_date"):
+        return False
+    return True
+
+
 async def get_movie_by_id(tmdb_id: int) -> dict:
     """Fetch a movie by TMDB ID. Checks MongoDB first, then falls back to TMDB API."""
     db = get_database()
 
     existing = await db.movies.find_one({"tmdb_id": tmdb_id})
     if existing and existing.get("raw_data") and existing.get("title"):
+        # Guard: reject series documents that ended up in the movies collection
+        if not _is_movie_doc(existing):
+            raise ValueError(f"{tmdb_id} is not a movie")
         return _sanitize(existing)
     async with httpx.AsyncClient() as client:
         resp = await client.get(
