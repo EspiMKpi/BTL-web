@@ -467,10 +467,72 @@
         flex: 1 1 100%;
     }
 
+    .filter-sort {
+        flex: 1 1 100%;
+    }
+
+    .sort-select {
+        width: 100%;
+    }
+
     .filter-panel {
         grid-template-columns: repeat(2, 1fr);
         padding: 16px;
         gap: 16px;
+    }
+
+    /* --- Content grids (new semantic classes) --- */
+    .content-grid {
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 12px;
+    }
+
+    /* --- Discover mood grid --- */
+    .discover-mood-grid {
+        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+        gap: 8px;
+    }
+
+    .discover-mood-card {
+        padding: 20px 12px;
+    }
+
+    /* --- Series card meta --- */
+    .card-series-meta {
+        font-size: 10px;
+        gap: 4px;
+    }
+
+    .series-status-badge {
+        font-size: 8px;
+        padding: 1px 4px;
+    }
+
+    /* --- Series category pills --- */
+    .series-category-bar {
+        gap: 6px;
+        margin-bottom: 20px;
+    }
+
+    .category-pill {
+        padding: 6px 12px;
+        font-size: 12px;
+        gap: 4px;
+    }
+
+    .category-genre-panel {
+        min-width: 160px;
+    }
+
+    /* --- Hero slide genres --- */
+    .hero-slide-genres {
+        gap: 4px;
+        margin-bottom: 8px;
+    }
+
+    .hero-slide-genre-tag {
+        font-size: 10px;
+        padding: 2px 7px;
     }
 
     /* --- Player --- */
@@ -815,7 +877,8 @@
     }
 
     /* --- Grids --- */
-    .movie-grid {
+    .movie-grid,
+    .content-grid {
         grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
         gap: 10px;
     }
@@ -918,6 +981,16 @@
     .custom-checkbox {
         font-size: 14px;
         padding: 5px 8px;
+    }
+
+    /* --- Series category pills --- */
+    .category-pill {
+        padding: 5px 10px;
+        font-size: 11px;
+    }
+
+    .category-pill-icon {
+        display: none;
     }
 
     /* --- Watchlist profile --- */
@@ -1207,7 +1280,8 @@
    ≤ 360 px  –  Extra small phones
    ========================================================================== */
 @media (max-width: 360px) {
-    .movie-grid {
+    .movie-grid,
+    .content-grid {
         grid-template-columns: repeat(2, 1fr);
         gap: 8px;
     }
@@ -1245,6 +1319,7 @@
     }
 
     /* Disable hover lifts on touch */
+    .content-card:hover,
     .movie-card:hover {
         transform: none;
     }

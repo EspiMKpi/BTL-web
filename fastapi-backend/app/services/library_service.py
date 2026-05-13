@@ -3,6 +3,7 @@ Library service — mirrors database/src/libraryService.ts.
 Home rails, genre browsing, profile stats, recent activity.
 """
 
+import asyncio
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -146,6 +147,55 @@ async def get_home_rails(user_id: Optional[str] = None, rail_limit: int = 10) ->
         _home_cache[cache_key] = result
 
     return _sanitize(result)
+
+
+async def get_series_rails(rail_limit: int = 12) -> dict:
+    """Build series-specific rails for the Series page.
+
+    Returns curated rails that leverage series-specific metadata:
+    - Currently Airing  (status = "Returning Series")
+    - Completed Gems    (status = "Ended", sorted by vote_average)
+    - Mini-Series       (number_of_seasons = 1)
+    - Most Episodes     (sorted by number_of_episodes desc)
+    Plus the standard trending / top-rated / recent series rails.
+    """
+    db = get_database()
+    hidden_filter = await public_content_filter()
+
+    # --- Curated rails (fetch concurrently) ---
+    currently_airing, completed_gems, mini_series, most_episodes, trending, top_rated, recent = await asyncio.gather(
+        db.series.find({"status": "Returning Series", **hidden_filter}).sort("popularity", -1).limit(rail_limit).to_list(rail_limit),
+        db.series.find({"status": "Ended", "vote_count": {"$gte": 20}, **hidden_filter}).sort("vote_average", -1).limit(rail_limit).to_list(rail_limit),
+        db.series.find({"number_of_seasons": 1, **hidden_filter}).sort("popularity", -1).limit(rail_limit).to_list(rail_limit),
+        db.series.find({"number_of_episodes": {"$gte": 10}, **hidden_filter}).sort("number_of_episodes", -1).limit(rail_limit).to_list(rail_limit),
+        db.series.find(hidden_filter).sort("popularity", -1).limit(rail_limit).to_list(rail_limit),
+        db.series.find({"vote_count": {"$gte": 50}, **hidden_filter}).sort("vote_average", -1).limit(rail_limit).to_list(rail_limit),
+        db.series.find(hidden_filter).sort("first_air_date", -1).limit(rail_limit).to_list(rail_limit),
+    )
+
+    # Sanitize all
+    for doc_list in (currently_airing, completed_gems, mini_series, most_episodes, trending, top_rated, recent):
+        for i, doc in enumerate(doc_list):
+            doc_list[i] = _sanitize(doc)
+
+    rails: List[Dict[str, Any]] = []
+
+    if currently_airing:
+        rails.append({"id": "currently_airing", "title": "Currently Airing", "content_type": "series", "items": currently_airing})
+    if trending:
+        rails.append({"id": "trending_series", "title": "Trending Now", "content_type": "series", "items": trending})
+    if top_rated:
+        rails.append({"id": "top_rated_series", "title": "Top Rated", "content_type": "series", "items": top_rated})
+    if completed_gems:
+        rails.append({"id": "completed_gems", "title": "Completed Gems", "content_type": "series", "items": completed_gems})
+    if mini_series:
+        rails.append({"id": "mini_series", "title": "Mini-Series", "content_type": "series", "items": mini_series})
+    if most_episodes:
+        rails.append({"id": "most_episodes", "title": "Most Episodes", "content_type": "series", "items": most_episodes})
+    if recent:
+        rails.append({"id": "recent_series", "title": "Recently Added", "content_type": "series", "items": recent})
+
+    return _sanitize({"rails": rails})
 
 
 async def get_content_by_genre(genre_id: int, page: int = 1, limit: int = 20) -> dict:

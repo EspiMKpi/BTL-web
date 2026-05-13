@@ -12,6 +12,8 @@
 
         <div class="hero-slide-content" x-show="currentSlide">
             <p class="hero-slide-kicker">
+                <span class="hero-slide-featured">Featured This Week</span>
+                <span class="hero-slide-dot">·</span>
                 <span class="hero-slide-type" x-text="currentSlide?._type === 'series' ? 'Series' : 'Movie'"></span>
                 <span class="hero-slide-dot">·</span>
                 <span x-text="currentSlide?.year"></span>
@@ -19,6 +21,11 @@
                 <span class="hero-slide-rating">★ <span x-text="currentSlide ? (currentSlide.vote_average || 0).toFixed(1) : ''"></span></span>
             </p>
             <h1 class="hero-slide-title" x-text="currentSlide?.title"></h1>
+            <div class="hero-slide-genres" x-show="currentSlide?.genreNames?.length">
+                <template x-for="g in currentSlide?.genreNames || []" :key="g">
+                    <span class="hero-slide-genre-tag" x-text="g"></span>
+                </template>
+            </div>
             <p class="hero-slide-desc" x-text="currentSlide?.overview ? (currentSlide.overview.length > 180 ? currentSlide.overview.substring(0, 180) + '…' : currentSlide.overview) : ''"></p>
             <div class="hero-slide-btns">
                 <button class="btn btn-primary" type="button" @click="navigateTo(currentSlide, currentSlide?._type)">
@@ -141,6 +148,22 @@
             </div>
         </section>
     </template>
+
+    <!-- Genre Mood Sections -->
+    <section class="discover-mood-section" x-show="!loading && genres.length > 0">
+        <div class="section-header">
+            <h2 class="section-title">Explore by Mood</h2>
+        </div>
+        <div class="discover-mood-grid">
+            <template x-for="genre in genres.slice(0, 8)" :key="genre.genre_id">
+                <button class="discover-mood-card"
+                        @click="switchPage('movies', { genreId: genre.genre_id, genreName: genre.name })"
+                        :style="'--mood-hue: ' + (genre.genre_id * 37 % 360)">
+                    <span class="discover-mood-name" x-text="genre.name"></span>
+                </button>
+            </template>
+        </div>
+    </section>
 
     <!-- Final CTA -->
     <section class="nf-final-cta" x-show="!$store.auth.isLoggedIn" x-transition:enter="transition ease-out duration-500" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">

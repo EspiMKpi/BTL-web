@@ -15,6 +15,7 @@ from app.services.library_service import (
     get_content_by_genre,
     get_hidden_genre_ids,
     get_home_rails,
+    get_series_rails,
     public_content_filter,
 )
 from app.services.movie_service import get_movie_by_id
@@ -32,6 +33,14 @@ async def home(
 ):
     user_id = current_user["_id"] if current_user else None
     return await get_home_rails(user_id, rail_limit=limit)
+
+
+@router.get("/series/rails")
+async def series_rails(
+    limit: int = Query(12, ge=1, le=50),
+):
+    """Series-specific curated rails (Currently Airing, Completed Gems, etc.)."""
+    return await get_series_rails(rail_limit=limit)
 
 
 @router.get("/genres")

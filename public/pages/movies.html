@@ -32,6 +32,14 @@
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
             </div>
         </div>
+        <div class="filter-sort" x-show="!isSearchMode && !browsingGenre">
+            <select class="sort-select" x-model="sortBy">
+                <option value="popularity">Popular</option>
+                <option value="rating">Top Rated</option>
+                <option value="newest">Newest</option>
+                <option value="title">A–Z</option>
+            </select>
+        </div>
         <button class="btn btn-secondary" x-show="isSearchMode || browsingGenre" @click="clearBrowse()" style="height: 40px; border-radius: 12px;">
             ← All
         </button>
@@ -56,14 +64,14 @@
 
     <!-- Home Rails -->
     <div x-show="!isSearchMode && !browsingGenre && !loading">
-        <template x-for="rail in rails" :key="rail.id">
+        <template x-for="rail in sortedRails" :key="rail.id">
             <section class="movie-section">
                 <div class="section-header">
                     <h2 class="section-title" x-text="rail.title"></h2>
                 </div>
-                <div class="movie-grid">
+                <div class="content-grid">
                     <template x-for="item in rail.items" :key="item.tmdb_id">
-                        <div class="movie-card"
+                        <div class="content-card"
                              :data-tmdb-id="item.tmdb_id"
                              :data-content-type="rail.content_type"
                              @click="navigateTo(item, rail.content_type)">
@@ -78,7 +86,10 @@
                             </div>
                             <div class="card-info">
                                 <span class="card-title" x-text="getTitle(item, rail.content_type)"></span>
-                                <span class="card-status" x-text="getYear(item, rail.content_type)"></span>
+                                <span class="card-status">
+                                    <span x-text="getYear(item, rail.content_type)"></span>
+                                    <span class="card-runtime" x-show="item.runtime && rail.content_type === 'movie'" x-text="formatRuntime(item.runtime)"></span>
+                                </span>
                             </div>
                         </div>
                     </template>

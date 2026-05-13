@@ -73,7 +73,8 @@ BTL-web/
 │   │   ├── main.js            # Entry point, Alpine.js app
 │   │   ├── pages.js           # Page fragment loader
 │   │   ├── router.js          # SPA page switching
-│   │   └── api.js             # Centralized API client (JWT, error handling)
+│   │   ├── api.js             # Centralized API client (JWT, error handling)
+│   │   └── content-helpers.js # Shared content utilities (posterUrl, getTitle, etc.)
 │   └── css/                   # Stylesheets
 ├── public/pages/              # HTML page fragments (served raw by Vite)
 └── fastapi-backend/           # Python/FastAPI backend
@@ -96,7 +97,7 @@ BTL-web/
         │   └── schemas.py     # Pydantic request/response models
         ├── routers/
         │   ├── auth.py        # Register, login, me (rate-limited)
-        │   ├── content.py     # Home rails, genres, browse, search
+        │   ├── content.py     # Home rails, genres, browse, search, series rails
         │   ├── movies.py      # Legacy movie route
         │   ├── watchlist.py   # Watchlist CRUD
         │   ├── history.py     # Watch history + background tasks

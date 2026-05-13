@@ -10,47 +10,113 @@
                 <span x-text="stats.series_count ? stats.series_count.toLocaleString() : '...'">...</span>
                 <p>TV series</p>
             </div>
-            <div class="catalog-metric">
-                <span>4K</span>
-                <p>Stream quality</p>
+            <div class="catalog-metric catalog-metric--accent">
+                <span>Airing</span>
+                <p>New episodes weekly</p>
             </div>
             <div class="catalog-metric">
-                <span>7</span>
-                <p>New weekly releases</p>
+                <span x-text="stats.genre_count ? stats.genre_count.toLocaleString() : '...'">...</span>
+                <p>Genres</p>
             </div>
         </div>
     </section>
+
+    <!-- Category Pills -->
+    <div class="series-category-bar" x-show="!loading && !browsingGenre">
+        <template x-for="cat in categories" :key="cat.id">
+            <button class="category-pill"
+                    :class="{ 'category-pill--active': activeCategory === cat.id }"
+                    @click="selectCategory(cat.id)">
+                <span class="category-pill-icon" x-text="cat.icon"></span>
+                <span x-text="cat.label"></span>
+            </button>
+        </template>
+        <!-- Genre Dropdown -->
+        <div class="category-genre-dropdown" x-data="{ open: false }">
+            <button class="category-pill category-pill--genre" @click="open = !open" @click.outside="open = false">
+                <span>Genres</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="category-genre-panel" x-show="open" x-transition>
+                <template x-for="genre in genres" :key="genre.genre_id">
+                    <button class="category-genre-item" @click="browseGenre(genre.genre_id, genre.name); open = false" x-text="genre.name"></button>
+                </template>
+            </div>
+        </div>
+    </div>
+
+    <!-- Browse Mode Header -->
+    <div x-show="browsingGenre" style="display:flex; align-items:center; gap:16px; margin-bottom:24px;">
+        <button class="btn btn-secondary" @click="clearBrowse()" style="height:36px; border-radius:10px; font-size:13px;">← All Series</button>
+        <h2 class="section-title" x-text="browsingGenre ? browsingGenre.name + ' Series' : ''" style="margin:0;"></h2>
+    </div>
 
     <!-- Loading -->
     <div x-show="loading" style="text-align:center; padding: 60px; color: rgba(255,255,255,0.5);">Loading...</div>
     <!-- Error -->
     <div x-show="error && !loading" style="text-align:center; padding: 40px; color: #ff6b6b;" x-text="error"></div>
 
-    <!-- Rails -->
-    <div x-show="!loading">
-        <template x-for="rail in rails" :key="rail.id">
+    <!-- Browse Results (genre filter active) -->
+    <div x-show="browsingGenre && !browseLoading">
+        <section class="movie-section">
+            <div class="section-header">
+                <h2 class="section-title" x-text="browseResults.length + ' series'"></h2>
+            </div>
+            <div class="content-grid series-grid">
+                <template x-for="item in browseResults" :key="item.tmdb_id">
+                    <div class="content-card content-card--series"
+                         :data-tmdb-id="item.tmdb_id"
+                         data-content-type="series"
+                         @click="navigateTo(item)">
+                        <div class="poster-container">
+                            <img :src="posterUrl(item.poster_path)" :alt="getTitle(item)" loading="lazy">
+                            <span class="rating-badge" x-text="item.vote_average ? item.vote_average.toFixed(1) : 'N/A'"></span>
+                        </div>
+                        <div class="card-info">
+                            <span class="card-title" x-text="getTitle(item)"></span>
+                            <div class="card-series-meta">
+                                <span class="series-status-badge"
+                                      :class="getSeriesStatusBadge(item.status).className"
+                                      x-text="getSeriesStatusBadge(item.status).label"
+                                      x-show="getSeriesStatusBadge(item.status).label"></span>
+                                <span x-text="formatSeriesMeta(item)"></span>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </section>
+        <div x-show="browseResults.length === 0 && !error" style="text-align:center; padding:60px; color:rgba(255,255,255,0.4);">
+            No series found in this genre.
+        </div>
+    </div>
+
+    <!-- Series Rails (default view) -->
+    <div x-show="!loading && !browsingGenre">
+        <template x-for="rail in filteredRails" :key="rail.id">
             <section class="movie-section">
                 <div class="section-header">
                     <h2 class="section-title" x-text="rail.title"></h2>
                 </div>
-                <div class="movie-grid series-grid">
+                <div class="content-grid series-grid">
                     <template x-for="item in rail.items" :key="item.tmdb_id">
-                        <div class="movie-card"
+                        <div class="content-card content-card--series"
                              :data-tmdb-id="item.tmdb_id"
                              data-content-type="series"
                              @click="navigateTo(item)">
                             <div class="poster-container">
-                                <img :src="posterUrl(item.poster_path)" :alt="item.name" loading="lazy">
+                                <img :src="posterUrl(item.poster_path)" :alt="getTitle(item)" loading="lazy">
                                 <span class="rating-badge" x-text="item.vote_average ? item.vote_average.toFixed(1) : 'N/A'"></span>
-                                <div class="bookmark-btn">
-                                    <div class="icon-wrapper" style="width: 14px; height: 14px;">
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>
-                                    </div>
-                                </div>
                             </div>
                             <div class="card-info">
-                                <span class="card-title" x-text="item.name || item.title"></span>
-                                <span class="card-status" x-text="item.first_air_date ? item.first_air_date.substring(0,4) : ''"></span>
+                                <span class="card-title" x-text="getTitle(item)"></span>
+                                <div class="card-series-meta">
+                                    <span class="series-status-badge"
+                                          :class="getSeriesStatusBadge(item.status).className"
+                                          x-text="getSeriesStatusBadge(item.status).label"
+                                          x-show="getSeriesStatusBadge(item.status).label"></span>
+                                    <span x-text="formatSeriesMeta(item)"></span>
+                                </div>
                             </div>
                         </div>
                     </template>

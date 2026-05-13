@@ -457,7 +457,8 @@
     color: var(--text-primary);
 }
 
-/* Movie Cards — Netflix Style */
+/* ── Content Grid & Cards (semantic base) ────────────────────────── */
+.content-grid,
 .movie-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
@@ -466,6 +467,7 @@
     min-height: 250px;
 }
 
+.content-card,
 .movie-card {
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), z-index 0s;
     cursor: pointer;
@@ -473,9 +475,59 @@
     z-index: 1;
 }
 
+.content-card:hover,
 .movie-card:hover {
     transform: scale(1.05);
     z-index: 10;
+}
+
+/* Series card variant — shows extra metadata */
+.content-card--series .card-info {
+    gap: 3px;
+}
+
+.card-series-meta {
+    font-size: 11px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    line-height: 1;
+}
+
+.card-series-meta .series-status-badge {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 8px;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.badge--airing {
+    background: rgba(74, 222, 128, 0.15);
+    color: #4ade80;
+}
+
+.badge--ended {
+    background: rgba(148, 163, 184, 0.15);
+    color: #94a3b8;
+}
+
+.badge--canceled {
+    background: rgba(248, 113, 113, 0.15);
+    color: #f87171;
+}
+
+.badge--coming {
+    background: rgba(96, 165, 250, 0.15);
+    color: #60a5fa;
+}
+
+.badge--default {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-muted);
 }
 
 .poster-container {
@@ -489,6 +541,7 @@
     transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
+.content-card:hover .poster-container,
 .movie-card:hover .poster-container {
     border-color: rgba(255, 255, 255, 0.15);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
@@ -501,6 +554,7 @@
     transition: filter 0.3s ease, transform 0.3s ease;
 }
 
+.content-card:hover .poster-container img,
 .movie-card:hover .poster-container img {
     filter: brightness(0.65);
     transform: scale(1.03);
@@ -517,6 +571,7 @@
     pointer-events: none;
 }
 
+.content-card:hover .poster-container::after,
 .movie-card:hover .poster-container::after {
     opacity: 1;
 }
@@ -541,6 +596,7 @@
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 }
 
+.content-card:hover .poster-play-overlay,
 .movie-card:hover .poster-play-overlay {
     opacity: 1;
     transform: translate(-50%, -50%) scale(1);
@@ -590,6 +646,7 @@
     z-index: 2;
 }
 
+.content-card:hover .bookmark-btn,
 .movie-card:hover .bookmark-btn {
     opacity: 1;
     transform: scale(1);

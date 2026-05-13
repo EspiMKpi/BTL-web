@@ -2,6 +2,7 @@ import Alpine from 'alpinejs';
 import { pages_ready } from './pages.js';
 import { switchPage } from './router.js';
 import { contentApi, watchlistApi, historyApi, adminApi, ratingsApi, apiFetch } from './api.js';
+import { posterUrl as _posterUrl, getTitle as _getTitle, getYear as _getYear, formatRuntime as _formatRuntime, getSeriesStatusBadge as _getSeriesStatusBadge, formatSeriesMeta as _formatSeriesMeta } from './content-helpers.js';
 import { initPreloader } from './preloader.js';
 import {
     animateHeroContent,
@@ -120,6 +121,55 @@ Alpine.store('nav', {
     contentType: null,
 });
 
+/**
+ * Shared content cache store.
+ * Prevents duplicate /api/content/home fetches when switching between
+ * Movies, Discover, and Series tabs.
+ */
+Alpine.store('content', {
+    homeRails: null,
+    genres: [],
+    stats: {},
+    seriesRails: null,
+    _fetchedAt: 0,
+    _seriesFetchedAt: 0,
+
+    /** Cached home rails (5 min TTL). */
+    async getHomeRails() {
+        if (this.homeRails && Date.now() - this._fetchedAt < 300_000) {
+            return this.homeRails;
+        }
+        const data = await contentApi.getHome();
+        this.homeRails = data.rails || [];
+        this._fetchedAt = Date.now();
+        return this.homeRails;
+    },
+
+    /** Cached genres list. */
+    async getGenres() {
+        if (this.genres.length > 0) return this.genres;
+        this.genres = await contentApi.getGenres();
+        return this.genres;
+    },
+
+    /** Cached stats. */
+    async getStats() {
+        if (this.stats.movie_count) return this.stats;
+        this.stats = await contentApi.getStats();
+        return this.stats;
+    },
+
+    /** Invalidate all caches (call after admin changes). */
+    bust() {
+        this.homeRails = null;
+        this.genres = [];
+        this.stats = {};
+        this.seriesRails = null;
+        this._fetchedAt = 0;
+        this._seriesFetchedAt = 0;
+    },
+});
+
 // --- Alpine Components ---
 Alpine.data('appState', () => ({
     init() {
@@ -176,6 +226,7 @@ Alpine.data('scrollRail', () => ({
 
 Alpine.data('discoverPage', () => ({
     rails: [],
+    genres: [],
     loading: false,
     error: '',
     carouselIndex: 0,
@@ -194,8 +245,13 @@ Alpine.data('discoverPage', () => ({
         this.loading = true;
         this.error = '';
         try {
-            const data = await contentApi.getHome();
-            this.rails = (data.rails || []).filter(r => r.items && r.items.length > 0 && r.id !== 'continue_watching');
+            const store = Alpine.store('content');
+            const [rails, genres] = await Promise.all([
+                store.getHomeRails(),
+                store.getGenres(),
+            ]);
+            this.rails = rails.filter(r => r.items && r.items.length > 0 && r.id !== 'continue_watching');
+            this.genres = genres;
         } catch (e) {
             this.error = e.message;
         } finally {
@@ -224,6 +280,7 @@ Alpine.data('discoverPage', () => ({
                 const d = rail.content_type === 'series' ? item.first_air_date : item.release_date;
                 return d ? d.substring(0, 4) : '';
             })(),
+            genreNames: (item.genres || []).slice(0, 3).map(g => g.name),
         }));
     },
 
@@ -289,18 +346,9 @@ Alpine.data('discoverPage', () => ({
         switchPage('detail', { contentId: item.tmdb_id, contentType: contentType || 'movie' });
     },
 
-    posterUrl(path) {
-        return path ? `https://image.tmdb.org/t/p/w500${path}` : 'https://placehold.co/300x450/1a1a2e/white?text=No+Image';
-    },
-
-    getTitle(item, ct) {
-        return ct === 'series' ? (item.name || item.title) : (item.title || item.name);
-    },
-
-    getYear(item, ct) {
-        const d = ct === 'series' ? item.first_air_date : item.release_date;
-        return d ? d.substring(0, 4) : '';
-    },
+    posterUrl(path) { return _posterUrl(path); },
+    getTitle(item, ct) { return _getTitle(item, ct); },
+    getYear(item, ct) { return _getYear(item, ct); },
 }));
 
 Alpine.data('landingPage', () => ({
@@ -312,16 +360,17 @@ Alpine.data('landingPage', () => ({
 
     async init() {
         // Fetch featured content and stats in parallel
+        const store = Alpine.store('content');
         const [homeResult, statsResult] = await Promise.allSettled([
-            contentApi.getHome(),
-            contentApi.getStats(),
+            store.getHomeRails(),
+            store.getStats(),
         ]);
 
         // Populate featured content
         if (homeResult.status === 'fulfilled') {
-            const data = homeResult.value;
+            const rails = homeResult.value;
             const allItems = [];
-            (data.rails || []).forEach(rail => {
+            rails.forEach(rail => {
                 (rail.items || []).forEach(item => {
                     if (item.poster_path && item.backdrop_path) allItems.push(item);
                 });
@@ -380,16 +429,9 @@ Alpine.data('landingPage', () => ({
     goToLogin() { switchPage('login'); },
     goToRegister() { switchPage('register'); },
 
-    posterUrl(path) {
-        return path ? `https://image.tmdb.org/t/p/w342${path}` : 'https://placehold.co/180x270/1a1a2e/white?text=No+Image';
-    },
-    getTitle(item) {
-        return item.title || item.name || 'Untitled';
-    },
-    getYear(item) {
-        const d = item.release_date || item.first_air_date;
-        return d ? d.substring(0, 4) : '';
-    },
+    posterUrl(path) { return _posterUrl(path, 'w342'); },
+    getTitle(item) { return _getTitle(item); },
+    getYear(item) { return _getYear(item); },
 }));
 
 Alpine.data('loginForm', () => ({
@@ -505,22 +547,9 @@ Alpine.data('navSearch', () => ({
         this.open = false;
     },
 
-    getTitle(item) {
-        return item.content_type === 'series'
-            ? (item.name || item.title)
-            : (item.title || item.name);
-    },
-
-    getYear(item) {
-        const d = item.content_type === 'series' ? item.first_air_date : item.release_date;
-        return d ? d.substring(0, 4) : '';
-    },
-
-    posterUrl(path) {
-        return path
-            ? `https://image.tmdb.org/t/p/w92${path}`
-            : 'https://placehold.co/46x69/1a1a2e/white?text=%3F';
-    },
+    getTitle(item) { return _getTitle(item, item.content_type); },
+    getYear(item) { return _getYear(item, item.content_type); },
+    posterUrl(path) { return _posterUrl(path, 'w92'); },
 }));
 
 Alpine.data('filterPanel', () => ({
@@ -549,14 +578,20 @@ Alpine.data('moviesPage', () => ({
     browseLoading: false,
     browsePage: 1,
     _debounceTimer: null,
+    sortBy: 'popularity',
 
     async init() {
         document.addEventListener('page:switch', (e) => {
             if (e.detail.pageId === 'movies') {
-                const q = e.detail.params?.searchQuery;
-                if (q) {
-                    this.searchQuery = q;
-                    this.runSearch(q);
+                const params = e.detail.params || {};
+                if (params.searchQuery) {
+                    this.searchQuery = params.searchQuery;
+                    this.runSearch(params.searchQuery);
+                } else if (params.genreId) {
+                    // Accept genre browse from Discover mood cards
+                    this.loadHome().then(() => {
+                        this.browseGenre(params.genreId, params.genreName || 'Genre');
+                    });
                 } else if (this.rails.length === 0) {
                     this.loadHome();
                 }
@@ -574,14 +609,15 @@ Alpine.data('moviesPage', () => ({
         this.loading = true;
         this.error = '';
         try {
-            const [homeData, genresData, statsData] = await Promise.all([
-                contentApi.getHome(),
-                contentApi.getGenres(),
-                contentApi.getStats(),
+            const store = Alpine.store('content');
+            const [rails, genres, stats] = await Promise.all([
+                store.getHomeRails(),
+                store.getGenres(),
+                store.getStats(),
             ]);
-            this.rails = (homeData.rails || []).filter(r => r.items && r.items.length > 0);
-            this.genres = genresData || [];
-            if (statsData) this.stats = statsData;
+            this.rails = rails.filter(r => r.items && r.items.length > 0);
+            this.genres = genres;
+            if (stats) this.stats = stats;
         } catch (e) {
             this.error = e.message;
         } finally {
@@ -643,29 +679,68 @@ Alpine.data('moviesPage', () => ({
         this._lastQuery = '';
     },
 
+    /** Sorted rails based on current sortBy selection. */
+    get sortedRails() {
+        if (this.sortBy === 'popularity') return this.rails;
+        const sortFns = {
+            rating: (a, b) => (b.vote_average || 0) - (a.vote_average || 0),
+            newest: (a, b) => {
+                const da = a.release_date || a.first_air_date || '';
+                const db = b.release_date || b.first_air_date || '';
+                return db.localeCompare(da);
+            },
+            title: (a, b) => {
+                const ta = (a.title || a.name || '').toLowerCase();
+                const tb = (b.title || b.name || '').toLowerCase();
+                return ta.localeCompare(tb);
+            },
+        };
+        const fn = sortFns[this.sortBy];
+        if (!fn) return this.rails;
+        return this.rails.map(rail => ({
+            ...rail,
+            items: [...rail.items].sort(fn),
+        }));
+    },
+
     navigateTo(item, contentType) {
         switchPage('detail', { contentId: item.tmdb_id, contentType });
     },
 
-    posterUrl(path) {
-        return path ? `https://image.tmdb.org/t/p/w500${path}` : 'https://placehold.co/300x450/1a1a2e/white?text=No+Image';
-    },
-
-    getTitle(item, contentType) {
-        return contentType === 'series' ? (item.name || item.title) : (item.title || item.name);
-    },
-
-    getYear(item, contentType) {
-        const d = contentType === 'series' ? item.first_air_date : item.release_date;
-        return d ? d.substring(0, 4) : '';
-    },
+    posterUrl(path) { return _posterUrl(path); },
+    getTitle(item, contentType) { return _getTitle(item, contentType); },
+    getYear(item, contentType) { return _getYear(item, contentType); },
+    formatRuntime(minutes) { return _formatRuntime(minutes); },
 }));
 
 Alpine.data('seriesPage', () => ({
     rails: [],
+    genres: [],
     stats: { movie_count: 0, series_count: 0, genre_count: 0 },
     loading: false,
     error: '',
+    browsingGenre: null,
+    browseResults: [],
+    browseLoading: false,
+    activeCategory: 'all',
+
+    /** Predefined category definitions mapped to rail IDs */
+    categories: [
+        { id: 'all',              label: 'All',              icon: '◎' },
+        { id: 'currently_airing', label: 'Currently Airing', icon: '◉' },
+        { id: 'trending_series',  label: 'Trending',         icon: '↗' },
+        { id: 'top_rated_series', label: 'Top Rated',        icon: '★' },
+        { id: 'mini_series',      label: 'Mini-Series',      icon: '▸' },
+        { id: 'completed_gems',   label: 'Completed',        icon: '✓' },
+        { id: 'most_episodes',    label: 'Most Episodes',    icon: '⊞' },
+    ],
+
+    /** Rails filtered by active category */
+    get filteredRails() {
+        if (this.activeCategory === 'all') return this.rails;
+        const rail = this.rails.find(r => r.id === this.activeCategory);
+        return rail ? [rail] : [];
+    },
 
     async init() {
         document.addEventListener('page:switch', (e) => {
@@ -679,12 +754,15 @@ Alpine.data('seriesPage', () => ({
         this.loading = true;
         this.error = '';
         try {
-            const [data, statsData] = await Promise.all([
-                contentApi.getHome(),
-                contentApi.getStats(),
+            const store = Alpine.store('content');
+            const [seriesData, genres, stats] = await Promise.all([
+                contentApi.getSeriesRails(12),
+                store.getGenres(),
+                store.getStats(),
             ]);
-            this.rails = (data.rails || []).filter(r => r.content_type === 'series' && r.items && r.items.length > 0);
-            if (statsData) this.stats = statsData;
+            this.rails = (seriesData.rails || []).filter(r => r.items && r.items.length > 0);
+            this.genres = genres;
+            if (stats) this.stats = stats;
         } catch (e) {
             this.error = e.message;
         } finally {
@@ -692,13 +770,41 @@ Alpine.data('seriesPage', () => ({
         }
     },
 
+    selectCategory(catId) {
+        this.activeCategory = catId;
+        this.browsingGenre = null;
+        this.browseResults = [];
+    },
+
+    async browseGenre(genreId, genreName) {
+        this.activeCategory = 'all';
+        this.browsingGenre = { id: genreId, name: genreName };
+        this.browseLoading = true;
+        try {
+            const data = await contentApi.browse(genreId, 1, 20);
+            this.browseResults = (data.series || []).map(s => ({ ...s, _ct: 'series' }));
+        } catch (e) {
+            Alpine.store('toast').show('Browse failed: ' + e.message);
+        } finally {
+            this.browseLoading = false;
+        }
+    },
+
+    clearBrowse() {
+        this.browsingGenre = null;
+        this.browseResults = [];
+        this.activeCategory = 'all';
+    },
+
     navigateTo(item) {
         switchPage('detail', { contentId: item.tmdb_id, contentType: 'series' });
     },
 
-    posterUrl(path) {
-        return path ? `https://image.tmdb.org/t/p/w500${path}` : 'https://placehold.co/300x450/1a1a2e/white?text=No+Image';
-    },
+    posterUrl(path) { return _posterUrl(path); },
+    getTitle(item) { return _getTitle(item, 'series'); },
+    getYear(item) { return _getYear(item, 'series'); },
+    getSeriesStatusBadge(status) { return _getSeriesStatusBadge(status); },
+    formatSeriesMeta(item) { return _formatSeriesMeta(item); },
 }));
 
 Alpine.data('detailPage', () => ({
