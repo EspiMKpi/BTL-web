@@ -259,18 +259,3 @@ class TestSeriesDetail:
     async def test_series_not_found(self, client, db):
         resp = await client.get("/api/content/series/9999999")
         assert resp.status_code == 404
-
-
-# ── Legacy Movies Router ─────────────────────────────────────────────────
-
-class TestMoviesRouter:
-    async def test_get_movie_in_db(self, client, db):
-        movies = await _seed_movies(db, 1)
-        movie = movies[0]
-        resp = await client.get(f"/api/movies/{movie['tmdb_id']}")
-        assert resp.status_code == 200
-        assert resp.json()["tmdb_id"] == movie["tmdb_id"]
-
-    async def test_get_movie_not_found(self, client, db):
-        resp = await client.get("/api/movies/9999999")
-        assert resp.status_code == 404

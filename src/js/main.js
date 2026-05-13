@@ -17,6 +17,8 @@ import {
     prefersReducedMotion,
     showPageLoader,
     animateLandingHero,
+    animateCardsOut,
+    animateCardsIn,
 } from './animations.js';
 
 window.Alpine = Alpine;
@@ -65,14 +67,10 @@ Alpine.store('auth', {
     get isLoggedIn() { return !!this.token; },
 
     async login(email, password) {
-        const res = await fetch('/api/auth/login', {
+        const data = await apiFetch('/api/auth/login', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password })
         });
-        let data;
-        try { data = await res.json(); } catch { throw new Error('Server is unreachable. Please try again later.'); }
-        if (!res.ok) throw new Error(data.error || data.detail);
         this.token = data.token;
         this.user = data.user;
         localStorage.setItem('token', data.token);
@@ -80,14 +78,10 @@ Alpine.store('auth', {
     },
 
     async register(email, password) {
-        const res = await fetch('/api/auth/register', {
+        const data = await apiFetch('/api/auth/register', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password })
         });
-        let data;
-        try { data = await res.json(); } catch { throw new Error('Server is unreachable. Please try again later.'); }
-        if (!res.ok) throw new Error(data.error || data.detail);
         this.token = data.token;
         this.user = data.user;
         localStorage.setItem('token', data.token);
@@ -103,15 +97,10 @@ Alpine.store('auth', {
     async fetchUser() {
         if (!this.token) return;
         try {
-            const res = await fetch('/api/auth/me', {
-                headers: { 'Authorization': `Bearer ${this.token}` }
-            });
-            if (res.ok) {
-                try { this.user = await res.json(); } catch { /* non-JSON response */ }
-            } else {
-                this.logout();
-            }
-        } catch { this.logout(); }
+            this.user = await apiFetch('/api/auth/me');
+        } catch {
+            this.logout();
+        }
     }
 });
 
@@ -605,7 +594,24 @@ Alpine.data('moviesPage', () => ({
     browseLoading: false,
     browsePage: 1,
     _debounceTimer: null,
-    sortBy: 'popularity',
+    activeCategory: 'all',
+
+    /** Predefined category definitions mapped to rail IDs */
+    categories: [
+        { id: 'all',               label: 'All',           icon: '◎' },
+        { id: 'trending_movies',   label: 'Trending',      icon: '↗' },
+        { id: 'top_rated_movies',  label: 'Top Rated',     icon: '★' },
+        { id: 'new_releases',      label: 'New Releases',  icon: '✦' },
+        { id: 'classics',          label: 'Classics',      icon: '◆' },
+        { id: 'highest_rated',     label: 'Highest Rated', icon: '♛' },
+    ],
+
+    /** Rails filtered by active category */
+    get filteredRails() {
+        if (this.activeCategory === 'all') return this.rails;
+        const rail = this.rails.find(r => r.id === this.activeCategory);
+        return rail ? [rail] : [];
+    },
 
     async init() {
         document.addEventListener('page:switch', (e) => {
@@ -615,12 +621,11 @@ Alpine.data('moviesPage', () => ({
                     this.searchQuery = params.searchQuery;
                     this.runSearch(params.searchQuery);
                 } else if (params.genreId) {
-                    // Accept genre browse from Discover mood cards
-                    this.loadHome().then(() => {
+                    this.loadMovies().then(() => {
                         this.browseGenre(params.genreId, params.genreName || 'Genre');
                     });
                 } else if (this.rails.length === 0) {
-                    this.loadHome();
+                    this.loadMovies();
                 }
             }
         });
@@ -628,21 +633,21 @@ Alpine.data('moviesPage', () => ({
             this.searchQuery = e.detail.query;
             this.runSearch(e.detail.query);
         });
-        this.loadHome();
+        this.loadMovies();
     },
 
-    async loadHome() {
+    async loadMovies() {
         if (this.rails.length > 0) return;
         this.loading = true;
         this.error = '';
         try {
             const store = Alpine.store('content');
-            const [rails, genres, stats] = await Promise.all([
-                store.getHomeRails(),
+            const [moviesData, genres, stats] = await Promise.all([
+                contentApi.getMovieRails(12),
                 store.getGenres(),
                 store.getStats(),
             ]);
-            this.rails = rails.filter(r => r.items && r.items.length > 0);
+            this.rails = (moviesData.rails || []).filter(r => r.items && r.items.length > 0);
             this.genres = genres;
             if (stats) this.stats = { ...stats };
         } catch (e) {
@@ -650,6 +655,20 @@ Alpine.data('moviesPage', () => ({
         } finally {
             this.loading = false;
         }
+    },
+
+    selectCategory(catId) {
+        const container = this.$el;
+        const prev = this.activeCategory;
+        if (prev === catId) return;
+
+        // Animate current cards out, swap category, stagger new cards in
+        animateCardsOut(container).then(() => {
+            this.activeCategory = catId;
+            this.browsingGenre = null;
+            this.browseResults = [];
+            this.$nextTick(() => animateCardsIn(container));
+        });
     },
 
     onSearchInput(value) {
@@ -682,6 +701,9 @@ Alpine.data('moviesPage', () => ({
     },
 
     async browseGenre(genreId, genreName) {
+        const container = this.$el;
+
+        this.activeCategory = 'all';
         this.browsingGenre = { id: genreId, name: genreName };
         this.isSearchMode = false;
         this.browseLoading = true;
@@ -695,39 +717,22 @@ Alpine.data('moviesPage', () => ({
             Alpine.store('toast').show('Browse failed: ' + e.message);
         } finally {
             this.browseLoading = false;
+            // Alpine x-show swaps the visible container; stagger new cards in
+            this.$nextTick(() => animateCardsIn(container));
         }
     },
 
     clearBrowse() {
+        const container = this.$el;
+
         this.browsingGenre = null;
         this.isSearchMode = false;
         this.searchQuery = '';
         this.searchResults = [];
         this._lastQuery = '';
-    },
-
-    /** Sorted rails based on current sortBy selection. */
-    get sortedRails() {
-        if (this.sortBy === 'popularity') return this.rails;
-        const sortFns = {
-            rating: (a, b) => (b.vote_average || 0) - (a.vote_average || 0),
-            newest: (a, b) => {
-                const da = a.release_date || a.first_air_date || '';
-                const db = b.release_date || b.first_air_date || '';
-                return db.localeCompare(da);
-            },
-            title: (a, b) => {
-                const ta = (a.title || a.name || '').toLowerCase();
-                const tb = (b.title || b.name || '').toLowerCase();
-                return ta.localeCompare(tb);
-            },
-        };
-        const fn = sortFns[this.sortBy];
-        if (!fn) return this.rails;
-        return this.rails.map(rail => ({
-            ...rail,
-            items: [...rail.items].sort(fn),
-        }));
+        this.activeCategory = 'all';
+        // Alpine x-show restores the rails container; stagger cards in
+        this.$nextTick(() => animateCardsIn(container));
     },
 
     navigateTo(item, contentType) {
@@ -798,38 +803,53 @@ Alpine.data('seriesPage', () => ({
     },
 
     selectCategory(catId) {
-        this.activeCategory = catId;
-        this.browsingGenre = null;
-        this.browseResults = [];
+        const container = this.$el;
+        const prev = this.activeCategory;
+        if (prev === catId) return;
+
+        animateCardsOut(container).then(() => {
+            this.activeCategory = catId;
+            this.browsingGenre = null;
+            this.browseResults = [];
+            this.$nextTick(() => animateCardsIn(container));
+        });
     },
 
     async browseGenre(genreId, genreName) {
+        const container = this.$el;
+
         this.activeCategory = 'all';
         this.browsingGenre = { id: genreId, name: genreName };
         this.browseLoading = true;
         try {
             const data = await contentApi.browse(genreId, 1, 20);
-            this.browseResults = (data.series || []).map(s => ({ ...s, _ct: 'series' }));
+            const movies = (data.movies || []).map(m => ({ ...m, _ct: 'movie' }));
+            const series = (data.series || []).map(s => ({ ...s, _ct: 'series' }));
+            this.browseResults = [...movies, ...series];
         } catch (e) {
             Alpine.store('toast').show('Browse failed: ' + e.message);
         } finally {
             this.browseLoading = false;
+            this.$nextTick(() => animateCardsIn(container));
         }
     },
 
     clearBrowse() {
+        const container = this.$el;
+
         this.browsingGenre = null;
         this.browseResults = [];
         this.activeCategory = 'all';
+        this.$nextTick(() => animateCardsIn(container));
     },
 
-    navigateTo(item) {
-        switchPage('detail', { contentId: item.tmdb_id, contentType: 'series' });
+    navigateTo(item, contentType) {
+        switchPage('detail', { contentId: item.tmdb_id, contentType: contentType || 'series' });
     },
 
     posterUrl(path) { return _posterUrl(path); },
-    getTitle(item) { return _getTitle(item, 'series'); },
-    getYear(item) { return _getYear(item, 'series'); },
+    getTitle(item, ct) { return _getTitle(item, ct || 'series'); },
+    getYear(item, ct) { return _getYear(item, ct || 'series'); },
     getSeriesStatusBadge(status) { return _getSeriesStatusBadge(status); },
     formatSeriesMeta(item) { return _formatSeriesMeta(item); },
 }));

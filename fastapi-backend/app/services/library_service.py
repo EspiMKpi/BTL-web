@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Optional
 from cachetools import TTLCache
 
 from app.database import get_database
-from app.utils import sanitize as _sanitize
+from app.utils import is_movie_doc, is_series_doc, sanitize as _sanitize
 
 # ── In-memory TTL cache for home rails (per-worker, 5 min TTL) ───────────
 _home_cache: TTLCache[str, dict] = TTLCache(maxsize=64, ttl=300)
@@ -71,20 +71,12 @@ async def get_home_rails(user_id: Optional[str] = None, rail_limit: int = 10) ->
     genres = [_sanitize(g) for g in genres]
 
     # Filter out misplaced documents (series in movies collection, movies in series collection)
-    def _keep_movies(doc: dict) -> bool:
-        return not (doc.get("seasons") or doc.get("number_of_seasons")
-                    or (doc.get("first_air_date") and not doc.get("release_date")))
-
-    def _keep_series(doc: dict) -> bool:
-        return not (doc.get("title") and not doc.get("name")
-                    or (doc.get("release_date") and not doc.get("first_air_date")))
-
-    trending_movies = [d for d in trending_movies if _keep_movies(d)]
-    top_rated_movies = [d for d in top_rated_movies if _keep_movies(d)]
-    new_release_movies = [d for d in new_release_movies if _keep_movies(d)]
-    trending_series = [d for d in trending_series if _keep_series(d)]
-    top_rated_series = [d for d in top_rated_series if _keep_series(d)]
-    recent_series = [d for d in recent_series if _keep_series(d)]
+    trending_movies = [d for d in trending_movies if is_movie_doc(d)]
+    top_rated_movies = [d for d in top_rated_movies if is_movie_doc(d)]
+    new_release_movies = [d for d in new_release_movies if is_movie_doc(d)]
+    trending_series = [d for d in trending_series if is_series_doc(d)]
+    top_rated_series = [d for d in top_rated_series if is_series_doc(d)]
+    recent_series = [d for d in recent_series if is_series_doc(d)]
 
     rails: List[Dict[str, Any]] = [
         {"id": "trending_movies", "title": "Trending Movies", "content_type": "movie", "items": trending_movies},
@@ -209,12 +201,8 @@ async def get_series_rails(rail_limit: int = 12, user_id: Optional[str] = None) 
             doc_list[i] = _sanitize(doc)
 
     # Filter out misplaced movie documents from series collection
-    def _keep_series(doc: dict) -> bool:
-        return not (doc.get("title") and not doc.get("name")
-                    or (doc.get("release_date") and not doc.get("first_air_date")))
-
     for doc_list in (currently_airing, completed_gems, mini_series, most_episodes, trending, top_rated, recent):
-        filtered = [d for d in doc_list if _keep_series(d)]
+        filtered = [d for d in doc_list if is_series_doc(d)]
         doc_list.clear()
         doc_list.extend(filtered)
 
@@ -240,6 +228,62 @@ async def get_series_rails(rail_limit: int = 12, user_id: Optional[str] = None) 
         _movies_cw, series_cw = await _build_continue_watching(db, user_id, hidden_filter)
         if series_cw:
             rails.insert(0, {"id": "continue_watching_series", "title": "Continue Watching", "content_type": "series", "items": series_cw})
+
+    return _sanitize({"rails": rails})
+
+
+async def get_movie_rails(rail_limit: int = 12, user_id: Optional[str] = None) -> dict:
+    """Build movie-specific rails for the Movies page.
+
+    Returns curated rails that leverage movie-specific metadata:
+    - Trending         (sorted by popularity)
+    - Top Rated        (vote_count ≥ 50, sorted by vote_average)
+    - New Releases     (sorted by release_date desc)
+    - Classics         (released before 2000, high rating)
+    - Highest Rated    (sorted by vote_average desc, minimal vote_count)
+    Plus the standard trending / top-rated / new release rails.
+    """
+    db = get_database()
+    hidden_filter = await public_content_filter()
+
+    # --- Curated rails (fetch concurrently) ---
+    trending, top_rated, new_releases, classics, highest_rated = await asyncio.gather(
+        db.movies.find(hidden_filter).sort("popularity", -1).limit(rail_limit).to_list(rail_limit),
+        db.movies.find({"vote_count": {"$gte": 50}, **hidden_filter}).sort("vote_average", -1).limit(rail_limit).to_list(rail_limit),
+        db.movies.find(hidden_filter).sort("release_date", -1).limit(rail_limit).to_list(rail_limit),
+        db.movies.find({"release_date": {"$lt": "2000"}, "vote_count": {"$gte": 30}, "vote_average": {"$gte": 7.0}, **hidden_filter}).sort("vote_average", -1).limit(rail_limit).to_list(rail_limit),
+        db.movies.find({"vote_count": {"$gte": 10}, **hidden_filter}).sort("vote_average", -1).limit(rail_limit).to_list(rail_limit),
+    )
+
+    # Sanitize all
+    for doc_list in (trending, top_rated, new_releases, classics, highest_rated):
+        for i, doc in enumerate(doc_list):
+            doc_list[i] = _sanitize(doc)
+
+    # Filter out misplaced series documents from movies collection
+    for doc_list in (trending, top_rated, new_releases, classics, highest_rated):
+        filtered = [d for d in doc_list if is_movie_doc(d)]
+        doc_list.clear()
+        doc_list.extend(filtered)
+
+    rails: List[Dict[str, Any]] = []
+
+    if trending:
+        rails.append({"id": "trending_movies", "title": "Trending Now", "content_type": "movie", "items": trending})
+    if top_rated:
+        rails.append({"id": "top_rated_movies", "title": "Top Rated", "content_type": "movie", "items": top_rated})
+    if new_releases:
+        rails.append({"id": "new_releases", "title": "New Releases", "content_type": "movie", "items": new_releases})
+    if classics:
+        rails.append({"id": "classics", "title": "Classics", "content_type": "movie", "items": classics})
+    if highest_rated:
+        rails.append({"id": "highest_rated", "title": "Highest Rated", "content_type": "movie", "items": highest_rated})
+
+    # Prepend per-user Continue Watching (movies only)
+    if user_id:
+        movies_cw, _series_cw = await _build_continue_watching(db, user_id, hidden_filter)
+        if movies_cw:
+            rails.insert(0, {"id": "continue_watching_movies", "title": "Continue Watching", "content_type": "movie", "items": movies_cw})
 
     return _sanitize({"rails": rails})
 

@@ -297,14 +297,23 @@
 }
 
 /* ── Series Category Pills ─────────────────────────────────────────── */
+.series-category-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 28px;
+    position: relative;
+}
+
 .series-category-bar {
     display: flex;
     gap: 8px;
-    margin-bottom: 28px;
     overflow-x: auto;
     padding-bottom: 4px;
     scrollbar-width: none;
     align-items: center;
+    flex: 1;
+    min-width: 0;
 }
 
 .series-category-bar::-webkit-scrollbar {

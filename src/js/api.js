@@ -36,6 +36,7 @@ export const contentApi = {
     getGenres: () => apiFetch('/api/content/genres'),
     getStats: () => apiFetch('/api/content/stats'),
     getSeriesRails: (limit = 12) => apiFetch(`/api/content/series/rails?limit=${limit}`),
+    getMovieRails: (limit = 12) => apiFetch(`/api/content/movies/rails?limit=${limit}`),
     browse: (genreId, page = 1, limit = 20) =>
         apiFetch(`/api/content/browse/${genreId}?page=${page}&limit=${limit}`),
     search: (query, page = 1, limit = 20) =>

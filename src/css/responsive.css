@@ -509,9 +509,12 @@
     }
 
     /* --- Series category pills --- */
+    .series-category-wrap {
+        margin-bottom: 20px;
+    }
+
     .series-category-bar {
         gap: 6px;
-        margin-bottom: 20px;
     }
 
     .category-pill {

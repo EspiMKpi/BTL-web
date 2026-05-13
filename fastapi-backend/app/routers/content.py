@@ -15,12 +15,13 @@ from app.services.library_service import (
     get_content_by_genre,
     get_hidden_genre_ids,
     get_home_rails,
+    get_movie_rails,
     get_series_rails,
     public_content_filter,
 )
 from app.services.movie_service import get_movie_by_id
 from app.services.series_service import get_series_by_id
-from app.utils import escape_mongo_regex, sanitize
+from app.utils import escape_mongo_regex, is_movie_doc, is_series_doc, sanitize
 
 
 router = APIRouter(prefix="/api/content", tags=["content"])
@@ -43,6 +44,16 @@ async def series_rails(
     """Series-specific curated rails (Currently Airing, Completed Gems, etc.)."""
     user_id = current_user["_id"] if current_user else None
     return await get_series_rails(rail_limit=limit, user_id=user_id)
+
+
+@router.get("/movies/rails")
+async def movie_rails(
+    limit: int = Query(12, ge=1, le=50),
+    current_user: Optional[dict] = Depends(get_optional_current_user),
+):
+    """Movie-specific curated rails (Trending, Top Rated, Classics, etc.)."""
+    user_id = current_user["_id"] if current_user else None
+    return await get_movie_rails(rail_limit=limit, user_id=user_id)
 
 
 @router.get("/genres")
@@ -92,21 +103,13 @@ async def search_content(
     movies = []
     async for d in movie_cursor:
         d = sanitize(d)
-        # Detect series documents misplaced in movies collection
-        if d.get("seasons") or d.get("number_of_seasons") or (d.get("first_air_date") and not d.get("release_date")):
-            d["content_type"] = "series"
-        else:
-            d["content_type"] = "movie"
+        d["content_type"] = "series" if not is_movie_doc(d) else "movie"
         movies.append(d)
 
     series = []
     async for d in series_cursor:
         d = sanitize(d)
-        # Detect movie documents misplaced in series collection
-        if d.get("title") and not d.get("name") and d.get("release_date") and not d.get("first_air_date"):
-            d["content_type"] = "movie"
-        else:
-            d["content_type"] = "series"
+        d["content_type"] = "movie" if not is_series_doc(d) else "series"
         series.append(d)
 
     # Merge and deduplicate by tmdb_id (prefer correct collection)
