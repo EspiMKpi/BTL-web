@@ -46,16 +46,23 @@ async def add_to_watchlist(
 
     db = get_database()
     now = datetime.utcnow()
+
+    # Normalize content_type: reject 'mixed' and other invalid values
+    valid_types = {"movie", "series"}
+    content_type = body.content_type if body.content_type in valid_types else "movie"
+
+    # Upsert by (user_id, tmdb_id) only — prevents duplicate entries for the
+    # same title even if content_type differs (e.g. 'series' vs 'mixed').
     result = await db.watchlist_items.find_one_and_update(
-        {"user_id": current_user["_id"], "content_type": body.content_type, "tmdb_id": body.tmdb_id},
+        {"user_id": current_user["_id"], "tmdb_id": body.tmdb_id},
         {
             "$setOnInsert": {
                 "user_id": current_user["_id"],
-                "content_type": body.content_type,
                 "tmdb_id": body.tmdb_id,
                 "created_at": now,
             },
             "$set": {
+                "content_type": content_type,
                 "status": body.status,
                 "is_bookmarked": body.is_bookmarked,
                 "is_favorite": body.is_favorite,

@@ -17,6 +17,21 @@ async def connect_to_mongo() -> None:
     await _client.admin.command("ping")
     print(f"Connected to MongoDB Atlas (db={settings.DB_NAME})")
 
+    # Ensure critical unique indexes exist
+    db = _client[settings.DB_NAME]
+    # Unique index on (user_id, tmdb_id) prevents the same title appearing
+    # twice in a user's watchlist, regardless of content_type.
+    # Drop old index if it exists (migrating from the old 3-field index).
+    try:
+        await db.watchlist_items.drop_index("user_id_1_content_type_1_tmdb_id_1")
+    except Exception:
+        pass  # index may not exist on fresh DB
+    await db.watchlist_items.create_index(
+        [("user_id", 1), ("tmdb_id", 1)],
+        unique=True,
+        name="unique_user_tmdb",
+    )
+
 
 async def close_mongo_connection() -> None:
     """Call at shutdown."""

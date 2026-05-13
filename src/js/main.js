@@ -1602,6 +1602,13 @@ Alpine.data('watchlistPage', () => ({
                 })
             );
             this.items = enriched.filter(r => r.status === 'fulfilled').map(r => r.value);
+            // Deduplicate by tmdb_id (backend now prevents this, but safety net)
+            const seen = new Set();
+            this.items = this.items.filter(item => {
+                if (seen.has(item.tmdb_id)) return false;
+                seen.add(item.tmdb_id);
+                return true;
+            });
         } catch (e) {
             this.error = e.message;
         } finally {
@@ -1649,17 +1656,34 @@ Alpine.data('watchlistPage', () => ({
                 })
             );
             this.continueItems = enriched.filter(r => r.status === 'fulfilled').map(r => r.value);
+            // Deduplicate by tmdb_id
+            const seen = new Set();
+            this.continueItems = this.continueItems.filter(item => {
+                if (seen.has(item.tmdb_id)) return false;
+                seen.add(item.tmdb_id);
+                return true;
+            });
         } catch {
             this.continueItems = [];
         }
     },
 
     get filteredItems() {
-        if (this.activeFilter === 'continue') return this.continueItems;
-        if (this.activeFilter === 'favorites') return this.items.filter(i => i.is_favorite);
-        const map = { watchlist: 'plan_to_watch', completed: 'completed' };
-        const status = map[this.activeFilter];
-        return status ? this.items.filter(i => i.status === status) : this.items;
+        let result;
+        if (this.activeFilter === 'continue') result = this.continueItems;
+        else if (this.activeFilter === 'favorites') result = this.items.filter(i => i.is_favorite);
+        else {
+            const map = { watchlist: 'plan_to_watch', completed: 'completed' };
+            const status = map[this.activeFilter];
+            result = status ? this.items.filter(i => i.status === status) : this.items;
+        }
+        // Deduplicate by tmdb_id (keep first occurrence = most recent)
+        const seen = new Set();
+        return result.filter(item => {
+            if (seen.has(item.tmdb_id)) return false;
+            seen.add(item.tmdb_id);
+            return true;
+        });
     },
 
     statusLabel(item) {
