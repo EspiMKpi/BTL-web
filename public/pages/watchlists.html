@@ -91,7 +91,7 @@
                         </div>
                     </div>
                 </template>
-                <div x-show="!loading && filteredItems.length === 0" style="color:rgba(255,255,255,0.4); padding:40px; text-align:center;">
+                <div x-show="!loading && filteredItems.length === 0" style="grid-column:1/-1; color:rgba(255,255,255,0.4); padding:40px; text-align:center; white-space:nowrap;">
                     Nothing here yet. <span style="cursor:pointer; color:var(--accent-gold);" @click="window.switchPage('movies')">Browse titles →</span>
                 </div>
             </div>
