@@ -129,7 +129,9 @@ Alpine.store('nav', {
 Alpine.store('content', {
     homeRails: null,
     genres: [],
-    stats: {},
+    stats: { movie_count: 0, series_count: 0, genre_count: 0 },
+    _statsLoaded: false,
+    _statsPromise: null,
     seriesRails: null,
     _fetchedAt: 0,
     _seriesFetchedAt: 0,
@@ -152,18 +154,41 @@ Alpine.store('content', {
         return this.genres;
     },
 
-    /** Cached stats. */
+    /** Cached stats with deduplication and error handling. */
     async getStats() {
-        if (this.stats.movie_count) return this.stats;
-        this.stats = await contentApi.getStats();
-        return this.stats;
+        if (this._statsLoaded) return { ...this.stats };
+        // Deduplicate concurrent calls
+        if (this._statsPromise) return this._statsPromise;
+        this._statsPromise = this._fetchStats();
+        try {
+            return await this._statsPromise;
+        } finally {
+            this._statsPromise = null;
+        }
+    },
+
+    async _fetchStats() {
+        try {
+            const data = await contentApi.getStats();
+            this.stats = {
+                movie_count: data.movie_count || 0,
+                series_count: data.series_count || 0,
+                genre_count: data.genre_count || 0,
+            };
+            this._statsLoaded = true;
+        } catch (e) {
+            console.warn('Failed to fetch content stats:', e.message);
+        }
+        return { ...this.stats };
     },
 
     /** Invalidate all caches (call after admin changes). */
     bust() {
         this.homeRails = null;
         this.genres = [];
-        this.stats = {};
+        this.stats = { movie_count: 0, series_count: 0, genre_count: 0 };
+        this._statsLoaded = false;
+        this._statsPromise = null;
         this.seriesRails = null;
         this._fetchedAt = 0;
         this._seriesFetchedAt = 0;
@@ -385,9 +410,9 @@ Alpine.data('landingPage', () => ({
             // Keep the default hero backdrop (Netflix banner)
         }
 
-        // Populate real stats from database
-        if (statsResult.status === 'fulfilled') {
-            this.stats = statsResult.value;
+        // Populate real stats from database (spread to break reference)
+        if (statsResult.status === 'fulfilled' && statsResult.value) {
+            this.stats = { ...statsResult.value };
         }
 
         // Landing nav scroll effect
@@ -617,7 +642,7 @@ Alpine.data('moviesPage', () => ({
             ]);
             this.rails = rails.filter(r => r.items && r.items.length > 0);
             this.genres = genres;
-            if (stats) this.stats = stats;
+            if (stats) this.stats = { ...stats };
         } catch (e) {
             this.error = e.message;
         } finally {
@@ -762,7 +787,7 @@ Alpine.data('seriesPage', () => ({
             ]);
             this.rails = (seriesData.rails || []).filter(r => r.items && r.items.length > 0);
             this.genres = genres;
-            if (stats) this.stats = stats;
+            if (stats) this.stats = { ...stats };
         } catch (e) {
             this.error = e.message;
         } finally {
