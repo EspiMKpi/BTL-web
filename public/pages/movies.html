@@ -9,11 +9,11 @@
         </div>
         <div class="catalog-hero-metrics" x-show="!isSearchMode && !browsingGenre">
             <div class="catalog-metric">
-                <span x-text="rails.reduce((s, r) => s + r.items.length, 0) || '...'">...</span>
+                <span x-text="stats.movie_count ? stats.movie_count.toLocaleString() : '...'">...</span>
                 <p>Titles available</p>
             </div>
             <div class="catalog-metric">
-                <span x-text="genres.length || '...'">...</span>
+                <span x-text="stats.genre_count ? stats.genre_count.toLocaleString() : '...'">...</span>
                 <p>Genres</p>
             </div>
             <div class="catalog-metric">
