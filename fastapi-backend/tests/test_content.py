@@ -124,8 +124,8 @@ class TestHomeRails:
         resp = await client.get("/api/content/home", headers=auth_headers)
         assert resp.status_code == 200
         body = resp.json()
-        # Should have continue_watching as first rail
-        assert body["rails"][0]["id"] == "continue_watching"
+        # Should have continue_watching_movies as first rail (seeded entry is a movie)
+        assert body["rails"][0]["id"] == "continue_watching_movies"
         assert len(body["rails"][0]["items"]) == 1
 
 

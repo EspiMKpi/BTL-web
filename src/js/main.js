@@ -277,7 +277,7 @@ Alpine.data('discoverPage', () => ({
                 store.getHomeRails(),
                 store.getGenres(),
             ]);
-            this.rails = rails.filter(r => r.items && r.items.length > 0 && r.id !== 'continue_watching');
+            this.rails = rails.filter(r => r.items && r.items.length > 0 && !r.id.startsWith('continue_watching'));
             this.genres = genres;
         } catch (e) {
             this.error = e.message;

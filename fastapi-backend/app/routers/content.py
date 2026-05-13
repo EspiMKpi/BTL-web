@@ -38,9 +38,11 @@ async def home(
 @router.get("/series/rails")
 async def series_rails(
     limit: int = Query(12, ge=1, le=50),
+    current_user: Optional[dict] = Depends(get_optional_current_user),
 ):
     """Series-specific curated rails (Currently Airing, Completed Gems, etc.)."""
-    return await get_series_rails(rail_limit=limit)
+    user_id = current_user["_id"] if current_user else None
+    return await get_series_rails(rail_limit=limit, user_id=user_id)
 
 
 @router.get("/genres")

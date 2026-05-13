@@ -95,66 +95,14 @@ async def get_home_rails(user_id: Optional[str] = None, rail_limit: int = 10) ->
         {"id": "recent_series", "title": "Recently Added TV Shows", "content_type": "series", "items": recent_series},
     ]
 
-    # Continue watching rail (authenticated users only)
+    # Continue watching rails (authenticated users only) — split per content_type
     if user_id:
-        cw_pipeline = [
-            {
-                "$match": {
-                    "user_id": user_id,
-                    "completed": False,
-                    "progress_seconds": {"$gt": 0},
-                }
-            },
-            {"$sort": {"last_watched_at": -1}},
-            {
-                "$group": {
-                    "_id": {"content_type": "$content_type", "tmdb_id": "$tmdb_id"},
-                    "doc": {"$first": "$$ROOT"},
-                }
-            },
-            {"$replaceRoot": {"newRoot": "$doc"}},
-            {"$sort": {"last_watched_at": -1}},
-            {"$limit": 10},
-        ]
-        continue_items = await db.watch_history.aggregate(cw_pipeline).to_list(10)
-
-        if continue_items:
-            movie_ids = [h["tmdb_id"] for h in continue_items if h["content_type"] == "movie"]
-            series_ids = [h["tmdb_id"] for h in continue_items if h["content_type"] == "series"]
-
-            movies = await db.movies.find({"tmdb_id": {"$in": movie_ids}, **hidden_filter}).to_list(50) if movie_ids else []
-            series_list = await db.series.find({"tmdb_id": {"$in": series_ids}, **hidden_filter}).to_list(50) if series_ids else []
-
-            content_map: Dict[str, dict] = {}
-            for m in movies:
-                m = _sanitize(m)
-                content_map[f"movie_{m['tmdb_id']}"] = m
-            for s in series_list:
-                s = _sanitize(s)
-                content_map[f"series_{s['tmdb_id']}"] = s
-
-            continue_watching = []
-            for h in continue_items:
-                content = content_map.get(f"{h['content_type']}_{h['tmdb_id']}")
-                if not content:
-                    continue
-                continue_watching.append(
-                    {
-                        **content,
-                        "_history": {
-                            "progress_seconds": h["progress_seconds"],
-                            "season_number": h.get("season_number"),
-                            "episode_number": h.get("episode_number"),
-                            "last_watched_at": h.get("last_watched_at"),
-                        },
-                    }
-                )
-
-            if continue_watching:
-                rails.insert(
-                    0,
-                    {"id": "continue_watching", "title": "Continue Watching", "content_type": "mixed", "items": continue_watching},
-                )
+        movies_cw, series_cw = await _build_continue_watching(db, user_id, hidden_filter)
+        # Insert series first then movies so movies appears at index 0
+        if series_cw:
+            rails.insert(0, {"id": "continue_watching_series", "title": "Continue Watching", "content_type": "series", "items": series_cw})
+        if movies_cw:
+            rails.insert(0, {"id": "continue_watching_movies", "title": "Continue Watching", "content_type": "movie", "items": movies_cw})
 
     result = {"rails": rails, "genres": genres}
 
@@ -165,7 +113,73 @@ async def get_home_rails(user_id: Optional[str] = None, rail_limit: int = 10) ->
     return _sanitize(result)
 
 
-async def get_series_rails(rail_limit: int = 12) -> dict:
+async def _build_continue_watching(
+    db: Any,
+    user_id: str,
+    hidden_filter: Dict[str, Any],
+) -> tuple[List[dict], List[dict]]:
+    """Return (movies_cw, series_cw) for the given user, each sorted by recency."""
+    cw_pipeline = [
+        {
+            "$match": {
+                "user_id": user_id,
+                "completed": False,
+                "progress_seconds": {"$gt": 0},
+            }
+        },
+        {"$sort": {"last_watched_at": -1}},
+        {
+            "$group": {
+                "_id": {"content_type": "$content_type", "tmdb_id": "$tmdb_id"},
+                "doc": {"$first": "$$ROOT"},
+            }
+        },
+        {"$replaceRoot": {"newRoot": "$doc"}},
+        {"$sort": {"last_watched_at": -1}},
+        {"$limit": 20},
+    ]
+    continue_items = await db.watch_history.aggregate(cw_pipeline).to_list(20)
+    if not continue_items:
+        return [], []
+
+    movie_ids = [h["tmdb_id"] for h in continue_items if h["content_type"] == "movie"]
+    series_ids = [h["tmdb_id"] for h in continue_items if h["content_type"] == "series"]
+
+    movies = await db.movies.find({"tmdb_id": {"$in": movie_ids}, **hidden_filter}).to_list(50) if movie_ids else []
+    series_list = await db.series.find({"tmdb_id": {"$in": series_ids}, **hidden_filter}).to_list(50) if series_ids else []
+
+    content_map: Dict[str, dict] = {}
+    for m in movies:
+        m = _sanitize(m)
+        content_map[f"movie_{m['tmdb_id']}"] = m
+    for s in series_list:
+        s = _sanitize(s)
+        content_map[f"series_{s['tmdb_id']}"] = s
+
+    movies_cw: List[dict] = []
+    series_cw: List[dict] = []
+    for h in continue_items:
+        content = content_map.get(f"{h['content_type']}_{h['tmdb_id']}")
+        if not content:
+            continue
+        enriched = {
+            **content,
+            "_history": {
+                "progress_seconds": h["progress_seconds"],
+                "season_number": h.get("season_number"),
+                "episode_number": h.get("episode_number"),
+                "last_watched_at": h.get("last_watched_at"),
+            },
+        }
+        if h["content_type"] == "movie":
+            movies_cw.append(enriched)
+        else:
+            series_cw.append(enriched)
+
+    return movies_cw, series_cw
+
+
+async def get_series_rails(rail_limit: int = 12, user_id: Optional[str] = None) -> dict:
     """Build series-specific rails for the Series page.
 
     Returns curated rails that leverage series-specific metadata:
@@ -220,6 +234,12 @@ async def get_series_rails(rail_limit: int = 12) -> dict:
         rails.append({"id": "most_episodes", "title": "Most Episodes", "content_type": "series", "items": most_episodes})
     if recent:
         rails.append({"id": "recent_series", "title": "Recently Added", "content_type": "series", "items": recent})
+
+    # Prepend per-user Continue Watching (series only)
+    if user_id:
+        _movies_cw, series_cw = await _build_continue_watching(db, user_id, hidden_filter)
+        if series_cw:
+            rails.insert(0, {"id": "continue_watching_series", "title": "Continue Watching", "content_type": "series", "items": series_cw})
 
     return _sanitize({"rails": rails})
 
