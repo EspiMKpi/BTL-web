@@ -1175,6 +1175,7 @@ Alpine.data('watchingPage', () => ({
     _lastMessageAt: 0,
     _everReceivedMsg: false,
     _fallbackPollId: null,
+    _paused: false,
     activeProvider: 'vidlink',
 
     providers: {
@@ -1197,11 +1198,30 @@ Alpine.data('watchingPage', () => ({
 
     init() {
         document.addEventListener('page:switch', (e) => {
-            if (e.detail.pageId !== 'watching') return;
-            const params = e.detail.params || {};
-            const contentId = params.contentId || Alpine.store('nav').contentId;
-            const contentType = params.contentType || Alpine.store('nav').contentType || 'movie';
-            this.load(contentId, contentType);
+            if (e.detail.pageId === 'watching') {
+                const params = e.detail.params || {};
+                const contentId = params.contentId || Alpine.store('nav').contentId;
+                const contentType = params.contentType || Alpine.store('nav').contentType || 'movie';
+                this._paused = false;
+                this.load(contentId, contentType);
+            } else if (this.content) {
+                this._paused = true;
+                this._stopFallbackPoll();
+            }
+        });
+
+        // Stop iframe playback when the browser tab is hidden. Third-party
+        // providers don't expose a uniform postMessage pause API, so the only
+        // reliable cross-provider stop is to unload the iframe.
+        document.addEventListener('visibilitychange', () => {
+            if (!this.content) return;
+            if (document.visibilityState === 'hidden') {
+                this._paused = true;
+                this._stopFallbackPoll();
+            } else {
+                this._paused = false;
+                this._startFallbackPoll();
+            }
         });
 
         // Embed player → parent postMessage bridge.
@@ -1223,6 +1243,7 @@ Alpine.data('watchingPage', () => ({
         this._lastPostAt = 0;
         this._lastMessageAt = 0;
         this._everReceivedMsg = false;
+        this._paused = false;
         this._stopFallbackPoll();
         try {
             try {
@@ -1264,6 +1285,7 @@ Alpine.data('watchingPage', () => ({
     },
 
     get playerSrc() {
+        if (this._paused) return 'about:blank';
         if (!this.content?.tmdb_id) return '';
         const id = this.content.tmdb_id;
         const provider = this.providers[this.activeProvider];
