@@ -305,7 +305,7 @@ Alpine.data('discoverPage', () => ({
 
 Alpine.data('landingPage', () => ({
     featuredContent: [],
-    heroBackdrop: '',
+    heroBackdrop: '/images/hero-banner.jpg',
     heroFallback: false,
     _scrollHandler: null,
     stats: { movie_count: 0, series_count: 0, genre_count: 0 },
@@ -333,9 +333,7 @@ Alpine.data('landingPage', () => ({
                 return true;
             }).slice(0, 15);
             const heroItem = allItems.find(i => i.backdrop_path);
-            if (heroItem) {
-                this.heroBackdrop = `https://image.tmdb.org/t/p/original${heroItem.backdrop_path}`;
-            }
+            // Keep the default hero backdrop (Netflix banner)
         }
 
         // Populate real stats from database

@@ -2125,6 +2125,7 @@
     object-fit: cover;
     object-position: center 20%;
     transform: scale(1.05);
+    filter: blur(6px);
 }
 
 .landing-hero-bg-fallback {
