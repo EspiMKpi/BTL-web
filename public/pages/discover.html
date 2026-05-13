@@ -1,4 +1,4 @@
-<div id="page-discover" class="page-content landing-page nf-landing" x-data="discoverPage">
+<div id="page-discover" class="page-content nf-landing" x-data="discoverPage">
     <!-- Hero Carousel -->
     <section class="hero-carousel"
              @mouseenter="carouselPause()" @mouseleave="carouselResume()"
@@ -52,7 +52,7 @@
     <template x-if="loading">
         <div>
             <div class="skeleton skeleton-hero" style="margin-bottom: 32px;"></div>
-            <div style="padding: 0 60px;">
+            <div>
                 <div class="skeleton skeleton-text" style="width: 200px; height: 20px; margin-bottom: 16px;"></div>
                 <div style="display: flex; gap: 14px; overflow: hidden;">
                     <div class="skeleton-card" style="min-width: 180px;"><div class="skeleton skeleton-poster"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text-short"></div></div>
