@@ -59,8 +59,11 @@
     <div x-show="error && !loading" style="text-align:center; padding: 40px; color: #ff6b6b;" x-text="error"></div>
 
     <!-- Browse Results (genre filter active) -->
-    <div x-show="browsingGenre && !browseLoading">
-        <section class="movie-section">
+    <div x-show="browsingGenre" class="genre-browse">
+        <div class="genre-switch-overlay" x-show="browseLoading" x-cloak>
+            <div class="genre-switch-spinner"></div>
+        </div>
+        <section class="movie-section" :class="{ 'genre-switching': browseLoading }">
             <div class="section-header">
                 <h2 class="section-title" x-text="browseResults.length + ' titles in ' + (browsingGenre ? browsingGenre.name : '')"></h2>
             </div>
@@ -82,7 +85,7 @@
                 </template>
             </div>
         </section>
-        <div x-show="browseResults.length === 0 && !error" style="text-align:center; padding:60px; color:rgba(255,255,255,0.4);">
+        <div x-show="browseResults.length === 0 && !browseLoading && !error" style="text-align:center; padding:60px; color:rgba(255,255,255,0.4);">
             No titles found in this genre.
         </div>
     </div>

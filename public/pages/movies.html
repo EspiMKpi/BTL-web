@@ -112,8 +112,11 @@
     <div x-show="isSearchMode && searching" style="text-align:center; padding: 40px; color: rgba(255,255,255,0.5);">Searching...</div>
 
     <!-- Browse by Genre Results -->
-    <div x-show="browsingGenre && !browseLoading">
-        <section class="movie-section">
+    <div x-show="browsingGenre" class="genre-browse">
+        <div class="genre-switch-overlay" x-show="browseLoading" x-cloak>
+            <div class="genre-switch-spinner"></div>
+        </div>
+        <section class="movie-section" :class="{ 'genre-switching': browseLoading }">
             <div class="section-header">
                 <h2 class="section-title" x-text="browseResults.length + ' titles in ' + (browsingGenre ? browsingGenre.name : '')"></h2>
             </div>
@@ -138,11 +141,10 @@
                         </div>
                     </div>
                 </template>
-                <div x-show="browseResults.length === 0" style="color: rgba(255,255,255,0.4); padding: 40px;">No titles in this genre.</div>
+                <div x-show="browseResults.length === 0 && !browseLoading" style="color: rgba(255,255,255,0.4); padding: 40px;">No titles in this genre.</div>
             </div>
         </section>
     </div>
-    <div x-show="browsingGenre && browseLoading" style="text-align:center; padding: 40px; color: rgba(255,255,255,0.5);">Loading...</div>
 
     <!-- Movie Rails (default view) -->
     <div x-show="!loading && !browsingGenre && !isSearchMode" data-ref="rails-container">

@@ -2797,3 +2797,41 @@
         flex: 0 0 160px;
     }
 }
+
+/* ── Genre browse: loading filter while switching genres ───────────────── */
+.genre-browse {
+    position: relative;
+}
+
+.genre-switching {
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.genre-switch-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    background: var(--bg-main);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 140px;
+}
+
+.genre-switch-spinner {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    border: 3px solid rgba(255, 255, 255, 0.12);
+    border-top-color: var(--accent-gold);
+    animation: genreSwitchSpin 0.7s linear infinite;
+}
+
+@keyframes genreSwitchSpin {
+    to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .genre-switch-spinner { animation-duration: 1.4s; }
+}
