@@ -2108,7 +2108,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.addEventListener('auth:expired', () => {
         Alpine.store('auth').logout();
-        switchPage('login');
+        switchPage('login', {}, { force: true });
     });
 
     const navLinks = document.querySelectorAll('.nav-link');
