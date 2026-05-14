@@ -22,16 +22,6 @@
                 <button type="submit" class="auth-btn" id="btn-login-continue" :disabled="loading" x-text="loading ? 'Signing in...' : 'Continue'"></button>
             </form>
 
-            <div class="auth-divider">
-                <span>or sign in with</span>
-            </div>
-
-            <div class="auth-social">
-                <button class="social-google" id="btn-google-login" aria-label="Sign in with Google">
-                    <span>G</span>
-                </button>
-            </div>
-
             <div class="auth-switch">
                 <p>New to VozFlix? <a href="#register" id="link-to-register" @click.prevent="switchPage('register')">Create account</a></p>
             </div>

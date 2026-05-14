@@ -1,6 +1,6 @@
 import Alpine from 'alpinejs';
 import { pages_ready } from './pages.js';
-import { switchPage } from './router.js';
+import { switchPage, initRouter, parseHash } from './router.js';
 import { contentApi, watchlistApi, historyApi, adminApi, ratingsApi, apiFetch } from './api.js';
 import { posterUrl as _posterUrl, getTitle as _getTitle, getYear as _getYear, formatRuntime as _formatRuntime, getSeriesStatusBadge as _getSeriesStatusBadge, formatSeriesMeta as _formatSeriesMeta } from './content-helpers.js';
 import { initPreloader } from './preloader.js';
@@ -274,6 +274,12 @@ Alpine.data('discoverPage', () => ({
             this.loading = false;
             this.$nextTick(() => this._startCarousel());
         }
+    },
+
+    retry() {
+        this.rails = [];
+        this.error = '';
+        this.loadHome();
     },
 
     /* ---- Hero Carousel ---- */
@@ -657,6 +663,12 @@ Alpine.data('moviesPage', () => ({
         }
     },
 
+    retry() {
+        this.rails = [];
+        this.error = '';
+        this.loadMovies();
+    },
+
     selectCategory(catId) {
         const container = this.$el;
         const prev = this.activeCategory;
@@ -802,6 +814,12 @@ Alpine.data('seriesPage', () => ({
         }
     },
 
+    retry() {
+        this.rails = [];
+        this.error = '';
+        this.loadSeries();
+    },
+
     selectCategory(catId) {
         const container = this.$el;
         const prev = this.activeCategory;
@@ -860,6 +878,7 @@ Alpine.data('detailPage', () => ({
     loading: false,
     error: '',
     watchlistItem: null,
+    resumeInfo: null,
     selectedSeason: 0,
     showAllEpisodes: false,
     EPISODE_LIMIT: 12,
@@ -884,6 +903,12 @@ Alpine.data('detailPage', () => ({
         });
     },
 
+    retry() {
+        this.error = '';
+        const nav = Alpine.store('nav');
+        this.load(nav.contentId, nav.contentType);
+    },
+
     async load(contentId, contentType) {
         if (!contentId) return;
         this.loading = true;
@@ -896,6 +921,7 @@ Alpine.data('detailPage', () => ({
         this.userRating = 0;
         this.userReview = '';
         this.myRating = null;
+        this.resumeInfo = null;
 
         // Show branded page preloader
         const loaderContainer = document.getElementById('detail-loader');
@@ -940,6 +966,7 @@ Alpine.data('detailPage', () => ({
             }
             await this.checkWatchlistStatus(contentId, contentType);
             await this.loadRatings(contentId, contentType);
+            await this.loadResumeInfo();
         } catch (e) {
             this.error = 'Failed to load: ' + e.message;
         } finally {
@@ -1080,6 +1107,50 @@ Alpine.data('detailPage', () => ({
             const items = await watchlistApi.getAll();
             this.watchlistItem = items.find(i => i.tmdb_id === contentId && i.content_type === contentType) || null;
         } catch { this.watchlistItem = null; }
+    },
+
+    /** Find the last in-progress episode so "Watch Now" can resume, not restart. */
+    async loadResumeInfo() {
+        this.resumeInfo = null;
+        if (this.contentType !== 'series') return;
+        if (!Alpine.store('auth').isLoggedIn) return;
+        const tmdbId = this.content?.tmdb_id;
+        if (!tmdbId) return;
+        try {
+            const items = await historyApi.getContinueWatching(50);
+            const match = items.find(i => i.tmdb_id === tmdbId && i.content_type === 'series');
+            if (match && match.episode_number) {
+                this.resumeInfo = {
+                    season_number: match.season_number,
+                    episode_number: match.episode_number,
+                };
+            }
+        } catch { /* silent — resume is best-effort */ }
+    },
+
+    get watchBtnLabel() {
+        return this.resumeInfo
+            ? `Resume S${this.resumeInfo.season_number} E${this.resumeInfo.episode_number}`
+            : 'Watch Now';
+    },
+
+    /** Open the player, resuming the last-watched episode for series when known. */
+    watchNow() {
+        const contentId = this.content?.tmdb_id;
+        if (!contentId) return;
+        if (this.contentType !== 'series') {
+            switchPage('watching', { contentId, contentType: this.contentType });
+            return;
+        }
+        let seasonIndex = this.selectedSeason;
+        let episodeNumber = 1;
+        if (this.resumeInfo) {
+            const idx = (this.content?.seasons || [])
+                .findIndex(s => s.season_number === this.resumeInfo.season_number);
+            if (idx >= 0) seasonIndex = idx;
+            episodeNumber = this.resumeInfo.episode_number || 1;
+        }
+        switchPage('watching', { contentId, contentType: this.contentType, seasonIndex, episodeNumber });
     },
 
     get title() { return this.contentType === 'series' ? this.content?.name : this.content?.title; },
@@ -1255,6 +1326,12 @@ Alpine.data('watchingPage', () => ({
         // One listener for the lifetime of the SPA; handler ignores events
         // when the iframe isn't loaded or the user is anonymous.
         window.addEventListener('message', (event) => this._onPlayerMessage(event));
+    },
+
+    retry() {
+        this.error = '';
+        const nav = Alpine.store('nav');
+        this.load(nav.contentId, nav.contentType, nav.seasonIndex, nav.episodeNumber);
     },
 
     selectSeason(idx) {
@@ -1582,53 +1659,55 @@ Alpine.data('watchlistPage', () => ({
         });
     },
 
+    /**
+     * Enrich watchlist / history rows with content metadata using a single
+     * batch request instead of one detail fetch per item (the old N+1 storm).
+     * Also deduplicates by tmdb_id.
+     */
+    async _enrichItems(rawItems) {
+        if (!rawItems || rawItems.length === 0) return [];
+        let contentList = [];
+        try {
+            contentList = await contentApi.batch(
+                rawItems.map(i => ({ content_type: i.content_type, tmdb_id: i.tmdb_id }))
+            );
+        } catch {
+            contentList = [];
+        }
+        const byId = new Map((contentList || []).map(c => [c.tmdb_id, c]));
+        const seen = new Set();
+        const enriched = [];
+        for (const item of rawItems) {
+            if (seen.has(item.tmdb_id)) continue;
+            seen.add(item.tmdb_id);
+            const content = byId.get(item.tmdb_id);
+            if (content) {
+                // batch corrects stale content_type from the resolved collection
+                if (content.content_type) item.content_type = content.content_type;
+                item._title = content.title || content.name || 'Unknown';
+                item._poster = content.poster_path
+                    ? `https://image.tmdb.org/t/p/w500${content.poster_path}`
+                    : null;
+                item._rating = content.vote_average || null;
+                item._runtime = content.runtime || null;
+            } else {
+                item._title = item.content_type + ' ' + item.tmdb_id;
+                item._poster = null;
+                item._rating = null;
+                item._runtime = null;
+            }
+            enriched.push(item);
+        }
+        return enriched;
+    },
+
     async loadWatchlist() {
         if (!Alpine.store('auth').isLoggedIn) return;
         this.loading = true;
         this.error = '';
         try {
             const rawItems = await watchlistApi.getAll();
-            const enriched = await Promise.allSettled(
-                rawItems.map(async (item) => {
-                    try {
-                        let content;
-                        try {
-                            content = item.content_type === 'series'
-                                ? await contentApi.getSeries(item.tmdb_id)
-                                : await contentApi.getMovie(item.tmdb_id);
-                        } catch (fetchErr) {
-                            if (String(fetchErr.message).includes('404')) {
-                                content = item.content_type === 'series'
-                                    ? await contentApi.getMovie(item.tmdb_id)
-                                    : await contentApi.getSeries(item.tmdb_id);
-                                item.content_type = item.content_type === 'series' ? 'movie' : 'series';
-                            } else {
-                                throw fetchErr;
-                            }
-                        }
-                        item._title = content.title || content.name || 'Unknown';
-                        item._poster = content.poster_path
-                            ? `https://image.tmdb.org/t/p/w500${content.poster_path}`
-                            : null;
-                        item._rating = content.vote_average || null;
-                        item._runtime = content.runtime || null;
-                    } catch {
-                        item._title = item.content_type + ' ' + item.tmdb_id;
-                        item._poster = null;
-                        item._rating = null;
-                        item._runtime = null;
-                    }
-                    return item;
-                })
-            );
-            this.items = enriched.filter(r => r.status === 'fulfilled').map(r => r.value);
-            // Deduplicate by tmdb_id (backend now prevents this, but safety net)
-            const seen = new Set();
-            this.items = this.items.filter(item => {
-                if (seen.has(item.tmdb_id)) return false;
-                seen.add(item.tmdb_id);
-                return true;
-            });
+            this.items = await this._enrichItems(rawItems);
         } catch (e) {
             this.error = e.message;
         } finally {
@@ -1640,52 +1719,16 @@ Alpine.data('watchlistPage', () => ({
         if (!Alpine.store('auth').isLoggedIn) return;
         try {
             const historyItems = await historyApi.getContinueWatching(20);
-            const enriched = await Promise.allSettled(
-                historyItems.map(async (item) => {
-                    try {
-                        let content;
-                        try {
-                            content = item.content_type === 'series'
-                                ? await contentApi.getSeries(item.tmdb_id)
-                                : await contentApi.getMovie(item.tmdb_id);
-                        } catch (fetchErr) {
-                            // If fetch fails with 404, try the other content type
-                            if (String(fetchErr.message).includes('404')) {
-                                content = item.content_type === 'series'
-                                    ? await contentApi.getMovie(item.tmdb_id)
-                                    : await contentApi.getSeries(item.tmdb_id);
-                                // Correct the content_type for future navigations
-                                item.content_type = item.content_type === 'series' ? 'movie' : 'series';
-                            } else {
-                                throw fetchErr;
-                            }
-                        }
-                        item._title = content.title || content.name || 'Unknown';
-                        item._poster = content.poster_path
-                            ? `https://image.tmdb.org/t/p/w500${content.poster_path}`
-                            : null;
-                        item._rating = content.vote_average || null;
-                        item._runtime = content.runtime || null;
-                    } catch {
-                        item._title = item.content_type + ' ' + item.tmdb_id;
-                        item._poster = null;
-                        item._rating = null;
-                        item._runtime = null;
-                    }
-                    return item;
-                })
-            );
-            this.continueItems = enriched.filter(r => r.status === 'fulfilled').map(r => r.value);
-            // Deduplicate by tmdb_id
-            const seen = new Set();
-            this.continueItems = this.continueItems.filter(item => {
-                if (seen.has(item.tmdb_id)) return false;
-                seen.add(item.tmdb_id);
-                return true;
-            });
+            this.continueItems = await this._enrichItems(historyItems);
         } catch {
             this.continueItems = [];
         }
+    },
+
+    retry() {
+        this.error = '';
+        this.loadWatchlist();
+        this.loadContinueWatching();
     },
 
     get filteredItems() {
@@ -1833,6 +1876,14 @@ Alpine.data('adminPage', () => ({
         } finally {
             this.loading = false;
         }
+    },
+
+    retry() {
+        this.error = '';
+        if (this.activeTab === 'comments') { this._commentsLoaded = false; this.loadComments(); }
+        else if (this.activeTab === 'users') { this._usersLoaded = false; this.loadUsers(); }
+        else if (this.activeTab === 'genres') { this._genresLoaded = false; this.loadGenres(); }
+        else { this._moviesLoaded = false; this.loadMovies(); }
     },
 
     get filteredMovies() {
@@ -2024,13 +2075,35 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Determine target page before preloader finishes
     // so we can reveal it beneath the preloader slide-up.
     await new Promise(r => setTimeout(r, 300)); // let fetchUser settle
-    const targetPage = Alpine.store('auth').isLoggedIn ? 'discover' : 'landing';
+    const isLoggedIn = Alpine.store('auth').isLoggedIn;
+
+    // Honour a deep-link hash on boot, falling back to discover/landing.
+    let targetPage, targetParams = {};
+    const fromHash = parseHash();
+    if (fromHash) {
+        targetPage = fromHash.pageId;
+        targetParams = fromHash.params;
+        // Gate auth-only / auth-form pages by login state.
+        if (!isLoggedIn && ['watchlists', 'profile', 'admin'].includes(targetPage)) {
+            targetPage = 'landing';
+            targetParams = {};
+        } else if (isLoggedIn && ['landing', 'login', 'register'].includes(targetPage)) {
+            targetPage = 'discover';
+            targetParams = {};
+        }
+    } else {
+        targetPage = isLoggedIn ? 'discover' : 'landing';
+    }
+
+    // Wire hash routing (browser Back/Forward + deep links) before the first
+    // switchPage so the boot-time hash sync is handled by the listener.
+    initRouter();
 
     // Run preloader animation while pages load.
     // The callback fires just before the preloader slides up,
     // making the target page visible underneath — no black gap.
     await initPreloader(pages_ready, () => {
-        switchPage(targetPage);
+        switchPage(targetPage, targetParams);
     });
 
     document.addEventListener('auth:expired', () => {
@@ -2045,6 +2118,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             const targetPage = link.getAttribute('data-page');
             if (targetPage) switchPage(targetPage);
         });
+    });
+
+    // Keyboard activation for clickable content cards (Enter / Space).
+    // Cards carry role="button" + tabindex="0"; this synthesizes a click so
+    // both Alpine @click handlers and the delegated click handler below run.
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+        const card = e.target.closest('.movie-card, .content-card, .episode-card');
+        if (card && e.target === card) {
+            e.preventDefault();
+            card.click();
+        }
     });
 
     document.addEventListener('click', (e) => {

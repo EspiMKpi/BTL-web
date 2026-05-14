@@ -1,9 +1,12 @@
 <div id="page-watching" class="page-content" x-data="watchingPage">
-    <div x-show="loading" style="text-align:center; padding: 60px 20px; color: rgba(255,255,255,0.5);">
+    <div x-show="loading" role="status" style="text-align:center; padding: 60px 20px; color: rgba(255,255,255,0.5);">
         Loading player…
     </div>
 
-    <div x-show="error" x-text="error" style="text-align:center; padding: 40px 20px; color: #ff6b6b;"></div>
+    <div x-show="error && !loading" role="alert" style="text-align:center; padding: 40px 20px;">
+        <p style="color: #ff6b6b; margin-bottom: 16px;" x-text="error"></p>
+        <button class="btn btn-secondary" type="button" @click="retry()">Try Again</button>
+    </div>
 
     <section class="player-section" x-show="!loading && content">
         <div class="video-player-container player-container" style="background:#000; border-radius: var(--radius-sm); overflow:hidden; position:relative;">
@@ -53,7 +56,7 @@
     <section class="watching-next-up up-next-section" x-show="!loading && upNext.length > 0">
         <div class="section-header">
             <h2 class="section-title">Episodes</h2>
-            <button class="btn btn-primary btn-sm" type="button" @click="switchPage('detail')">Back to details</button>
+            <button class="btn btn-primary btn-sm" type="button" @click="switchPage('detail', { contentId: content?.tmdb_id, contentType })">Back to details</button>
         </div>
         <!-- Season tabs -->
         <div class="season-tabs" x-show="content?.seasons?.length > 1">
@@ -66,7 +69,10 @@
         </div>
         <div class="episode-grid">
             <template x-for="ep in visibleEpisodes" :key="ep.episode_number">
-                <div class="episode-card" :class="{ 'current-episode': selectedEpisode && ep.episode_number === selectedEpisode.episode_number }" @click.stop="selectEpisode(ep)">
+                <div class="episode-card" role="button" tabindex="0"
+                     :aria-label="'Play ' + (ep.name || ('Episode ' + ep.episode_number))"
+                     :class="{ 'current-episode': selectedEpisode && ep.episode_number === selectedEpisode.episode_number }"
+                     @click.stop="selectEpisode(ep)">
                     <div class="ep-thumbnail">
                         <img :src="episodeThumb(ep)" :alt="ep.name || ('Episode ' + ep.episode_number)">
                         <div class="ep-number" x-text="ep.episode_number"></div>

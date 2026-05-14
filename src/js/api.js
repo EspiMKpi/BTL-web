@@ -43,6 +43,11 @@ export const contentApi = {
         apiFetch(`/api/content/search?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`),
     getMovie: (id) => apiFetch(`/api/content/movie/${id}`),
     getSeries: (id) => apiFetch(`/api/content/series/${id}`),
+    batch: (items) =>
+        apiFetch('/api/content/batch', {
+            method: 'POST',
+            body: JSON.stringify({ items }),
+        }),
 };
 
 export const watchlistApi = {

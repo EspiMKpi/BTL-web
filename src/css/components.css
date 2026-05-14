@@ -1,3 +1,16 @@
+/* Visually-hidden content for screen readers (announcers, labels) */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
 /* Navigation */
 .nav-bar {
     display: flex;
@@ -478,6 +491,16 @@
 .content-card:hover,
 .movie-card:hover {
     transform: scale(1.05);
+    z-index: 10;
+}
+
+/* Keyboard focus indicator for clickable content cards */
+.content-card:focus-visible,
+.movie-card:focus-visible,
+.episode-card:focus-visible {
+    outline: 2px solid var(--accent-gold);
+    outline-offset: 3px;
+    border-radius: var(--radius-sm);
     z-index: 10;
 }
 

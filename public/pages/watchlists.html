@@ -48,13 +48,16 @@
             </div>
 
             <!-- Loading -->
-            <div x-show="loading" style="text-align:center; padding:60px; color:rgba(255,255,255,0.5);">Loading watchlist...</div>
+            <div x-show="loading" role="status" style="text-align:center; padding:60px; color:rgba(255,255,255,0.5);">Loading watchlist...</div>
             <!-- Error -->
-            <div x-show="error && !loading" style="text-align:center; padding:40px; color:#ff6b6b;" x-text="error"></div>
+            <div x-show="error && !loading" role="alert" style="text-align:center; padding:40px;">
+                <p style="color:#ff6b6b; margin-bottom:16px;" x-text="error"></p>
+                <button class="btn btn-secondary" type="button" @click="retry()">Try Again</button>
+            </div>
 
             <div class="movie-grid watchlist-grid" x-show="!loading">
                 <template x-for="item in filteredItems" :key="item._id || item.tmdb_id">
-                    <div class="movie-card" @click="navigateTo(item)">
+                    <div class="movie-card" role="button" tabindex="0" :aria-label="item._title || 'Title'" @click="navigateTo(item)">
                         <div class="poster-container">
                             <img :src="item._poster || 'https://placehold.co/300x450/1a1a2e/white?text=No+Image'" :alt="item._title" loading="lazy">
                             <span class="rating-badge" x-text="item._rating ? item._rating.toFixed(1) : 'N/A'"></span>

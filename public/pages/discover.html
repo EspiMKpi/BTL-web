@@ -57,7 +57,7 @@
 
     <!-- Skeleton Loading State -->
     <template x-if="loading">
-        <div>
+        <div role="status" aria-label="Loading content">
             <div class="skeleton skeleton-hero" style="margin-bottom: 32px;"></div>
             <div>
                 <div class="skeleton skeleton-text" style="width: 200px; height: 20px; margin-bottom: 16px;"></div>
@@ -72,7 +72,10 @@
         </div>
     </template>
 
-    <div class="nf-error" x-show="error" x-text="error" style="text-align:center; padding: 40px 20px; color: #ff6b6b;"></div>
+    <div class="nf-error" x-show="error && !loading" role="alert" style="text-align:center; padding: 40px 20px;">
+        <p style="color: #ff6b6b; margin-bottom: 16px;" x-text="error"></p>
+        <button class="btn btn-secondary" type="button" @click="retry()">Try Again</button>
+    </div>
 
     <!-- Top 10 Rail -->
     <section class="movie-section nf-content-section" x-show="!loading && top10.length > 0">
@@ -90,6 +93,8 @@
                         <article class="nf-top10-item">
                             <span class="nf-rank" x-text="index + 1"></span>
                             <div class="movie-card"
+                                 role="button" tabindex="0"
+                                 :aria-label="getTitle(item, top10ContentType)"
                                  :data-tmdb-id="item.tmdb_id"
                                  :data-content-type="top10ContentType"
                                  @click="navigateTo(item, top10ContentType)">
@@ -127,6 +132,8 @@
                     <div class="nf-row-grid" x-ref="scrollContainer" @scroll="checkArrows()">
                         <template x-for="item in rail.items.slice(0, 12)" :key="item.tmdb_id">
                             <div class="movie-card"
+                                 role="button" tabindex="0"
+                                 :aria-label="getTitle(item, rail.content_type)"
                                  :data-tmdb-id="item.tmdb_id"
                                  :data-content-type="rail.content_type"
                                  @click="navigateTo(item, rail.content_type)">

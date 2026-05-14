@@ -50,8 +50,11 @@
         </div>
 
         <!-- Loading -->
-        <div x-show="loading" style="text-align:center; padding:60px; color:rgba(255,255,255,0.5);">Loading...</div>
-        <div x-show="error" style="text-align:center; padding:20px; color:#ff6b6b;" x-text="error"></div>
+        <div x-show="loading" role="status" style="text-align:center; padding:60px; color:rgba(255,255,255,0.5);">Loading...</div>
+        <div x-show="error && !loading" role="alert" style="text-align:center; padding:40px 20px;">
+            <p style="color:#ff6b6b; margin-bottom:16px;" x-text="error"></p>
+            <button class="btn btn-secondary" type="button" @click="retry()">Try Again</button>
+        </div>
 
         <!-- ====== Movies Tab ====== -->
         <div x-show="activeTab === 'movies' && !loading">

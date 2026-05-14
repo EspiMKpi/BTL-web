@@ -54,9 +54,12 @@
     </div>
 
     <!-- Loading -->
-    <div x-show="loading" style="text-align:center; padding: 60px; color: rgba(255,255,255,0.5);">Loading...</div>
+    <div x-show="loading" role="status" style="text-align:center; padding: 60px; color: rgba(255,255,255,0.5);">Loading...</div>
     <!-- Error -->
-    <div x-show="error && !loading" style="text-align:center; padding: 40px; color: #ff6b6b;" x-text="error"></div>
+    <div x-show="error && !loading" role="alert" style="text-align:center; padding: 40px;">
+        <p style="color: #ff6b6b; margin-bottom: 16px;" x-text="error"></p>
+        <button class="btn btn-secondary" type="button" @click="retry()">Try Again</button>
+    </div>
 
     <!-- Browse Results (genre filter active) -->
     <div x-show="browsingGenre" class="genre-browse">
@@ -70,6 +73,8 @@
             <div class="movie-grid" data-ref="browse-grid">
                 <template x-for="item in browseResults" :key="item.tmdb_id + '-' + item._ct">
                     <div class="movie-card"
+                         role="button" tabindex="0"
+                         :aria-label="getTitle(item, item._ct)"
                          :data-tmdb-id="item.tmdb_id"
                          :data-content-type="item._ct"
                          @click="navigateTo(item, item._ct)">
@@ -105,6 +110,8 @@
                         <div class="nf-row-grid" x-ref="scrollContainer" @scroll="checkArrows()">
                             <template x-for="item in rail.items" :key="item.tmdb_id">
                                 <div class="content-card content-card--series"
+                                     role="button" tabindex="0"
+                                     :aria-label="getTitle(item)"
                                      :data-tmdb-id="item.tmdb_id"
                                      data-content-type="series"
                                      @click="navigateTo(item)">
