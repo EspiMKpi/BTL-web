@@ -75,7 +75,7 @@ export function initRouter() {
 }
 
 export async function switchPage(pageId, params = {}, opts = {}) {
-    if (isTransitioning) return;
+    if (isTransitioning && !opts.force) return;
 
     const pages = document.querySelectorAll('.page-content');
     const currentPage = document.querySelector('.page-content.active');
@@ -84,6 +84,14 @@ export async function switchPage(pageId, params = {}, opts = {}) {
     const footer = document.querySelector('.main-footer');
     const dropdown = document.getElementById('profile-dropdown');
     const navLinksContainer = document.querySelector('.nav-links');
+
+    // Force switch: cancel any ongoing transition and do an instant swap.
+    if (opts.force && isTransitioning) {
+        isTransitioning = false;
+        applySwitch(pages, pageId, params, nav, footer, dropdown, navLinksContainer);
+        if (!opts.fromHash) syncHash(pageId, params);
+        return;
+    }
 
     // Same page already active.
     if (currentPage && targetPage && currentPage.id === targetPage.id) {
