@@ -8,6 +8,7 @@ from typing import Optional
 import asyncio
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 
 from app.core.deps import get_optional_current_user
 from app.database import get_database
@@ -128,6 +129,62 @@ async def search_content(
         "limit": limit,
         "total": len(all_results),
     }
+
+
+class BatchItem(BaseModel):
+    content_type: str
+    tmdb_id: int
+
+
+class BatchRequest(BaseModel):
+    items: list[BatchItem]
+
+
+@router.post("/batch")
+async def content_batch(body: BatchRequest):
+    """Resolve metadata for many titles in one round-trip.
+
+    Used by the watchlist / continue-watching views, which previously fired
+    one detail request per item (an N+1 storm). MongoDB-only — never hits TMDB.
+    """
+    if not body.items:
+        return []
+
+    ids = list({i.tmdb_id for i in body.items})
+    db = get_database()
+    projection = {
+        "tmdb_id": 1,
+        "title": 1,
+        "name": 1,
+        "poster_path": 1,
+        "backdrop_path": 1,
+        "vote_average": 1,
+        "runtime": 1,
+    }
+
+    movies: dict[int, dict] = {}
+    async for doc in db.movies.find({"tmdb_id": {"$in": ids}}, projection):
+        movies[doc["tmdb_id"]] = sanitize(doc)
+    series: dict[int, dict] = {}
+    async for doc in db.series.find({"tmdb_id": {"$in": ids}}, projection):
+        series[doc["tmdb_id"]] = sanitize(doc)
+
+    results = []
+    for item in body.items:
+        tid = item.tmdb_id
+        # Prefer the requested collection, fall back to the other —
+        # stored content_type in watch_history / watchlist can be stale.
+        if item.content_type == "series":
+            doc = series.get(tid) or movies.get(tid)
+            resolved_type = "series" if tid in series else "movie"
+        else:
+            doc = movies.get(tid) or series.get(tid)
+            resolved_type = "movie" if tid in movies else "series"
+        if not doc:
+            continue
+        results.append({**doc, "content_type": resolved_type})
+
+    return results
 
 
 def _has_hidden_genre(doc: dict, hidden_ids: list[int]) -> bool:

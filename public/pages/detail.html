@@ -1,10 +1,13 @@
 <div id="page-detail" class="page-content" x-data="detailPage">
 
     <!-- Loading State (branded preloader injected by JS) -->
-    <div id="detail-loader" x-show="loading"></div>
+    <div id="detail-loader" x-show="loading" role="status"></div>
 
     <!-- Error State -->
-    <div x-show="error" x-text="error" style="text-align:center; padding: 80px 20px; color: #ff6b6b;"></div>
+    <div x-show="error && !loading" role="alert" style="text-align:center; padding: 80px 20px;">
+        <p style="color: #ff6b6b; margin-bottom: 16px;" x-text="error"></p>
+        <button class="btn btn-secondary" type="button" @click="retry()">Try Again</button>
+    </div>
 
     <!-- Hero Section -->
     <section class="detail-hero" x-show="!loading && content">
@@ -24,11 +27,11 @@
             </div>
             <p class="detail-desc detail-overview" x-text="content?.overview || 'No description available.'"></p>
             <div class="detail-cta-row detail-actions">
-                <button class="btn btn-primary" @click="switchPage('watching', { seasonIndex: selectedSeason, episodeNumber: 1 })">
+                <button class="btn btn-primary" @click="watchNow()">
                     <div class="icon-wrapper" style="width: 18px; height: 18px; color: black;">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="m7 3 14 9-14 9V3z"/></svg>
                     </div>
-                    Watch Now
+                    <span x-text="watchBtnLabel">Watch Now</span>
                 </button>
                 <button class="btn btn-secondary" @click="toggleBookmark()">
                     <div class="icon-wrapper" style="width: 18px; height: 18px;">
@@ -179,7 +182,7 @@
     <section class="episode-section" x-ref="episodes" x-show="!loading && content && contentType === 'series' && content?.seasons?.length > 0">
         <div class="section-header">
             <h2 class="section-title">Episodes</h2>
-            <a href="#watching" class="see-all" @click.prevent="switchPage('watching', { seasonIndex: selectedSeason, episodeNumber: 1 })">Open Player</a>
+            <a href="#watching" class="see-all" @click.prevent="watchNow()">Open Player</a>
         </div>
         <div class="season-tabs" x-show="content?.seasons?.length > 1">
             <template x-for="(season, idx) in (content?.seasons || [])" :key="season.season_number">
@@ -191,7 +194,9 @@
         </div>
         <div class="episode-grid">
             <template x-for="ep in visibleEpisodes" :key="ep.episode_number">
-                <div class="episode-card" @click="switchPage('watching', { seasonIndex: selectedSeason, episodeNumber: ep.episode_number })">
+                <div class="episode-card" role="button" tabindex="0"
+                     :aria-label="'Play ' + (ep.name || ('Episode ' + ep.episode_number))"
+                     @click="switchPage('watching', { contentId: content?.tmdb_id, contentType, seasonIndex: selectedSeason, episodeNumber: ep.episode_number })">
                     <div class="ep-thumbnail">
                         <img :src="ep.still_path ? 'https://image.tmdb.org/t/p/w500' + ep.still_path : backdropUrl"
                              :alt="ep.name || ('Episode ' + ep.episode_number)">
