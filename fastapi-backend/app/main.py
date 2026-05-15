@@ -54,8 +54,8 @@ async def lifespan(app: FastAPI):
     await connect_to_mongo()
     yield
     # Shutdown
-    await close_mongo_connection()
 
+    await close_mongo_connection()
 
 app = FastAPI(
     title="VozFlix API",
