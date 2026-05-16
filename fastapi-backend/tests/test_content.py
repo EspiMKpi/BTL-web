@@ -124,8 +124,8 @@ class TestHomeRails:
         resp = await client.get("/api/content/home", headers=auth_headers)
         assert resp.status_code == 200
         body = resp.json()
-        # Should have continue_watching as first rail
-        assert body["rails"][0]["id"] == "continue_watching"
+        # Should have continue_watching_movies as first rail (seeded entry is a movie)
+        assert body["rails"][0]["id"] == "continue_watching_movies"
         assert len(body["rails"][0]["items"]) == 1
 
 
@@ -258,19 +258,4 @@ class TestSeriesDetail:
 
     async def test_series_not_found(self, client, db):
         resp = await client.get("/api/content/series/9999999")
-        assert resp.status_code == 404
-
-
-# ── Legacy Movies Router ─────────────────────────────────────────────────
-
-class TestMoviesRouter:
-    async def test_get_movie_in_db(self, client, db):
-        movies = await _seed_movies(db, 1)
-        movie = movies[0]
-        resp = await client.get(f"/api/movies/{movie['tmdb_id']}")
-        assert resp.status_code == 200
-        assert resp.json()["tmdb_id"] == movie["tmdb_id"]
-
-    async def test_get_movie_not_found(self, client, db):
-        resp = await client.get("/api/movies/9999999")
         assert resp.status_code == 404

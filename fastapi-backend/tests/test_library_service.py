@@ -118,7 +118,7 @@ class TestGetHomeRails:
         })
 
         result = await get_home_rails(user_id=user_id)
-        assert result["rails"][0]["id"] == "continue_watching"
+        assert result["rails"][0]["id"] == "continue_watching_movies"
         assert len(result["rails"][0]["items"]) == 1
 
 

@@ -1,11 +1,12 @@
 """
-VozFlix FastAPI backend — replaces the Express/TypeScript server.
+VozFlix FastAPI backend - replaces the Express/TypeScript server.
 Run with: uvicorn app.main:app --reload --port 8000
 """
 
 import json
 from contextlib import asynccontextmanager
 from datetime import datetime
+from typing import Any, cast
 
 from bson import ObjectId
 from fastapi import FastAPI, Request
@@ -18,11 +19,11 @@ from slowapi.util import get_remote_address
 
 from app.core.config import settings
 from app.database import close_mongo_connection, connect_to_mongo
-from app.routers import admin, auth, comments, content, history, movies, profile, ratings, watchlist
+from app.routers import admin, auth, comments, content, history, profile, ratings, recommendations, watchlist
 
 # Teach FastAPI's jsonable_encoder how to serialize MongoDB ObjectId.
 # This is the actual fix for the "ObjectId is not iterable" / "vars() argument
-# must have __dict__" crashes — it runs BEFORE any Response.render() and
+# must have __dict__" crashes - it runs BEFORE any Response.render() and
 # applies globally to every route that returns raw dicts from MongoDB.
 ENCODERS_BY_TYPE[ObjectId] = str
 
@@ -54,7 +55,6 @@ async def lifespan(app: FastAPI):
     await connect_to_mongo()
     yield
     # Shutdown
-
     await close_mongo_connection()
 
 app = FastAPI(
@@ -66,9 +66,9 @@ app = FastAPI(
 
 # Rate limiting middleware
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_exception_handler(RateLimitExceeded, cast(Any, _rate_limit_exceeded_handler))
 
-# CORS — same origins as the Express cors() middleware
+# CORS - same origins as the Express cors() middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
@@ -79,7 +79,6 @@ app.add_middleware(
 
 # Mount all routers
 app.include_router(auth.router)
-app.include_router(movies.router)
 app.include_router(content.router)
 app.include_router(watchlist.router)
 app.include_router(history.router)
@@ -87,6 +86,7 @@ app.include_router(ratings.router)
 app.include_router(profile.router)
 app.include_router(comments.router)
 app.include_router(admin.router)
+app.include_router(recommendations.router)
 
 
 @app.get("/api/test")

@@ -6,7 +6,7 @@ Helper functions for recommendation computations, scoring, and data manipulation
 import math
 from datetime import datetime, timedelta
 from typing import List, Dict, Tuple, Optional
-from .recommendation_config import (
+from app.core.recommendation_config import (
     RATING_HALF_LIFE_DAYS,
     RECENCY_BOOST_DAYS,
     RECENCY_BOOST_FACTOR,

@@ -76,7 +76,7 @@ cd ..
 
 ### Environment Variables
 
-Create a `.env` file inside `fastapi-backend/`:
+Create a `.env` file in the repo root:
 
 ```env
 MONGODB_URI=mongodb+srv://<username>:<password>@<cluster>.mongodb.net
@@ -85,7 +85,7 @@ TMDB_API_KEY=your_tmdb_api_key_here
 JWT_SECRET=your_super_secret_jwt_key
 ```
 
-> For local MongoDB, use `MONGODB_URI=mongodb://localhost:27017` (see [Local MongoDB Setup](#-local-mongodb-setup) below).
+> For local MongoDB, use `MONGODB_URI=mongodb://localhost:27017` in the root `.env` (see [Local MongoDB Setup](#-local-mongodb-setup) below).
 
 ### Running the App
 
@@ -385,7 +385,7 @@ If you prefer a local MongoDB instance instead of Atlas:
 docker run -d --name vozflix-mongo -p 27017:27017 mongo:7
 ```
 
-Then set `MONGODB_URI=mongodb://localhost:27017` in `fastapi-backend/.env`.
+Then set `MONGODB_URI=mongodb://localhost:27017` in the root `.env`.
 
 ### Seeding Data
 
@@ -467,9 +467,19 @@ During development, Vite proxies all `/api/*` requests to the FastAPI backend on
 | Frontend JS | `camelCase` | `switchPage`, `fetchUser` |
 | CSS classes | `kebab-case` | `movie-card`, `nav-links` |
 
+## ⚠️ Disclaimer
+
+This project is developed **strictly for educational and academic purposes only** (BTL — Bài Tập Lớn). It is a university coursework project and is **not** intended for commercial use, redistribution, or production deployment.
+
+- **No copyrighted content is hosted or distributed** by this project. All movie/series metadata and images are sourced from the [TMDB API](https://www.themoviedb.org/) and are subject to [TMDB's terms of use](https://www.themoviedb.org/terms-of-use).
+- **Video playback** is provided via third-party embed services (VidLink, 2Embed, VidKing). This project does not host, store, or distribute any video files. All streaming links point to external services.
+- The developers make **no warranties** regarding the availability, accuracy, or legality of content accessed through third-party embed providers.
+- This project **does not encourage piracy** or any form of copyright infringement. Users are responsible for complying with their local laws regarding online content.
+- All trademarks, logos, and content referenced herein are the property of their respective owners.
+
 ## 📄 License
 
-This project is for educational purposes (BTL — Bài Tập Lớn).
+This project is for educational purposes only and carries **no license** for commercial use.
 
 ---
 

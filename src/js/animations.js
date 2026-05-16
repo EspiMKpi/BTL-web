@@ -650,3 +650,67 @@ export function animateLandingHero(container) {
         });
     }
 }
+
+// ─── Genre / Category Content Transitions ──────────────────────────
+
+/**
+ * Animate existing cards OUT (fade + slide up) before a data swap.
+ * Targets individual cards so the parent x-show container stays visible.
+ * @param {HTMLElement} container - the page wrapper (e.g. #page-movies)
+ * @returns {Promise} resolves when exit animation completes
+ */
+export function animateCardsOut(container) {
+    return new Promise((resolve) => {
+        if (!container || prefersReducedMotion()) {
+            resolve();
+            return;
+        }
+
+        const allCards = container.querySelectorAll('.content-card, .movie-card');
+        const targets = Array.from(allCards).filter(el => el.offsetParent !== null);
+        if (targets.length === 0) {
+            resolve();
+            return;
+        }
+
+        animate(targets, {
+            opacity: [1, 0],
+            translateY: [0, -20],
+            scale: [1, 0.95],
+            duration: 280,
+            ease: 'inQuad',
+            onComplete: resolve,
+        });
+    });
+}
+
+/**
+ * Stagger-animate new cards IN after a data swap.
+ * Call inside $nextTick so Alpine has rendered the new DOM.
+ * Only targets cards that are currently visible (not hidden by x-show).
+ * @param {HTMLElement} container - the page wrapper
+ */
+export function animateCardsIn(container) {
+    if (!container || prefersReducedMotion()) return;
+
+    // Filter to only visible cards — x-show sets display:none on the
+    // parent container, so offsetParent is null for hidden cards.
+    const allCards = container.querySelectorAll('.content-card, .movie-card');
+    const targets = Array.from(allCards).filter(el => el.offsetParent !== null);
+    if (targets.length === 0) return;
+
+    // Set initial hidden state so the stagger reveal is visible
+    targets.forEach(el => {
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(25px) scale(0.97)';
+    });
+
+    animate(targets, {
+        opacity: [0, 1],
+        translateY: [25, 0],
+        scale: [0.97, 1],
+        delay: stagger(40, { from: 'first' }),
+        duration: 500,
+        ease: 'outQuint',
+    });
+}

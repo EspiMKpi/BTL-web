@@ -36,12 +36,23 @@ export const contentApi = {
     getGenres: () => apiFetch('/api/content/genres'),
     getStats: () => apiFetch('/api/content/stats'),
     getSeriesRails: (limit = 12) => apiFetch(`/api/content/series/rails?limit=${limit}`),
+    getMovieRails: (limit = 12) => apiFetch(`/api/content/movies/rails?limit=${limit}`),
     browse: (genreId, page = 1, limit = 20) =>
         apiFetch(`/api/content/browse/${genreId}?page=${page}&limit=${limit}`),
     search: (query, page = 1, limit = 20) =>
         apiFetch(`/api/content/search?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`),
     getMovie: (id) => apiFetch(`/api/content/movie/${id}`),
     getSeries: (id) => apiFetch(`/api/content/series/${id}`),
+    batch: (items) =>
+        apiFetch('/api/content/batch', {
+            method: 'POST',
+            body: JSON.stringify({ items }),
+        }),
+};
+
+export const recommendationsApi = {
+    getTrending: (limit = 12, timeWindow = 'all') =>
+        apiFetch(`/api/recommendations/trending?limit=${limit}&time_window=${encodeURIComponent(timeWindow)}`),
 };
 
 export const watchlistApi = {

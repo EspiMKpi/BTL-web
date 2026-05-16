@@ -6,7 +6,6 @@ Run this once when deploying the recommendation system
 
 import asyncio
 from typing import Optional
-from motor.motor_asyncio import AsyncClient, AsyncDatabase
 import logging
 
 logger = logging.getLogger(__name__)

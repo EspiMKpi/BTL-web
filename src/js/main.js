@@ -1,7 +1,7 @@
 import Alpine from 'alpinejs';
 import { pages_ready } from './pages.js';
-import { switchPage } from './router.js';
-import { contentApi, watchlistApi, historyApi, adminApi, ratingsApi, apiFetch } from './api.js';
+import { switchPage, initRouter, parseHash } from './router.js';
+import { contentApi, watchlistApi, historyApi, adminApi, ratingsApi, recommendationsApi, apiFetch } from './api.js';
 import { posterUrl as _posterUrl, getTitle as _getTitle, getYear as _getYear, formatRuntime as _formatRuntime, getSeriesStatusBadge as _getSeriesStatusBadge, formatSeriesMeta as _formatSeriesMeta } from './content-helpers.js';
 import { initPreloader } from './preloader.js';
 import {
@@ -17,6 +17,8 @@ import {
     prefersReducedMotion,
     showPageLoader,
     animateLandingHero,
+    animateCardsOut,
+    animateCardsIn,
 } from './animations.js';
 
 window.Alpine = Alpine;
@@ -65,14 +67,10 @@ Alpine.store('auth', {
     get isLoggedIn() { return !!this.token; },
 
     async login(email, password) {
-        const res = await fetch('/api/auth/login', {
+        const data = await apiFetch('/api/auth/login', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password })
         });
-        let data;
-        try { data = await res.json(); } catch { throw new Error('Server is unreachable. Please try again later.'); }
-        if (!res.ok) throw new Error(data.error || data.detail);
         this.token = data.token;
         this.user = data.user;
         localStorage.setItem('token', data.token);
@@ -80,14 +78,10 @@ Alpine.store('auth', {
     },
 
     async register(email, password) {
-        const res = await fetch('/api/auth/register', {
+        const data = await apiFetch('/api/auth/register', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password })
         });
-        let data;
-        try { data = await res.json(); } catch { throw new Error('Server is unreachable. Please try again later.'); }
-        if (!res.ok) throw new Error(data.error || data.detail);
         this.token = data.token;
         this.user = data.user;
         localStorage.setItem('token', data.token);
@@ -103,15 +97,10 @@ Alpine.store('auth', {
     async fetchUser() {
         if (!this.token) return;
         try {
-            const res = await fetch('/api/auth/me', {
-                headers: { 'Authorization': `Bearer ${this.token}` }
-            });
-            if (res.ok) {
-                try { this.user = await res.json(); } catch { /* non-JSON response */ }
-            } else {
-                this.logout();
-            }
-        } catch { this.logout(); }
+            this.user = await apiFetch('/api/auth/me');
+        } catch {
+            this.logout();
+        }
     }
 });
 
@@ -273,11 +262,36 @@ Alpine.data('discoverPage', () => ({
         this.error = '';
         try {
             const store = Alpine.store('content');
-            const [rails, genres] = await Promise.all([
+            const [rails, genres, trendingRec] = await Promise.all([
                 store.getHomeRails(),
                 store.getGenres(),
+                recommendationsApi.getTrending(12, 'all').catch(() => null),
             ]);
-            this.rails = rails.filter(r => r.items && r.items.length > 0 && r.id !== 'continue_watching');
+
+            const recommendationRail = trendingRec && Array.isArray(trendingRec.recommendations)
+                ? {
+                    id: 'recommended_for_you',
+                    title: 'Recommended for You',
+                    content_type: 'movie',
+                    items: trendingRec.recommendations
+                        .filter(r => r && r.movie_id)
+                        .map(r => ({
+                            tmdb_id: r.movie_id,
+                            title: r.title,
+                            poster_path: r.poster_path,
+                            backdrop_path: null,
+                            vote_average: r.vote_average || 0,
+                            release_date: r.release_date || null,
+                            genres: (r.genres || []).map((name, idx) => ({ genre_id: idx, name })),
+                            overview: r.overview || '',
+                        })),
+                }
+                : null;
+
+            const baseRails = rails.filter(r => r.items && r.items.length > 0 && !r.id.startsWith('continue_watching'));
+            this.rails = recommendationRail && recommendationRail.items.length > 0
+                ? [recommendationRail, ...baseRails]
+                : baseRails;
             this.genres = genres;
         } catch (e) {
             this.error = e.message;
@@ -285,6 +299,12 @@ Alpine.data('discoverPage', () => ({
             this.loading = false;
             this.$nextTick(() => this._startCarousel());
         }
+    },
+
+    retry() {
+        this.rails = [];
+        this.error = '';
+        this.loadHome();
     },
 
     /* ---- Hero Carousel ---- */
@@ -356,7 +376,15 @@ Alpine.data('discoverPage', () => ({
 
     /* ---- Content Rails ---- */
     get top10Rail() {
-        return this.rails.find(r => r.items && r.items.length >= 5) || this.rails[0] || null;
+        return this.rails.find(r => r.id !== 'recommended_for_you' && r.items && r.items.length >= 5)
+            || this.rails.find(r => r.id !== 'recommended_for_you')
+            || null;
+    },
+    get recommendedRail() {
+        return this.rails.find(r => r.id === 'recommended_for_you' && r.items && r.items.length > 0) || null;
+    },
+    get recommendedItems() {
+        return (this.recommendedRail?.items || []).slice(0, 12);
     },
     get top10() {
         return (this.top10Rail?.items || []).slice(0, 9);
@@ -366,7 +394,9 @@ Alpine.data('discoverPage', () => ({
     },
     get otherRails() {
         const top = this.top10Rail;
-        return this.rails.filter(r => r !== top).slice(0, 3);
+        return this.rails
+            .filter(r => r !== top && r.id !== 'recommended_for_you')
+            .slice(0, 3);
     },
 
     navigateTo(item, contentType) {
@@ -605,7 +635,24 @@ Alpine.data('moviesPage', () => ({
     browseLoading: false,
     browsePage: 1,
     _debounceTimer: null,
-    sortBy: 'popularity',
+    activeCategory: 'all',
+
+    /** Predefined category definitions mapped to rail IDs */
+    categories: [
+        { id: 'all',               label: 'All',           icon: '◎' },
+        { id: 'trending_movies',   label: 'Trending',      icon: '↗' },
+        { id: 'top_rated_movies',  label: 'Top Rated',     icon: '★' },
+        { id: 'new_releases',      label: 'New Releases',  icon: '✦' },
+        { id: 'classics',          label: 'Classics',      icon: '◆' },
+        { id: 'highest_rated',     label: 'Highest Rated', icon: '♛' },
+    ],
+
+    /** Rails filtered by active category */
+    get filteredRails() {
+        if (this.activeCategory === 'all') return this.rails;
+        const rail = this.rails.find(r => r.id === this.activeCategory);
+        return rail ? [rail] : [];
+    },
 
     async init() {
         document.addEventListener('page:switch', (e) => {
@@ -615,12 +662,11 @@ Alpine.data('moviesPage', () => ({
                     this.searchQuery = params.searchQuery;
                     this.runSearch(params.searchQuery);
                 } else if (params.genreId) {
-                    // Accept genre browse from Discover mood cards
-                    this.loadHome().then(() => {
+                    this.loadMovies().then(() => {
                         this.browseGenre(params.genreId, params.genreName || 'Genre');
                     });
                 } else if (this.rails.length === 0) {
-                    this.loadHome();
+                    this.loadMovies();
                 }
             }
         });
@@ -628,21 +674,21 @@ Alpine.data('moviesPage', () => ({
             this.searchQuery = e.detail.query;
             this.runSearch(e.detail.query);
         });
-        this.loadHome();
+        this.loadMovies();
     },
 
-    async loadHome() {
+    async loadMovies() {
         if (this.rails.length > 0) return;
         this.loading = true;
         this.error = '';
         try {
             const store = Alpine.store('content');
-            const [rails, genres, stats] = await Promise.all([
-                store.getHomeRails(),
+            const [moviesData, genres, stats] = await Promise.all([
+                contentApi.getMovieRails(12),
                 store.getGenres(),
                 store.getStats(),
             ]);
-            this.rails = rails.filter(r => r.items && r.items.length > 0);
+            this.rails = (moviesData.rails || []).filter(r => r.items && r.items.length > 0);
             this.genres = genres;
             if (stats) this.stats = { ...stats };
         } catch (e) {
@@ -650,6 +696,26 @@ Alpine.data('moviesPage', () => ({
         } finally {
             this.loading = false;
         }
+    },
+
+    retry() {
+        this.rails = [];
+        this.error = '';
+        this.loadMovies();
+    },
+
+    selectCategory(catId) {
+        const container = this.$el;
+        const prev = this.activeCategory;
+        if (prev === catId) return;
+
+        // Animate current cards out, swap category, stagger new cards in
+        animateCardsOut(container).then(() => {
+            this.activeCategory = catId;
+            this.browsingGenre = null;
+            this.browseResults = [];
+            this.$nextTick(() => animateCardsIn(container));
+        });
     },
 
     onSearchInput(value) {
@@ -682,6 +748,9 @@ Alpine.data('moviesPage', () => ({
     },
 
     async browseGenre(genreId, genreName) {
+        const container = this.$el;
+
+        this.activeCategory = 'all';
         this.browsingGenre = { id: genreId, name: genreName };
         this.isSearchMode = false;
         this.browseLoading = true;
@@ -695,39 +764,22 @@ Alpine.data('moviesPage', () => ({
             Alpine.store('toast').show('Browse failed: ' + e.message);
         } finally {
             this.browseLoading = false;
+            // Alpine x-show swaps the visible container; stagger new cards in
+            this.$nextTick(() => animateCardsIn(container));
         }
     },
 
     clearBrowse() {
+        const container = this.$el;
+
         this.browsingGenre = null;
         this.isSearchMode = false;
         this.searchQuery = '';
         this.searchResults = [];
         this._lastQuery = '';
-    },
-
-    /** Sorted rails based on current sortBy selection. */
-    get sortedRails() {
-        if (this.sortBy === 'popularity') return this.rails;
-        const sortFns = {
-            rating: (a, b) => (b.vote_average || 0) - (a.vote_average || 0),
-            newest: (a, b) => {
-                const da = a.release_date || a.first_air_date || '';
-                const db = b.release_date || b.first_air_date || '';
-                return db.localeCompare(da);
-            },
-            title: (a, b) => {
-                const ta = (a.title || a.name || '').toLowerCase();
-                const tb = (b.title || b.name || '').toLowerCase();
-                return ta.localeCompare(tb);
-            },
-        };
-        const fn = sortFns[this.sortBy];
-        if (!fn) return this.rails;
-        return this.rails.map(rail => ({
-            ...rail,
-            items: [...rail.items].sort(fn),
-        }));
+        this.activeCategory = 'all';
+        // Alpine x-show restores the rails container; stagger cards in
+        this.$nextTick(() => animateCardsIn(container));
     },
 
     navigateTo(item, contentType) {
@@ -797,39 +849,60 @@ Alpine.data('seriesPage', () => ({
         }
     },
 
+    retry() {
+        this.rails = [];
+        this.error = '';
+        this.loadSeries();
+    },
+
     selectCategory(catId) {
-        this.activeCategory = catId;
-        this.browsingGenre = null;
-        this.browseResults = [];
+        const container = this.$el;
+        const prev = this.activeCategory;
+        if (prev === catId) return;
+
+        animateCardsOut(container).then(() => {
+            this.activeCategory = catId;
+            this.browsingGenre = null;
+            this.browseResults = [];
+            this.$nextTick(() => animateCardsIn(container));
+        });
     },
 
     async browseGenre(genreId, genreName) {
+        const container = this.$el;
+
         this.activeCategory = 'all';
         this.browsingGenre = { id: genreId, name: genreName };
         this.browseLoading = true;
         try {
             const data = await contentApi.browse(genreId, 1, 20);
-            this.browseResults = (data.series || []).map(s => ({ ...s, _ct: 'series' }));
+            const movies = (data.movies || []).map(m => ({ ...m, _ct: 'movie' }));
+            const series = (data.series || []).map(s => ({ ...s, _ct: 'series' }));
+            this.browseResults = [...movies, ...series];
         } catch (e) {
             Alpine.store('toast').show('Browse failed: ' + e.message);
         } finally {
             this.browseLoading = false;
+            this.$nextTick(() => animateCardsIn(container));
         }
     },
 
     clearBrowse() {
+        const container = this.$el;
+
         this.browsingGenre = null;
         this.browseResults = [];
         this.activeCategory = 'all';
+        this.$nextTick(() => animateCardsIn(container));
     },
 
-    navigateTo(item) {
-        switchPage('detail', { contentId: item.tmdb_id, contentType: 'series' });
+    navigateTo(item, contentType) {
+        switchPage('detail', { contentId: item.tmdb_id, contentType: contentType || 'series' });
     },
 
     posterUrl(path) { return _posterUrl(path); },
-    getTitle(item) { return _getTitle(item, 'series'); },
-    getYear(item) { return _getYear(item, 'series'); },
+    getTitle(item, ct) { return _getTitle(item, ct || 'series'); },
+    getYear(item, ct) { return _getYear(item, ct || 'series'); },
     getSeriesStatusBadge(status) { return _getSeriesStatusBadge(status); },
     formatSeriesMeta(item) { return _formatSeriesMeta(item); },
 }));
@@ -840,6 +913,7 @@ Alpine.data('detailPage', () => ({
     loading: false,
     error: '',
     watchlistItem: null,
+    resumeInfo: null,
     selectedSeason: 0,
     showAllEpisodes: false,
     EPISODE_LIMIT: 12,
@@ -864,6 +938,12 @@ Alpine.data('detailPage', () => ({
         });
     },
 
+    retry() {
+        this.error = '';
+        const nav = Alpine.store('nav');
+        this.load(nav.contentId, nav.contentType);
+    },
+
     async load(contentId, contentType) {
         if (!contentId) return;
         this.loading = true;
@@ -876,6 +956,7 @@ Alpine.data('detailPage', () => ({
         this.userRating = 0;
         this.userReview = '';
         this.myRating = null;
+        this.resumeInfo = null;
 
         // Show branded page preloader
         const loaderContainer = document.getElementById('detail-loader');
@@ -920,6 +1001,7 @@ Alpine.data('detailPage', () => ({
             }
             await this.checkWatchlistStatus(contentId, contentType);
             await this.loadRatings(contentId, contentType);
+            await this.loadResumeInfo();
         } catch (e) {
             this.error = 'Failed to load: ' + e.message;
         } finally {
@@ -1062,6 +1144,50 @@ Alpine.data('detailPage', () => ({
         } catch { this.watchlistItem = null; }
     },
 
+    /** Find the last in-progress episode so "Watch Now" can resume, not restart. */
+    async loadResumeInfo() {
+        this.resumeInfo = null;
+        if (this.contentType !== 'series') return;
+        if (!Alpine.store('auth').isLoggedIn) return;
+        const tmdbId = this.content?.tmdb_id;
+        if (!tmdbId) return;
+        try {
+            const items = await historyApi.getContinueWatching(50);
+            const match = items.find(i => i.tmdb_id === tmdbId && i.content_type === 'series');
+            if (match && match.episode_number) {
+                this.resumeInfo = {
+                    season_number: match.season_number,
+                    episode_number: match.episode_number,
+                };
+            }
+        } catch { /* silent — resume is best-effort */ }
+    },
+
+    get watchBtnLabel() {
+        return this.resumeInfo
+            ? `Resume S${this.resumeInfo.season_number} E${this.resumeInfo.episode_number}`
+            : 'Watch Now';
+    },
+
+    /** Open the player, resuming the last-watched episode for series when known. */
+    watchNow() {
+        const contentId = this.content?.tmdb_id;
+        if (!contentId) return;
+        if (this.contentType !== 'series') {
+            switchPage('watching', { contentId, contentType: this.contentType });
+            return;
+        }
+        let seasonIndex = this.selectedSeason;
+        let episodeNumber = 1;
+        if (this.resumeInfo) {
+            const idx = (this.content?.seasons || [])
+                .findIndex(s => s.season_number === this.resumeInfo.season_number);
+            if (idx >= 0) seasonIndex = idx;
+            episodeNumber = this.resumeInfo.episode_number || 1;
+        }
+        switchPage('watching', { contentId, contentType: this.contentType, seasonIndex, episodeNumber });
+    },
+
     get title() { return this.contentType === 'series' ? this.content?.name : this.content?.title; },
     get year() {
         const d = this.contentType === 'series' ? this.content?.first_air_date : this.content?.release_date;
@@ -1177,6 +1303,7 @@ Alpine.data('watchingPage', () => ({
     _lastMessageAt: 0,
     _everReceivedMsg: false,
     _fallbackPollId: null,
+    _paused: false,
     activeProvider: 'vidlink',
 
     providers: {
@@ -1199,22 +1326,47 @@ Alpine.data('watchingPage', () => ({
 
     init() {
         document.addEventListener('page:switch', (e) => {
-            if (e.detail.pageId !== 'watching') return;
-            const params = e.detail.params || {};
-            const contentId = params.contentId || Alpine.store('nav').contentId;
-            const contentType = params.contentType || Alpine.store('nav').contentType || 'movie';
-            const seasonIndex = params.seasonIndex ?? Alpine.store('nav').seasonIndex;
-            const episodeNumber = params.episodeNumber ?? Alpine.store('nav').episodeNumber;
-            // Clear consumed params so they don't persist for future navigations
-            Alpine.store('nav').seasonIndex = null;
-            Alpine.store('nav').episodeNumber = null;
-            this.load(contentId, contentType, seasonIndex, episodeNumber);
+            if (e.detail.pageId === 'watching') {
+                const params = e.detail.params || {};
+                const contentId = params.contentId || Alpine.store('nav').contentId;
+                const contentType = params.contentType || Alpine.store('nav').contentType || 'movie';
+                const seasonIndex = params.seasonIndex ?? Alpine.store('nav').seasonIndex;
+                const episodeNumber = params.episodeNumber ?? Alpine.store('nav').episodeNumber;
+                // Clear consumed params so they don't persist for future navigations
+                Alpine.store('nav').seasonIndex = null;
+                Alpine.store('nav').episodeNumber = null;
+                this._paused = false;
+                this.load(contentId, contentType, seasonIndex, episodeNumber);
+            } else if (this.content) {
+                this._paused = true;
+                this._stopFallbackPoll();
+            }
+        });
+
+        // Stop iframe playback when the browser tab is hidden. Third-party
+        // providers don't expose a uniform postMessage pause API, so the only
+        // reliable cross-provider stop is to unload the iframe.
+        document.addEventListener('visibilitychange', () => {
+            if (!this.content) return;
+            if (document.visibilityState === 'hidden') {
+                this._paused = true;
+                this._stopFallbackPoll();
+            } else {
+                this._paused = false;
+                this._startFallbackPoll();
+            }
         });
 
         // Embed player → parent postMessage bridge.
         // One listener for the lifetime of the SPA; handler ignores events
         // when the iframe isn't loaded or the user is anonymous.
         window.addEventListener('message', (event) => this._onPlayerMessage(event));
+    },
+
+    retry() {
+        this.error = '';
+        const nav = Alpine.store('nav');
+        this.load(nav.contentId, nav.contentType, nav.seasonIndex, nav.episodeNumber);
     },
 
     selectSeason(idx) {
@@ -1259,6 +1411,7 @@ Alpine.data('watchingPage', () => ({
         this._lastPostAt = 0;
         this._lastMessageAt = 0;
         this._everReceivedMsg = false;
+        this._paused = false;
         this._stopFallbackPoll();
         try {
             try {
@@ -1316,6 +1469,7 @@ Alpine.data('watchingPage', () => ({
     },
 
     get playerSrc() {
+        if (this._paused) return 'about:blank';
         if (!this.content?.tmdb_id) return '';
         const id = this.content.tmdb_id;
         const provider = this.providers[this.activeProvider];
@@ -1540,46 +1694,55 @@ Alpine.data('watchlistPage', () => ({
         });
     },
 
+    /**
+     * Enrich watchlist / history rows with content metadata using a single
+     * batch request instead of one detail fetch per item (the old N+1 storm).
+     * Also deduplicates by tmdb_id.
+     */
+    async _enrichItems(rawItems) {
+        if (!rawItems || rawItems.length === 0) return [];
+        let contentList = [];
+        try {
+            contentList = await contentApi.batch(
+                rawItems.map(i => ({ content_type: i.content_type, tmdb_id: i.tmdb_id }))
+            );
+        } catch {
+            contentList = [];
+        }
+        const byId = new Map((contentList || []).map(c => [c.tmdb_id, c]));
+        const seen = new Set();
+        const enriched = [];
+        for (const item of rawItems) {
+            if (seen.has(item.tmdb_id)) continue;
+            seen.add(item.tmdb_id);
+            const content = byId.get(item.tmdb_id);
+            if (content) {
+                // batch corrects stale content_type from the resolved collection
+                if (content.content_type) item.content_type = content.content_type;
+                item._title = content.title || content.name || 'Unknown';
+                item._poster = content.poster_path
+                    ? `https://image.tmdb.org/t/p/w500${content.poster_path}`
+                    : null;
+                item._rating = content.vote_average || null;
+                item._runtime = content.runtime || null;
+            } else {
+                item._title = item.content_type + ' ' + item.tmdb_id;
+                item._poster = null;
+                item._rating = null;
+                item._runtime = null;
+            }
+            enriched.push(item);
+        }
+        return enriched;
+    },
+
     async loadWatchlist() {
         if (!Alpine.store('auth').isLoggedIn) return;
         this.loading = true;
         this.error = '';
         try {
             const rawItems = await watchlistApi.getAll();
-            const enriched = await Promise.allSettled(
-                rawItems.map(async (item) => {
-                    try {
-                        let content;
-                        try {
-                            content = item.content_type === 'series'
-                                ? await contentApi.getSeries(item.tmdb_id)
-                                : await contentApi.getMovie(item.tmdb_id);
-                        } catch (fetchErr) {
-                            if (String(fetchErr.message).includes('404')) {
-                                content = item.content_type === 'series'
-                                    ? await contentApi.getMovie(item.tmdb_id)
-                                    : await contentApi.getSeries(item.tmdb_id);
-                                item.content_type = item.content_type === 'series' ? 'movie' : 'series';
-                            } else {
-                                throw fetchErr;
-                            }
-                        }
-                        item._title = content.title || content.name || 'Unknown';
-                        item._poster = content.poster_path
-                            ? `https://image.tmdb.org/t/p/w500${content.poster_path}`
-                            : null;
-                        item._rating = content.vote_average || null;
-                        item._runtime = content.runtime || null;
-                    } catch {
-                        item._title = item.content_type + ' ' + item.tmdb_id;
-                        item._poster = null;
-                        item._rating = null;
-                        item._runtime = null;
-                    }
-                    return item;
-                })
-            );
-            this.items = enriched.filter(r => r.status === 'fulfilled').map(r => r.value);
+            this.items = await this._enrichItems(rawItems);
         } catch (e) {
             this.error = e.message;
         } finally {
@@ -1591,53 +1754,34 @@ Alpine.data('watchlistPage', () => ({
         if (!Alpine.store('auth').isLoggedIn) return;
         try {
             const historyItems = await historyApi.getContinueWatching(20);
-            const enriched = await Promise.allSettled(
-                historyItems.map(async (item) => {
-                    try {
-                        let content;
-                        try {
-                            content = item.content_type === 'series'
-                                ? await contentApi.getSeries(item.tmdb_id)
-                                : await contentApi.getMovie(item.tmdb_id);
-                        } catch (fetchErr) {
-                            // If fetch fails with 404, try the other content type
-                            if (String(fetchErr.message).includes('404')) {
-                                content = item.content_type === 'series'
-                                    ? await contentApi.getMovie(item.tmdb_id)
-                                    : await contentApi.getSeries(item.tmdb_id);
-                                // Correct the content_type for future navigations
-                                item.content_type = item.content_type === 'series' ? 'movie' : 'series';
-                            } else {
-                                throw fetchErr;
-                            }
-                        }
-                        item._title = content.title || content.name || 'Unknown';
-                        item._poster = content.poster_path
-                            ? `https://image.tmdb.org/t/p/w500${content.poster_path}`
-                            : null;
-                        item._rating = content.vote_average || null;
-                        item._runtime = content.runtime || null;
-                    } catch {
-                        item._title = item.content_type + ' ' + item.tmdb_id;
-                        item._poster = null;
-                        item._rating = null;
-                        item._runtime = null;
-                    }
-                    return item;
-                })
-            );
-            this.continueItems = enriched.filter(r => r.status === 'fulfilled').map(r => r.value);
+            this.continueItems = await this._enrichItems(historyItems);
         } catch {
             this.continueItems = [];
         }
     },
 
+    retry() {
+        this.error = '';
+        this.loadWatchlist();
+        this.loadContinueWatching();
+    },
+
     get filteredItems() {
-        if (this.activeFilter === 'continue') return this.continueItems;
-        if (this.activeFilter === 'favorites') return this.items.filter(i => i.is_favorite);
-        const map = { watchlist: 'plan_to_watch', completed: 'completed' };
-        const status = map[this.activeFilter];
-        return status ? this.items.filter(i => i.status === status) : this.items;
+        let result;
+        if (this.activeFilter === 'continue') result = this.continueItems;
+        else if (this.activeFilter === 'favorites') result = this.items.filter(i => i.is_favorite);
+        else {
+            const map = { watchlist: 'plan_to_watch', completed: 'completed' };
+            const status = map[this.activeFilter];
+            result = status ? this.items.filter(i => i.status === status) : this.items;
+        }
+        // Deduplicate by tmdb_id (keep first occurrence = most recent)
+        const seen = new Set();
+        return result.filter(item => {
+            if (seen.has(item.tmdb_id)) return false;
+            seen.add(item.tmdb_id);
+            return true;
+        });
     },
 
     statusLabel(item) {
@@ -1767,6 +1911,14 @@ Alpine.data('adminPage', () => ({
         } finally {
             this.loading = false;
         }
+    },
+
+    retry() {
+        this.error = '';
+        if (this.activeTab === 'comments') { this._commentsLoaded = false; this.loadComments(); }
+        else if (this.activeTab === 'users') { this._usersLoaded = false; this.loadUsers(); }
+        else if (this.activeTab === 'genres') { this._genresLoaded = false; this.loadGenres(); }
+        else { this._moviesLoaded = false; this.loadMovies(); }
     },
 
     get filteredMovies() {
@@ -1958,18 +2110,40 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Determine target page before preloader finishes
     // so we can reveal it beneath the preloader slide-up.
     await new Promise(r => setTimeout(r, 300)); // let fetchUser settle
-    const targetPage = Alpine.store('auth').isLoggedIn ? 'discover' : 'landing';
+    const isLoggedIn = Alpine.store('auth').isLoggedIn;
+
+    // Honour a deep-link hash on boot, falling back to discover/landing.
+    let targetPage, targetParams = {};
+    const fromHash = parseHash();
+    if (fromHash) {
+        targetPage = fromHash.pageId;
+        targetParams = fromHash.params;
+        // Gate auth-only / auth-form pages by login state.
+        if (!isLoggedIn && ['watchlists', 'profile', 'admin'].includes(targetPage)) {
+            targetPage = 'landing';
+            targetParams = {};
+        } else if (isLoggedIn && ['landing', 'login', 'register'].includes(targetPage)) {
+            targetPage = 'discover';
+            targetParams = {};
+        }
+    } else {
+        targetPage = isLoggedIn ? 'discover' : 'landing';
+    }
+
+    // Wire hash routing (browser Back/Forward + deep links) before the first
+    // switchPage so the boot-time hash sync is handled by the listener.
+    initRouter();
 
     // Run preloader animation while pages load.
     // The callback fires just before the preloader slides up,
     // making the target page visible underneath — no black gap.
     await initPreloader(pages_ready, () => {
-        switchPage(targetPage);
+        switchPage(targetPage, targetParams);
     });
 
     document.addEventListener('auth:expired', () => {
         Alpine.store('auth').logout();
-        switchPage('login');
+        switchPage('login', {}, { force: true });
     });
 
     const navLinks = document.querySelectorAll('.nav-link');
@@ -1979,6 +2153,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             const targetPage = link.getAttribute('data-page');
             if (targetPage) switchPage(targetPage);
         });
+    });
+
+    // Keyboard activation for clickable content cards (Enter / Space).
+    // Cards carry role="button" + tabindex="0"; this synthesizes a click so
+    // both Alpine @click handlers and the delegated click handler below run.
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+        const card = e.target.closest('.movie-card, .content-card, .episode-card');
+        if (card && e.target === card) {
+            e.preventDefault();
+            card.click();
+        }
     });
 
     document.addEventListener('click', (e) => {

@@ -1,7 +1,7 @@
 <div id="page-movies" class="page-content" x-data="moviesPage">
     <section class="catalog-hero">
         <div>
-            <p class="landing-eyebrow" x-text="browsingGenre ? browsingGenre.name : (isSearchMode ? 'Search Results' : 'Movies & Series')">Movies & Series</p>
+            <p class="landing-eyebrow" x-text="browsingGenre ? browsingGenre.name : (isSearchMode ? 'Search Results' : 'Movies')">Movies</p>
             <h1 class="catalog-title" x-show="!isSearchMode && !browsingGenre">One Library. Every Mood.</h1>
             <h1 class="catalog-title" x-show="isSearchMode" x-text="'Results for: ' + searchQuery"></h1>
             <h1 class="catalog-title" x-show="browsingGenre" x-text="browsingGenre ? browsingGenre.name : ''"></h1>
@@ -23,8 +23,9 @@
         </div>
     </section>
 
-    <div class="filter-bar">
-        <div class="filter-search">
+    <!-- Search Bar -->
+    <div class="movies-toolbar" x-show="!isSearchMode">
+        <div class="filter-search" style="margin-bottom: 16px;">
             <input type="text" placeholder="Search title, director, or keyword"
                    :value="searchQuery"
                    @input="onSearchInput($event.target.value)">
@@ -32,83 +33,52 @@
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
             </div>
         </div>
-        <div class="filter-sort" x-show="!isSearchMode && !browsingGenre">
-            <select class="sort-select" x-model="sortBy">
-                <option value="popularity">Popular</option>
-                <option value="rating">Top Rated</option>
-                <option value="newest">Newest</option>
-                <option value="title">A–Z</option>
-            </select>
+    </div>
+
+    <!-- Category Pills -->
+    <div class="series-category-wrap" x-show="!loading && !browsingGenre && !isSearchMode">
+        <div class="series-category-bar">
+            <template x-for="cat in categories" :key="cat.id">
+                <button class="category-pill"
+                        :class="{ 'category-pill--active': activeCategory === cat.id }"
+                        @click="selectCategory(cat.id)">
+                    <span class="category-pill-icon" x-text="cat.icon"></span>
+                    <span x-text="cat.label"></span>
+                </button>
+            </template>
         </div>
-        <button class="btn btn-secondary" x-show="isSearchMode || browsingGenre" @click="clearBrowse()" style="height: 40px; border-radius: 12px;">
-            ← All
-        </button>
-    </div>
-
-    <div class="filters" x-show="!isSearchMode && genres.length > 0">
-        <template x-for="genre in genres" :key="genre.genre_id">
-            <button class="filter-chip"
-                    :class="{ active: browsingGenre && browsingGenre.id === genre.genre_id }"
-                    @click="browseGenre(genre.genre_id, genre.name)"
-                    x-text="genre.name"></button>
-        </template>
-    </div>
-
-    <!-- Loading state -->
-    <div x-show="loading" style="text-align:center; padding: 60px 20px; color: rgba(255,255,255,0.5);">
-        Loading...
-    </div>
-
-    <!-- Error state -->
-    <div x-show="error && !loading" style="text-align:center; padding: 40px 20px; color: #ff6b6b;" x-text="error"></div>
-
-    <!-- Home Rails -->
-    <div x-show="!isSearchMode && !browsingGenre && !loading">
-        <template x-for="rail in sortedRails" :key="rail.id">
-            <section class="movie-section">
-                <div class="section-header">
-                    <h2 class="section-title" x-text="rail.title"></h2>
-                </div>
-                <div class="content-rail-wrapper" x-data="scrollRail">
-                    <div class="rail-scroll-container">
-                        <button class="rail-arrow rail-arrow-left" :class="{ 'rail-arrow-visible': canScrollLeft }" @click="scrollLeft()" type="button" aria-label="Scroll left">
-                            <span class="rail-arrow-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></span>
-                        </button>
-                        <div class="nf-row-grid" x-ref="scrollContainer" @scroll="checkArrows()">
-                            <template x-for="item in rail.items" :key="item.tmdb_id">
-                                <div class="content-card"
-                                     :data-tmdb-id="item.tmdb_id"
-                                     :data-content-type="rail.content_type"
-                                     @click="navigateTo(item, rail.content_type)">
-                                    <div class="poster-container">
-                                        <img :src="posterUrl(item.poster_path)" :alt="getTitle(item, rail.content_type)" loading="lazy">
-                                        <span class="rating-badge" x-text="item.vote_average ? item.vote_average.toFixed(1) : 'N/A'"></span>
-                                        <div class="bookmark-btn">
-                                            <div class="icon-wrapper" style="width: 14px; height: 14px;">
-                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="card-info">
-                                        <span class="card-title" x-text="getTitle(item, rail.content_type)"></span>
-                                        <span class="card-status">
-                                            <span x-text="getYear(item, rail.content_type)"></span>
-                                            <span class="card-runtime" x-show="item.runtime && rail.content_type === 'movie'" x-text="formatRuntime(item.runtime)"></span>
-                                        </span>
-                                    </div>
-                                </div>
-                            </template>
-                        </div>
-                        <button class="rail-arrow rail-arrow-right" :class="{ 'rail-arrow-visible': canScrollRight }" @click="scrollRight()" type="button" aria-label="Scroll right">
-                            <span class="rail-arrow-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
-                        </button>
-                    </div>
-                </div>
-            </section>
-        </template>
-        <div x-show="!loading && rails.length === 0 && !error" style="text-align:center; padding: 60px 20px; color: rgba(255,255,255,0.4);">
-            No content available yet.
+        <!-- Genre Dropdown -->
+        <div class="category-genre-dropdown" x-data="{ open: false }">
+            <button class="category-pill category-pill--genre" @click="open = !open" @click.outside="open = false">
+                <span>Genres</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="category-genre-panel" x-show="open" x-transition>
+                <template x-for="genre in genres" :key="genre.genre_id">
+                    <button class="category-genre-item" @click="browseGenre(genre.genre_id, genre.name); open = false" x-text="genre.name"></button>
+                </template>
+            </div>
         </div>
+    </div>
+
+    <!-- Search back button -->
+    <div x-show="isSearchMode" style="display:flex; align-items:center; gap:16px; margin-bottom:24px;">
+        <button class="btn btn-secondary" @click="clearBrowse()" style="height:36px; border-radius:10px; font-size:13px;">← All Movies</button>
+        <h2 class="section-title" x-text="'Results for: ' + searchQuery" style="margin:0;"></h2>
+    </div>
+
+    <!-- Browse Mode Header -->
+    <div x-show="browsingGenre" style="display:flex; align-items:center; gap:16px; margin-bottom:24px;">
+        <button class="btn btn-secondary" @click="clearBrowse()" style="height:36px; border-radius:10px; font-size:13px;">← All Movies</button>
+        <h2 class="section-title" x-text="browsingGenre ? browsingGenre.name + ' Movies' : ''" style="margin:0;"></h2>
+    </div>
+
+    <!-- Loading -->
+    <div x-show="loading" role="status" style="text-align:center; padding: 60px; color: rgba(255,255,255,0.5);">Loading...</div>
+    <!-- Error -->
+    <div x-show="error && !loading" role="alert" style="text-align:center; padding: 40px;">
+        <p style="color: #ff6b6b; margin-bottom: 16px;" x-text="error"></p>
+        <button class="btn btn-secondary" type="button" @click="retry()">Try Again</button>
     </div>
 
     <!-- Search Results -->
@@ -120,6 +90,8 @@
             <div class="movie-grid" id="search-results-grid">
                 <template x-for="item in searchResults" :key="item.tmdb_id + (item.content_type || 'movie')">
                     <div class="movie-card"
+                         role="button" tabindex="0"
+                         :aria-label="getTitle(item, item.content_type || 'movie')"
                          :data-tmdb-id="item.tmdb_id"
                          :data-content-type="item.content_type || 'movie'"
                          @click="navigateTo(item, item.content_type || 'movie')">
@@ -138,21 +110,26 @@
                         </div>
                     </div>
                 </template>
-                <div x-show="searchResults.length === 0" style="color: rgba(255,255,255,0.4); padding: 40px;" x-text="'No results for “' + searchQuery + '”.'"></div>
+                <div x-show="searchResults.length === 0" style="color: rgba(255,255,255,0.4); padding: 40px;" x-text="'No results for \u201c' + searchQuery + '\u201d.'"></div>
             </div>
         </section>
     </div>
-    <div x-show="isSearchMode && searching" style="text-align:center; padding: 40px; color: rgba(255,255,255,0.5);">Searching...</div>
+    <div x-show="isSearchMode && searching" role="status" style="text-align:center; padding: 40px; color: rgba(255,255,255,0.5);">Searching...</div>
 
     <!-- Browse by Genre Results -->
-    <div x-show="browsingGenre && !browseLoading">
-        <section class="movie-section">
+    <div x-show="browsingGenre" class="genre-browse">
+        <div class="genre-switch-overlay" x-show="browseLoading" x-cloak>
+            <div class="genre-switch-spinner"></div>
+        </div>
+        <section class="movie-section" :class="{ 'genre-switching': browseLoading }">
             <div class="section-header">
                 <h2 class="section-title" x-text="browseResults.length + ' titles in ' + (browsingGenre ? browsingGenre.name : '')"></h2>
             </div>
-            <div class="movie-grid">
+            <div class="movie-grid" data-ref="browse-grid">
                 <template x-for="item in browseResults" :key="item.tmdb_id + '-' + item._ct">
                     <div class="movie-card"
+                         role="button" tabindex="0"
+                         :aria-label="getTitle(item, item._ct)"
                          :data-tmdb-id="item.tmdb_id"
                          :data-content-type="item._ct"
                          @click="navigateTo(item, item._ct)">
@@ -171,9 +148,59 @@
                         </div>
                     </div>
                 </template>
-                <div x-show="browseResults.length === 0" style="color: rgba(255,255,255,0.4); padding: 40px;">No titles in this genre.</div>
+                <div x-show="browseResults.length === 0 && !browseLoading" style="color: rgba(255,255,255,0.4); padding: 40px;">No titles in this genre.</div>
             </div>
         </section>
     </div>
-    <div x-show="browsingGenre && browseLoading" style="text-align:center; padding: 40px; color: rgba(255,255,255,0.5);">Loading...</div>
+
+    <!-- Movie Rails (default view) -->
+    <div x-show="!loading && !browsingGenre && !isSearchMode" data-ref="rails-container">
+        <template x-for="rail in filteredRails" :key="rail.id">
+            <section class="movie-section">
+                <div class="section-header">
+                    <h2 class="section-title" x-text="rail.title"></h2>
+                </div>
+                <div class="content-rail-wrapper" x-data="scrollRail">
+                    <div class="rail-scroll-container">
+                        <button class="rail-arrow rail-arrow-left" :class="{ 'rail-arrow-visible': canScrollLeft }" @click="scrollLeft()" type="button" aria-label="Scroll left">
+                            <span class="rail-arrow-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></span>
+                        </button>
+                        <div class="nf-row-grid" x-ref="scrollContainer" @scroll="checkArrows()">
+                            <template x-for="item in rail.items" :key="item.tmdb_id">
+                                <div class="content-card"
+                                     role="button" tabindex="0"
+                                     :aria-label="getTitle(item, 'movie')"
+                                     :data-tmdb-id="item.tmdb_id"
+                                     data-content-type="movie"
+                                     @click="navigateTo(item, 'movie')">
+                                    <div class="poster-container">
+                                        <img :src="posterUrl(item.poster_path)" :alt="getTitle(item, 'movie')" loading="lazy">
+                                        <span class="rating-badge" x-text="item.vote_average ? item.vote_average.toFixed(1) : 'N/A'"></span>
+                                        <div class="bookmark-btn">
+                                            <div class="icon-wrapper" style="width: 14px; height: 14px;">
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-info">
+                                        <span class="card-title" x-text="getTitle(item, 'movie')"></span>
+                                        <span class="card-status">
+                                            <span x-text="getYear(item, 'movie')"></span>
+                                            <span class="card-runtime" x-show="item.runtime" x-text="formatRuntime(item.runtime)"></span>
+                                        </span>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                        <button class="rail-arrow rail-arrow-right" :class="{ 'rail-arrow-visible': canScrollRight }" @click="scrollRight()" type="button" aria-label="Scroll right">
+                            <span class="rail-arrow-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </template>
+        <div x-show="!loading && rails.length === 0 && !error" style="text-align:center; padding: 60px; color: rgba(255,255,255,0.4);">
+            No movies available yet.
+        </div>
+    </div>
 </div>

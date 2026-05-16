@@ -57,7 +57,7 @@
 
     <!-- Skeleton Loading State -->
     <template x-if="loading">
-        <div>
+        <div role="status" aria-label="Loading content">
             <div class="skeleton skeleton-hero" style="margin-bottom: 32px;"></div>
             <div>
                 <div class="skeleton skeleton-text" style="width: 200px; height: 20px; margin-bottom: 16px;"></div>
@@ -72,7 +72,46 @@
         </div>
     </template>
 
-    <div class="nf-error" x-show="error" x-text="error" style="text-align:center; padding: 40px 20px; color: #ff6b6b;"></div>
+    <div class="nf-error" x-show="error && !loading" role="alert" style="text-align:center; padding: 40px 20px;">
+        <p style="color: #ff6b6b; margin-bottom: 16px;" x-text="error"></p>
+        <button class="btn btn-secondary" type="button" @click="retry()">Try Again</button>
+    </div>
+
+    <!-- Dedicated Recommendations Rail -->
+    <section class="movie-section nf-content-section" x-show="!loading && recommendedRail && recommendedItems.length > 0">
+        <div class="section-header">
+            <h2 class="section-title" x-text="recommendedRail ? recommendedRail.title : 'Recommended for You'">Recommended for You</h2>
+        </div>
+        <div class="content-rail-wrapper" x-data="scrollRail">
+            <div class="rail-scroll-container">
+                <button class="rail-arrow rail-arrow-left" :class="{ 'rail-arrow-visible': canScrollLeft }" @click="scrollLeft()" type="button" aria-label="Scroll left">
+                    <span class="rail-arrow-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></span>
+                </button>
+                <div class="nf-row-grid" x-ref="scrollContainer" @scroll="checkArrows()">
+                    <template x-for="item in recommendedItems" :key="item.tmdb_id">
+                        <div class="movie-card"
+                             role="button" tabindex="0"
+                             :aria-label="getTitle(item, 'movie')"
+                             :data-tmdb-id="item.tmdb_id"
+                             data-content-type="movie"
+                             @click="navigateTo(item, 'movie')">
+                            <div class="poster-container">
+                                <img :src="posterUrl(item.poster_path)" :alt="getTitle(item, 'movie')" loading="lazy">
+                                <span class="rating-badge" x-text="(item.vote_average || 0).toFixed(1)"></span>
+                            </div>
+                            <div class="card-info">
+                                <span class="card-title" x-text="getTitle(item, 'movie')"></span>
+                                <span class="card-status" x-text="getYear(item, 'movie') || 'Movie'"></span>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+                <button class="rail-arrow rail-arrow-right" :class="{ 'rail-arrow-visible': canScrollRight }" @click="scrollRight()" type="button" aria-label="Scroll right">
+                    <span class="rail-arrow-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </section>
 
     <!-- Top 10 Rail -->
     <section class="movie-section nf-content-section" x-show="!loading && top10.length > 0">
@@ -90,6 +129,8 @@
                         <article class="nf-top10-item">
                             <span class="nf-rank" x-text="index + 1"></span>
                             <div class="movie-card"
+                                 role="button" tabindex="0"
+                                 :aria-label="getTitle(item, top10ContentType)"
                                  :data-tmdb-id="item.tmdb_id"
                                  :data-content-type="top10ContentType"
                                  @click="navigateTo(item, top10ContentType)">
@@ -127,6 +168,8 @@
                     <div class="nf-row-grid" x-ref="scrollContainer" @scroll="checkArrows()">
                         <template x-for="item in rail.items.slice(0, 12)" :key="item.tmdb_id">
                             <div class="movie-card"
+                                 role="button" tabindex="0"
+                                 :aria-label="getTitle(item, rail.content_type)"
                                  :data-tmdb-id="item.tmdb_id"
                                  :data-content-type="rail.content_type"
                                  @click="navigateTo(item, rail.content_type)">

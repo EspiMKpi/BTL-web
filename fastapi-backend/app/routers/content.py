@@ -8,6 +8,7 @@ from typing import Optional
 import asyncio
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 
 from app.core.deps import get_optional_current_user
 from app.database import get_database
@@ -15,12 +16,13 @@ from app.services.library_service import (
     get_content_by_genre,
     get_hidden_genre_ids,
     get_home_rails,
+    get_movie_rails,
     get_series_rails,
     public_content_filter,
 )
 from app.services.movie_service import get_movie_by_id
 from app.services.series_service import get_series_by_id
-from app.utils import escape_mongo_regex, sanitize
+from app.utils import escape_mongo_regex, is_movie_doc, is_series_doc, sanitize
 
 
 router = APIRouter(prefix="/api/content", tags=["content"])
@@ -38,9 +40,21 @@ async def home(
 @router.get("/series/rails")
 async def series_rails(
     limit: int = Query(12, ge=1, le=50),
+    current_user: Optional[dict] = Depends(get_optional_current_user),
 ):
     """Series-specific curated rails (Currently Airing, Completed Gems, etc.)."""
-    return await get_series_rails(rail_limit=limit)
+    user_id = current_user["_id"] if current_user else None
+    return await get_series_rails(rail_limit=limit, user_id=user_id)
+
+
+@router.get("/movies/rails")
+async def movie_rails(
+    limit: int = Query(12, ge=1, le=50),
+    current_user: Optional[dict] = Depends(get_optional_current_user),
+):
+    """Movie-specific curated rails (Trending, Top Rated, Classics, etc.)."""
+    user_id = current_user["_id"] if current_user else None
+    return await get_movie_rails(rail_limit=limit, user_id=user_id)
 
 
 @router.get("/genres")
@@ -90,21 +104,13 @@ async def search_content(
     movies = []
     async for d in movie_cursor:
         d = sanitize(d)
-        # Detect series documents misplaced in movies collection
-        if d.get("seasons") or d.get("number_of_seasons") or (d.get("first_air_date") and not d.get("release_date")):
-            d["content_type"] = "series"
-        else:
-            d["content_type"] = "movie"
+        d["content_type"] = "series" if not is_movie_doc(d) else "movie"
         movies.append(d)
 
     series = []
     async for d in series_cursor:
         d = sanitize(d)
-        # Detect movie documents misplaced in series collection
-        if d.get("title") and not d.get("name") and d.get("release_date") and not d.get("first_air_date"):
-            d["content_type"] = "movie"
-        else:
-            d["content_type"] = "series"
+        d["content_type"] = "movie" if not is_series_doc(d) else "series"
         series.append(d)
 
     # Merge and deduplicate by tmdb_id (prefer correct collection)
@@ -123,6 +129,62 @@ async def search_content(
         "limit": limit,
         "total": len(all_results),
     }
+
+
+class BatchItem(BaseModel):
+    content_type: str
+    tmdb_id: int
+
+
+class BatchRequest(BaseModel):
+    items: list[BatchItem]
+
+
+@router.post("/batch")
+async def content_batch(body: BatchRequest):
+    """Resolve metadata for many titles in one round-trip.
+
+    Used by the watchlist / continue-watching views, which previously fired
+    one detail request per item (an N+1 storm). MongoDB-only — never hits TMDB.
+    """
+    if not body.items:
+        return []
+
+    ids = list({i.tmdb_id for i in body.items})
+    db = get_database()
+    projection = {
+        "tmdb_id": 1,
+        "title": 1,
+        "name": 1,
+        "poster_path": 1,
+        "backdrop_path": 1,
+        "vote_average": 1,
+        "runtime": 1,
+    }
+
+    movies: dict[int, dict] = {}
+    async for doc in db.movies.find({"tmdb_id": {"$in": ids}}, projection):
+        movies[doc["tmdb_id"]] = sanitize(doc)
+    series: dict[int, dict] = {}
+    async for doc in db.series.find({"tmdb_id": {"$in": ids}}, projection):
+        series[doc["tmdb_id"]] = sanitize(doc)
+
+    results = []
+    for item in body.items:
+        tid = item.tmdb_id
+        # Prefer the requested collection, fall back to the other —
+        # stored content_type in watch_history / watchlist can be stale.
+        if item.content_type == "series":
+            doc = series.get(tid) or movies.get(tid)
+            resolved_type = "series" if tid in series else "movie"
+        else:
+            doc = movies.get(tid) or series.get(tid)
+            resolved_type = "movie" if tid in movies else "series"
+        if not doc:
+            continue
+        results.append({**doc, "content_type": resolved_type})
+
+    return results
 
 
 def _has_hidden_genre(doc: dict, hidden_ids: list[int]) -> bool:

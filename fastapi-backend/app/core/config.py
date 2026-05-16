@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     def cors_origins_list(self) -> List[str]:
         return json.loads(self.CORS_ORIGINS)
 
-    model_config = {"env_file": ".env", "extra": "ignore"}
+    model_config = {"env_file": "../.env", "extra": "ignore"}
 
 
 settings = Settings()

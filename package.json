@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:fastapi": "cd fastapi-backend && .venv\\Scripts\\uvicorn.exe app.main:app --reload --port 8000 --app-dir .",
+    "dev:fastapi": "cd fastapi-backend && ..\\.venv\\Scripts\\uvicorn.exe app.main:app --reload --port 8000 --app-dir .",
     "dev:all": "concurrently \"npm run dev\" \"npm run dev:fastapi\"",
     "build": "vite build",
     "preview": "vite preview"

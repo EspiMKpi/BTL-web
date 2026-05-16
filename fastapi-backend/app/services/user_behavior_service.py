@@ -6,7 +6,6 @@ Extracts and calculates user behavior signals for recommendations
 import logging
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
-from motor.motor_asyncio import AsyncDatabase
 from app.models.recommendation_schemas import UserBehaviorSignals
 from app.core.recommendation_config import DROP_RATE_THRESHOLD
 

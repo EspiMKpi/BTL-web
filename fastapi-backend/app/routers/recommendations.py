@@ -18,16 +18,12 @@ from app.models.recommendation_schemas import (
 )
 from app.services.recommendation_engine import RecommendationEngine
 from app.services.content_similarity_service import ContentSimilarityService
-from app.database import db
+from app.database import get_database
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/recommendations", tags=["recommendations"])
-
-# Initialize services
-recommendation_engine = RecommendationEngine(db)
-similarity_service = ContentSimilarityService(db)
 
 
 @router.post(
@@ -59,14 +55,20 @@ async def get_personalized_recommendations(
         request = RecommendationRequest()
 
     try:
+        db = get_database()
+        recommendation_engine = RecommendationEngine(db)
+        user_id = current_user.get("_id") or current_user.get("id") or current_user.get("user_id")
+        if user_id is None:
+            raise HTTPException(status_code=401, detail="Invalid user session")
+
         recommendations = await recommendation_engine.generate_recommendations(
-            user_id=current_user["user_id"],
+            user_id=user_id,
             limit=min(request.limit, 50),
             use_cache=request.use_cache,
         )
 
         return PersonalizedRecommendationsResponse(
-            user_id=current_user["user_id"],
+            user_id=user_id,
             recommendations=recommendations,
             generated_at=datetime.utcnow(),
             total_count=len(recommendations),
@@ -96,6 +98,7 @@ async def get_trending_recommendations(
     - all: Most popular all-time
     """
     try:
+        db = get_database()
         # Get trending movies from DB (popularity + recent ratings)
         query = {
             "vote_average": {"$gte": 5.0},
@@ -116,18 +119,19 @@ async def get_trending_recommendations(
 
         recommendations = [
             RecommendationResponse(
-                movie_id=m["id"],
+                movie_id=m.get("tmdb_id") or m.get("id"),
                 title=m.get("title", "Unknown"),
                 poster_path=m.get("poster_path"),
                 overview=m.get("overview"),
                 vote_average=m.get("vote_average", 0),
                 release_date=m.get("release_date"),
-                genres=[g.get("name", "") for g in m.get("genres", [])],
+                genres=[g.get("name", "") for g in m.get("genres", []) if isinstance(g, dict)],
                 score=min(m.get("popularity", 0) / 100.0, 1.0),
                 reason="Trending now",
                 rank=i + 1,
             )
             for i, m in enumerate(movies)
+            if (m.get("tmdb_id") or m.get("id")) is not None
         ]
 
         return TrendingMoviesResponse(
@@ -164,8 +168,9 @@ async def get_genre_recommendations(
     - trending: Return trending in this genre (vs. all-time popular)
     """
     try:
+        db = get_database()
         query = {
-            "genres": {"$elemMatch": {"id": genre_id}},
+            "genres": {"$elemMatch": {"genre_id": genre_id}},
             "vote_average": {"$gte": 4.0},
         }
 
@@ -184,7 +189,7 @@ async def get_genre_recommendations(
 
         recommendations = [
             RecommendationResponse(
-                movie_id=m["id"],
+                movie_id=m.get("tmdb_id") or m.get("id"),
                 title=m.get("title", "Unknown"),
                 poster_path=m.get("poster_path"),
                 overview=m.get("overview"),
@@ -196,6 +201,7 @@ async def get_genre_recommendations(
                 rank=i + 1,
             )
             for i, m in enumerate(movies)
+            if (m.get("tmdb_id") or m.get("id")) is not None
         ]
 
         return GenreRecommendationsResponse(
@@ -238,8 +244,10 @@ async def get_similar_movies(
     - min_similarity: Minimum similarity score (0-1)
     """
     try:
+        db = get_database()
+        similarity_service = ContentSimilarityService(db)
         # Get reference movie
-        movie = await db["movies"].find_one({"id": movie_id})
+        movie = await db["movies"].find_one({"tmdb_id": movie_id})
         if not movie:
             raise HTTPException(status_code=404, detail="Movie not found")
 
@@ -253,12 +261,12 @@ async def get_similar_movies(
         recommendations = [
             RecommendationResponse(
                 movie_id=sm["movie_id"],
-                title=(await db["movies"].find_one({"id": sm["movie_id"]}, {"title": 1}) or {}).get("title", "Unknown"),
-                poster_path=(await db["movies"].find_one({"id": sm["movie_id"]}, {"poster_path": 1}) or {}).get("poster_path"),
-                overview=(await db["movies"].find_one({"id": sm["movie_id"]}, {"overview": 1}) or {}).get("overview"),
-                vote_average=(await db["movies"].find_one({"id": sm["movie_id"]}, {"vote_average": 1}) or {}).get("vote_average", 0),
-                release_date=(await db["movies"].find_one({"id": sm["movie_id"]}, {"release_date": 1}) or {}).get("release_date"),
-                genres=[(await db["movies"].find_one({"id": sm["movie_id"]}, {"genres": 1}) or {}).get("genres", [])],
+                title=(await db["movies"].find_one({"tmdb_id": sm["movie_id"]}, {"title": 1}) or {}).get("title", "Unknown"),
+                poster_path=(await db["movies"].find_one({"tmdb_id": sm["movie_id"]}, {"poster_path": 1}) or {}).get("poster_path"),
+                overview=(await db["movies"].find_one({"tmdb_id": sm["movie_id"]}, {"overview": 1}) or {}).get("overview"),
+                vote_average=(await db["movies"].find_one({"tmdb_id": sm["movie_id"]}, {"vote_average": 1}) or {}).get("vote_average", 0),
+                release_date=(await db["movies"].find_one({"tmdb_id": sm["movie_id"]}, {"release_date": 1}) or {}).get("release_date"),
+                genres=[g.get("name", "") for g in ((await db["movies"].find_one({"tmdb_id": sm["movie_id"]}, {"genres": 1}) or {}).get("genres", [])) if isinstance(g, dict)],
                 score=sm["similarity_score"],
                 reason=f"Similar because of {', '.join(sm.get('shared_features', []))}",
                 rank=i + 1,
@@ -302,6 +310,7 @@ async def get_recommendation_metrics(
     - Average computation time
     """
     try:
+        db = get_database()
         from datetime import timedelta
 
         # Map period to days
@@ -380,10 +389,15 @@ async def log_recommendation_interaction(
     - completion_percentage: How far did user watch? (0-100)
     """
     try:
+        db = get_database()
+        user_id = current_user.get("_id") or current_user.get("id") or current_user.get("user_id")
+        if user_id is None:
+            raise HTTPException(status_code=401, detail="Invalid user session")
+
         # Update recommendation log
         await db["recommendation_logs"].update_one(
             {
-                "user_id": current_user["user_id"],
+                "user_id": user_id,
                 "movie_id": movie_id,
             },
             {

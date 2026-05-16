@@ -7,7 +7,6 @@ import logging
 import math
 from typing import Optional, List, Dict, Any, Tuple
 from datetime import datetime
-from motor.motor_asyncio import AsyncDatabase
 from app.models.recommendation_schemas import UserVector
 from app.services.recommendation_utils import VectorUtils, SimilarityUtils, ScoringUtils
 

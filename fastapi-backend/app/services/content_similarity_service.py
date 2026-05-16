@@ -6,7 +6,6 @@ Computes and caches movie-to-movie similarity scores for efficient recommendatio
 import logging
 from typing import Optional, List, Dict, Any, Tuple
 from datetime import datetime
-from motor.motor_asyncio import AsyncDatabase
 from app.models.recommendation_schemas import ContentSimilarityPair
 from app.services.recommendation_utils import SimilarityUtils
 from app.services.content_features_service import ContentFeaturesService
