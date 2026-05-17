@@ -21,17 +21,19 @@ A full-stack SPA that lets you discover, browse, and track movies and TV series 
 
 - 🏠 **Netflix-style Home Page** — Trending, top-rated, new releases, and personalized "Continue Watching" rails
 - 🎥 **Movie & Series Browsing** — Detailed pages with cast, crew, seasons, and episodes
+- 🎯 **Two-tier Recommender** — Content-based "More Like This" on every detail page (TF-IDF cosine over `overview + genres`) + per-user "Recommended For You" rails that aggregate the user's positive watch signals through the same model
 - 🔍 **Search & Filters** — Real-time client-side search with genre/year/type filters
 - 📋 **Watchlist Management** — Add, remove, and organize your personal watchlist
 - 📊 **Watch History & Progress** — Track viewing progress across movies and series
 - ⭐ **User Ratings** — Rate content and see community averages
+- 💬 **Comments** — Per-title community comments with moderation
 - 👤 **User Profiles** — View stats, recent activity, and manage account settings
 - 🛠️ **Admin Panel** — Role-gated dashboard to ban users, hide movies, hide genres, and moderate comments
 - 🔐 **JWT Authentication** — Secure register/login with bcrypt password hashing
 - 🛡️ **Rate Limiting** — slowapi protects login/register against brute-force
 - ⚡ **In-Memory Caching** — TTL-cached home rails for fast anonymous browsing
 - 📱 **Responsive Design** — Fully responsive UI with mobile-friendly navigation
-- 🎬 **Multi-Server Player** — 3 fallback streaming servers (Server #1, #2, #3) with server switching if a title is unavailable on one provider
+- 🎬 **Multi-Server Player** — 3 fallback streaming servers (VidLink / 2Embed / VidKing) with server switching if a title is unavailable on one provider
 
 ## 🛠️ Tech Stack
 
@@ -46,6 +48,7 @@ A full-stack SPA that lets you discover, browse, and track movies and TV series 
 | **Auth** | JWT (PyJWT) + bcrypt (passlib) |
 | **Caching** | cachetools TTLCache (per-worker, 5 min) |
 | **Rate Limiting** | slowapi (in-memory) |
+| **Recommender** | scikit-learn (TF-IDF) + scipy (sparse matrix) + joblib (artifact persistence) |
 
 ## 🚀 Getting Started
 
@@ -103,11 +106,25 @@ cd fastapi-backend
 run.bat                  # Windows
 ```
 
-Open **http://localhost:5173** in your browser. Register a new account or use the [test account](#-test-account) below.
-
-Open [http://localhost:5173](http://localhost:5173) in your browser.
+Open **http://localhost:5173** in your browser. Register a new account or use the [test account](#-test-accounts) below.
 
 > The Vite proxy forwards `/api/*` requests to the FastAPI backend on `:8000`.
+
+### One-time data setup
+
+```bash
+cd fastapi-backend
+
+# Seed ~300 popular movies + TV series from TMDB into MongoDB
+.venv\Scripts\python scripts/seed_tmdb.py
+
+# Promote / create the admin account
+.venv\Scripts\python scripts/create_admin.py
+
+# Train the recommender (TF-IDF over overview + genres). Re-run after seeding
+# more content or after bulk admin visibility toggles.
+.venv\Scripts\python scripts/train_recommender.py
+```
 
 ### Build for Production
 
@@ -135,12 +152,21 @@ cd fastapi-backend
 
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
-| `GET` | `/api/content/home` | Home page rails | Optional |
+| `GET` | `/api/content/home` | Home page rails (includes "For You" rails when authenticated) | Optional |
+| `GET` | `/api/content/movies/rails` | Movies page rails (Trending, Classics, "Movies For You" when auth) | Optional |
+| `GET` | `/api/content/series/rails` | Series page rails (Currently Airing, "Shows For You" when auth) | Optional |
 | `GET` | `/api/content/genres` | List all genres | ❌ |
-| `GET` | `/api/content/browse/:genre_id` | Browse by genre | ❌ |
-| `GET` | `/api/content/search?q=` | Search movies | ❌ |
-| `GET` | `/api/content/movie/:id` | Movie details | ❌ |
-| `GET` | `/api/content/series/:id` | Series details + episodes | ❌ |
+| `GET` | `/api/content/browse/{genre_id}` | Browse by genre | ❌ |
+| `GET` | `/api/content/search?q=` | Search movies and series | ❌ |
+| `GET` | `/api/content/movie/{tmdb_id}` | Movie details (cache-first; TMDB on miss) | ❌ |
+| `GET` | `/api/content/series/{tmdb_id}` | Series details + seasons + episodes | ❌ |
+
+### Recommendations
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| `GET` | `/api/recommendations/similar/{content_type}/{tmdb_id}` | "More Like This" — content-based TF-IDF neighbours. `content_type` ∈ `{movie, series}`. 503 if model not yet trained. | ❌ |
+| `GET` | `/api/recommendations/for-you/{content_type}` | Personalised feed seeded from the user's watch history + favorites. Empty list on cold-start (< 3 positive signals). | ✅ |
 
 ### Watchlist
 
@@ -148,8 +174,8 @@ cd fastapi-backend
 |--------|----------|-------------|------|
 | `GET` | `/api/watchlist` | Get user's watchlist | ✅ |
 | `POST` | `/api/watchlist` | Add to watchlist | ✅ |
-| `PATCH` | `/api/watchlist/:id` | Update watchlist item | ✅ |
-| `DELETE` | `/api/watchlist/:id` | Remove from watchlist | ✅ |
+| `PATCH` | `/api/watchlist/{item_id}` | Update watchlist item | ✅ |
+| `DELETE` | `/api/watchlist/{item_id}` | Remove from watchlist | ✅ |
 
 ### Watch History
 
@@ -157,7 +183,7 @@ cd fastapi-backend
 |--------|----------|-------------|------|
 | `GET` | `/api/history` | Get watch history (paginated) | ✅ |
 | `GET` | `/api/history/continue-watching` | Continue watching list | ✅ |
-| `POST` | `/api/history/progress` | Update watch progress (async) | ✅ |
+| `POST` | `/api/history/progress` | Update watch progress (returns 202; persists in background) | ✅ |
 
 ### Ratings
 
@@ -166,6 +192,15 @@ cd fastapi-backend
 | `GET` | `/api/ratings?tmdb_id=` | Get ratings for content | ❌ |
 | `GET` | `/api/ratings/me` | Get current user's ratings | ✅ |
 | `POST` | `/api/ratings` | Rate content | ✅ |
+| `DELETE` | `/api/ratings` | Remove the current user's rating for a title | ✅ |
+
+### Comments
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| `GET` | `/api/comments/{tmdb_id}` | List comments for a title | ❌ |
+| `POST` | `/api/comments` | Post a comment | ✅ |
+| `DELETE` | `/api/comments/{comment_id}` | Delete your own comment | ✅ |
 
 ### Profile
 
@@ -183,96 +218,113 @@ All `/api/admin/*` routes require `role === "admin"` (enforced via `get_admin_us
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `GET` | `/api/admin/users` | List all users |
-| `PATCH` | `/api/admin/users/:user_id/ban` | Ban / unban a user |
+| `PATCH` | `/api/admin/users/{user_id}/ban` | Ban / unban a user |
 | `GET` | `/api/admin/movies` | List all movies (incl. hidden) |
-| `PATCH` | `/api/admin/movies/:tmdb_id/visibility` | Hide / show a movie |
+| `PATCH` | `/api/admin/movies/{tmdb_id}/visibility` | Hide / show a movie |
 | `GET` | `/api/admin/genres` | List all genres (incl. hidden) |
-| `PATCH` | `/api/admin/genres/:genre_id/visibility` | Hide / show a genre |
+| `PATCH` | `/api/admin/genres/{genre_id}/visibility` | Hide / show a genre |
 | `GET` | `/api/admin/comments` | List all comments |
-| `DELETE` | `/api/admin/comments/:comment_id` | Delete a comment |
+| `DELETE` | `/api/admin/comments/{comment_id}` | Delete a comment |
 
 ## 📁 Project Structure
 
 ```
 BTL-web/
-├── AGENTS.md                    # Agent/contributor instructions
-├── README.md                    # ← You are here
-├── package.json                 # Root — Vite, Alpine.js, Tailwind
-├── vite.config.js               # Vite config (proxy /api → :8000)
+├── README.md                       # ← You are here
+├── CLAUDE.md                       # Guidance for the Claude Code agent
+├── package.json                    # Root — Vite, Alpine.js, Tailwind, concurrently
+├── vite.config.js                  # Vite config (proxy /api → :8000)
 │
-├── src/                         # Frontend source
-│   ├── index.html               # Vite entry point
+├── src/                            # Frontend source
+│   ├── index.html                  # Vite entry point
 │   ├── js/
-│   │   ├── main.js              # Alpine.js stores, components & app logic
-│   │   ├── api.js               # Centralized API client (JWT, error handling)
-│   │   ├── pages.js             # Page fragment loader
-│   │   └── router.js            # SPA page switching
+│   │   ├── main.js                 # Alpine.js stores, components & app logic
+│   │   ├── api.js                  # Centralised API client (JWT, error handling)
+│   │   ├── pages.js                # Page fragment loader
+│   │   ├── router.js               # SPA page switching
+│   │   └── content-helpers.js      # Shared posterUrl / getTitle / getYear helpers
 │   └── css/
-│       ├── base.css             # Reset & variables
-│       ├── components.css       # Cards, nav, buttons
-│       ├── pages.css            # Page-specific styles
-│       ├── responsive.css       # Mobile breakpoints
-│       └── tailwind.css         # Tailwind entry
+│       ├── base.css                # Reset & variables
+│       ├── components.css          # Cards, nav, buttons
+│       ├── pages.css               # Page-specific styles
+│       ├── responsive.css          # Mobile breakpoints
+│       └── tailwind.css            # Tailwind entry
 │
 ├── public/
-│   └── pages/                   # HTML page fragments (served raw)
+│   └── pages/                      # HTML page fragments (served raw)
+│       ├── landing.html
 │       ├── discover.html
 │       ├── movies.html
 │       ├── series.html
-│       ├── detail.html
+│       ├── detail.html             # Hero, tabs, "More Like This" rail
 │       ├── watching.html
 │       ├── watchlists.html
 │       ├── profile.html
-│       ├── admin.html           # Admin panel (movies / comments / users / genres)
+│       ├── admin.html              # Admin panel (movies / comments / users / genres)
 │       ├── login.html
 │       └── register.html
 │
-└── fastapi-backend/             # Python/FastAPI backend
-    ├── .env                     # Environment variables
-    ├── pyproject.toml           # pytest + coverage config
-    ├── requirements.txt         # Pinned dependencies
-    ├── run.sh / run.bat         # Startup scripts
+└── fastapi-backend/                # Python/FastAPI backend
+    ├── .env                        # Environment variables
+    ├── pyproject.toml              # pytest + coverage config
+    ├── requirements.txt            # Pinned dependencies
+    ├── run.sh / run.bat            # Startup scripts
+    ├── RECOMMENDER_PLAN.md         # Design-of-record: content-based TF-IDF recommender
+    ├── HISTORY_RECOMMENDER_PLAN.md # Design-of-record: per-user history-based recommender
+    ├── movie-recommender-ml-model.ipynb  # Source notebook the recommender is based on
+    ├── data/                       # GITIGNORED — generated recommender artifacts
+    │   └── recommender/
+    │       ├── movies/             # vectorizer.joblib, tfidf_matrix.npz, item_index.json, metadata.json
+    │       └── series/             # same shape, separate matrix per content type
     ├── scripts/
-    │   ├── seed_tmdb.py         # One-time seed of popular movies + TV from TMDB
-    │   └── create_admin.py      # Create / promote the admin user
+    │   ├── seed_tmdb.py            # One-time seed of popular movies + TV from TMDB
+    │   ├── create_admin.py         # Create / promote the admin user
+    │   └── train_recommender.py    # Build TF-IDF artifacts from MongoDB
     ├── tests/
-    │   ├── conftest.py          # Shared fixtures (mongomock, httpx)
-    │   ├── test_auth.py         # Auth endpoint tests
-    │   ├── test_admin.py        # Admin panel (genre visibility & RBAC)
-    │   ├── test_deps.py         # Dependency injection tests
-    │   ├── test_content.py      # Content router tests
-    │   ├── test_watchlist.py    # Watchlist CRUD tests
-    │   ├── test_history.py      # History & progress tests
-    │   ├── test_ratings.py      # Rating system tests
-    │   ├── test_profile.py      # Profile & stats tests
-    │   ├── test_library_service.py  # Library service tests
-    │   ├── test_movie_service.py    # Movie service tests (mocked TMDB)
-    │   ├── test_series_service.py   # Series service tests (mocked TMDB)
-    │   ├── test_security.py    # JWT & password tests
-    │   └── test_health.py       # Health check & CORS tests
+    │   ├── conftest.py             # Shared fixtures (mongomock, httpx, artifact_root, build_artifacts)
+    │   ├── test_auth.py            # Auth endpoint tests
+    │   ├── test_admin.py           # Admin panel (visibility & RBAC)
+    │   ├── test_deps.py            # Dependency injection tests
+    │   ├── test_content.py         # Content router tests
+    │   ├── test_watchlist.py       # Watchlist CRUD tests
+    │   ├── test_history.py         # History & progress tests
+    │   ├── test_ratings.py         # Rating system tests
+    │   ├── test_profile.py         # Profile & stats tests
+    │   ├── test_library_service.py # Library service tests (incl. For-You rail wiring)
+    │   ├── test_movie_service.py   # Movie service tests (mocked TMDB)
+    │   ├── test_series_service.py  # Series service tests (mocked TMDB)
+    │   ├── test_recommendation_service.py   # Content-based TF-IDF service
+    │   ├── test_recommendations.py          # Content-based route
+    │   ├── test_history_recommendation_service.py  # Per-user history-based service
+    │   ├── test_history_recommendations.py         # Per-user route
+    │   ├── test_security.py        # JWT & password tests
+    │   └── test_health.py          # Health check & CORS tests
     └── app/
-        ├── main.py              # FastAPI app + CORS + rate limiting
-        ├── database.py          # Motor async MongoDB client
+        ├── main.py                 # FastAPI app + CORS + rate limiting
+        ├── database.py             # Motor async MongoDB client
+        ├── utils.py                # sanitize() + is_movie_doc/is_series_doc helpers
         ├── core/
-        │   ├── config.py        # Pydantic Settings from .env
-        │   ├── security.py      # JWT + bcrypt (passlib)
-        │   └── deps.py          # get_current_user / get_admin_user dependencies
+        │   ├── config.py           # Pydantic Settings from .env
+        │   ├── security.py         # JWT + bcrypt (passlib)
+        │   └── deps.py             # get_current_user / get_admin_user dependencies
         ├── models/
-        │   └── schemas.py       # Pydantic request/response models
+        │   └── schemas.py          # Pydantic request/response models
         ├── routers/
-        │   ├── auth.py          # Register, login, me (rate-limited)
-        │   ├── content.py       # Home rails, genres, browse, search, details
-        │   ├── movies.py        # Legacy movie route
-        │   ├── watchlist.py     # Watchlist CRUD
-        │   ├── history.py       # Watch history & progress (background tasks)
-        │   ├── ratings.py       # User ratings
-        │   ├── comments.py      # Comments CRUD
-        │   ├── admin.py         # Admin: users, movies, genres, comments
-        │   └── profile.py       # Profile & stats
+        │   ├── auth.py             # Register, login, me (rate-limited)
+        │   ├── content.py          # Home / movies / series rails, genres, browse, search, details
+        │   ├── watchlist.py        # Watchlist CRUD
+        │   ├── history.py          # Watch history & progress (background tasks)
+        │   ├── ratings.py          # User ratings
+        │   ├── comments.py         # Comments CRUD
+        │   ├── recommendations.py  # /similar + /for-you routes
+        │   ├── admin.py            # Admin: users, movies, genres, comments
+        │   └── profile.py          # Profile & stats
         └── services/
-            ├── movie_service.py     # Movie fetch (MongoDB → TMDB → upsert)
-            ├── series_service.py    # Series fetch with season/episode data
-            └── library_service.py   # Home rails (cached), genre browse, profile stats
+            ├── movie_service.py            # Movie fetch (MongoDB → TMDB → upsert)
+            ├── series_service.py           # Series fetch with season/episode data
+            ├── library_service.py          # Home / per-page rails, genre browse, profile stats, For-You wiring
+            ├── recommendation_service.py   # Content-based TF-IDF inference (lazy load, kind+content_type validation)
+            └── history_recommendation_service.py  # Per-user seed aggregation against the TF-IDF model
 ```
 
 ## 🗄️ Database Schema
@@ -346,12 +398,12 @@ cd fastapi-backend
 # Open htmlcov/index.html in browser
 ```
 
-**151 tests** across 14 test files (minimum 60% coverage enforced in `pyproject.toml`).
+**206 tests** across 18 test files (minimum 60% coverage enforced in `pyproject.toml`; the suite currently sits at ~81%).
 
 | Test File | What it Covers |
 |-----------|---------------|
 | `test_auth.py` | Register, login, `/me` |
-| `test_admin.py` | Admin RBAC + genre visibility (list, toggle, public filtering) |
+| `test_admin.py` | Admin RBAC + visibility toggles (list, toggle, public filtering) |
 | `test_deps.py` | JWT dependency injection, optional auth |
 | `test_content.py` | Home rails, genres, browse, search, movie/series detail |
 | `test_watchlist.py` | Watchlist CRUD, user isolation |
@@ -361,6 +413,10 @@ cd fastapi-backend
 | `test_library_service.py` | Home rails caching, genre browse, profile stats |
 | `test_movie_service.py` | DB cache hit, TMDB fetch + upsert (mocked HTTP) |
 | `test_series_service.py` | Series with seasons/episodes (mocked HTTP) |
+| `test_recommendation_service.py` | TF-IDF inference, lazy load, `kind` / `content_type` validation |
+| `test_recommendations.py` | `/similar` route — auth, 422, 503, hydration order, hidden filter |
+| `test_history_recommendation_service.py` | Per-user seed aggregation, cold-start gate, recency weighting |
+| `test_history_recommendations.py` | `/for-you` route — auth, 422, 503, cold-start, hydration |
 | `test_security.py` | Password hashing, JWT lifecycle |
 | `test_health.py` | Health check, CORS |
 
@@ -451,6 +507,16 @@ Login (`10/min`) and register (`5/min`) endpoints are rate-limited via `slowapi`
 
 During development, Vite proxies all `/api/*` requests to the FastAPI backend on `:8000`. The proxy target is configured in `vite.config.js`.
 
+### Recommender System
+
+Two layers built on a single TF-IDF model:
+
+1. **Content-based (`recommendation_service.py`)** — `scripts/train_recommender.py` fits a TF-IDF vectorizer over each title's `overview + genre names`, then writes per-content-type artifacts (`vectorizer.joblib`, `tfidf_matrix.npz`, `item_index.json`, `metadata.json`) to `fastapi-backend/data/recommender/{movies,series}/`. Inference is lazy on first request and computes cosine similarity via sparse dot-product — no dense N×N matrix is ever materialised. Powers the "More Like This" rail on every detail page.
+
+2. **History-based (`history_recommendation_service.py`)** — for an authenticated user, treats completed watches (or progress ≥ 30 min) and favourites as *seeds*, then aggregates the top-N content-based neighbours of each seed weighted by `recency_decay × (1 / (rank + 1))`. Reuses the same TF-IDF artifact; no extra training, no extra collections. Powers the "Movies For You" / "Shows For You" rails on the home, movies, and series pages. Cold-start gate at < 3 positive signals returns an empty list so the rail is hidden rather than showing weak recommendations.
+
+**Privacy / hard rule:** both layers read only `movies` and `series` (TMDB-sourced fields). `user_ratings` is intentionally off-limits — keeps the shared TF-IDF artifact PII-free and regenerable from public data alone.
+
 ## 🤝 Contributing
 
 1. Fork the repository
@@ -463,9 +529,10 @@ During development, Vite proxies all `/api/*` requests to the FastAPI backend on
 
 | Scope | Convention | Example |
 |-------|-----------|---------|
-| Backend TS variables/functions | `snake_case` | `get_movie_by_id`, `movies_collection` |
-| Frontend JS | `camelCase` | `switchPage`, `fetchUser` |
-| CSS classes | `kebab-case` | `movie-card`, `nav-links` |
+| Backend Python variables/functions/files | `snake_case` | `get_movie_by_id`, `movie_service.py` |
+| FastAPI path params | `{param}` | `/api/content/movie/{tmdb_id}` |
+| Frontend JS | `camelCase` | `switchPage`, `recommendationsApi.forYou` |
+| CSS classes | `kebab-case` | `content-rail-wrapper`, `rail-arrow-left` |
 
 ## ⚠️ Disclaimer
 
