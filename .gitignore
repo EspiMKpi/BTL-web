@@ -30,11 +30,18 @@ dist/
 # Log files
 *.log
 
+# Recommender artifacts (rebuilt by scripts/train_recommender.py)
+fastapi-backend/data/
+
 #Claude
 *.claude/
 
 #opencode
 .opencode/
+
+# Agent / skills tooling artifacts
+.agents/
+skills-lock.json
 
 
 # Node dependencies
@@ -48,4 +55,5 @@ package-lock.json
 ADMIN_FEATURES_CHANGES.md
 IMPLEMENTATION.md
 README_CHANGES.md
+UX_REVIEW.md
 plan.txt

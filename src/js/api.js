@@ -112,6 +112,11 @@ export const commentsApi = {
         apiFetch(`/api/comments/${commentId}`, { method: 'DELETE' }),
 };
 
+export const recommendationsApi = {
+    similar: (contentType, tmdbId, limit = 10) =>
+        apiFetch(`/api/recommendations/similar/${contentType}/${tmdbId}?limit=${limit}`),
+};
+
 export const adminApi = {
     getUsers: (page = 1, limit = 50) =>
         apiFetch(`/api/admin/users?page=${page}&limit=${limit}`),

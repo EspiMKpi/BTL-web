@@ -358,6 +358,43 @@ async def get_profile_stats(user_id: str) -> dict:
     }
 
 
+async def get_movies_by_tmdb_ids(
+    tmdb_ids: List[int],
+    include_hidden: bool = False,
+) -> List[dict]:
+    """Batch fetch movie docs by tmdb_id. Single $in round-trip; order is NOT preserved.
+
+    When include_hidden is False (default), applies the public visibility filter
+    (per-doc is_hidden plus the hidden-genre cascade). Callers that need
+    recommender-order should re-sort by their input list.
+    """
+    if not tmdb_ids:
+        return []
+    db = get_database()
+    query: Dict[str, Any] = {"tmdb_id": {"$in": list(tmdb_ids)}}
+    if not include_hidden:
+        query = {**query, **(await public_content_filter())}
+    cursor = db.movies.find(query)
+    docs = [_sanitize(d) async for d in cursor]
+    return [d for d in docs if is_movie_doc(d)]
+
+
+async def get_series_by_tmdb_ids(
+    tmdb_ids: List[int],
+    include_hidden: bool = False,
+) -> List[dict]:
+    """Batch fetch series docs by tmdb_id. Mirror of get_movies_by_tmdb_ids."""
+    if not tmdb_ids:
+        return []
+    db = get_database()
+    query: Dict[str, Any] = {"tmdb_id": {"$in": list(tmdb_ids)}}
+    if not include_hidden:
+        query = {**query, **(await public_content_filter())}
+    cursor = db.series.find(query)
+    docs = [_sanitize(d) async for d in cursor]
+    return [d for d in docs if is_series_doc(d)]
+
+
 async def get_recent_activity(user_id: str, limit: int = 20) -> dict:
     """Recent activity feed for profile page."""
     db = get_database()

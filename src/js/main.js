@@ -1,7 +1,7 @@
 import Alpine from 'alpinejs';
 import { pages_ready } from './pages.js';
 import { switchPage, initRouter, parseHash } from './router.js';
-import { contentApi, watchlistApi, historyApi, adminApi, ratingsApi, apiFetch } from './api.js';
+import { contentApi, watchlistApi, historyApi, adminApi, ratingsApi, recommendationsApi, apiFetch } from './api.js';
 import { posterUrl as _posterUrl, getTitle as _getTitle, getYear as _getYear, formatRuntime as _formatRuntime, getSeriesStatusBadge as _getSeriesStatusBadge, formatSeriesMeta as _formatSeriesMeta } from './content-helpers.js';
 import { initPreloader } from './preloader.js';
 import {
@@ -895,6 +895,10 @@ Alpine.data('detailPage', () => ({
     hasMoreReviews: false,
     activeTab: 'overview',  // 'overview' | 'reviews'
 
+    // "More Like This" rail
+    similar: [],
+    similarLoading: false,
+
     init() {
         document.addEventListener('page:switch', (e) => {
             if (e.detail.pageId === 'detail') {
@@ -922,6 +926,7 @@ Alpine.data('detailPage', () => ({
         this.userReview = '';
         this.myRating = null;
         this.resumeInfo = null;
+        this.similar = [];
 
         // Show branded page preloader
         const loaderContainer = document.getElementById('detail-loader');
@@ -967,6 +972,7 @@ Alpine.data('detailPage', () => ({
             await this.checkWatchlistStatus(contentId, contentType);
             await this.loadRatings(contentId, contentType);
             await this.loadResumeInfo();
+            this.loadSimilar();  // fire-and-forget — rail hides itself if empty
         } catch (e) {
             this.error = 'Failed to load: ' + e.message;
         } finally {
@@ -1069,6 +1075,32 @@ Alpine.data('detailPage', () => ({
 
     setUserRating(n) {
         this.userRating = this.userRating === n ? 0 : n;
+    },
+
+    async loadSimilar() {
+        const tmdbId = this.content?.tmdb_id;
+        const ct = this.contentType;
+        if (!tmdbId || (ct !== 'movie' && ct !== 'series')) return;
+        this.similarLoading = true;
+        try {
+            const items = await recommendationsApi.similar(ct, tmdbId, 12);
+            // Stale-guard: if user navigated to a different title while this was
+            // in flight, drop the result silently.
+            if (this.content?.tmdb_id === tmdbId && this.contentType === ct) {
+                this.similar = items || [];
+            }
+        } catch {
+            // 503 (untrained) or any error — hide the rail by leaving it empty.
+            this.similar = [];
+        } finally {
+            this.similarLoading = false;
+        }
+    },
+
+    recPosterUrl(path) { return _posterUrl(path); },
+    recGetTitle(item) { return _getTitle(item, this.contentType); },
+    recNavigateTo(item) {
+        switchPage('detail', { contentId: item.tmdb_id, contentType: this.contentType });
     },
 
     get reviewList() {
