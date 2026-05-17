@@ -4,6 +4,7 @@ Home rails, genre browsing, profile stats, recent activity.
 """
 
 import asyncio
+import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -11,6 +12,8 @@ from cachetools import TTLCache
 
 from app.database import get_database
 from app.utils import is_movie_doc, is_series_doc, sanitize as _sanitize
+
+logger = logging.getLogger(__name__)
 
 # ── In-memory TTL cache for home rails (per-worker, 5 min TTL) ───────────
 _home_cache: TTLCache[str, dict] = TTLCache(maxsize=64, ttl=300)
@@ -87,14 +90,20 @@ async def get_home_rails(user_id: Optional[str] = None, rail_limit: int = 10) ->
         {"id": "recent_series", "title": "Recently Added TV Shows", "content_type": "series", "items": recent_series},
     ]
 
-    # Continue watching rails (authenticated users only) — split per content_type
+    # Authenticated-only rails:
+    #   - Continue Watching is prepended (still ahead of trending — it's the
+    #     user's interrupted session, strongest re-engagement signal).
+    #   - Recommended For You is APPENDED at the bottom so trending stays at
+    #     the top of the discoverable rails. Avoids a cold-start user landing
+    #     on "Shows For You" as the first thing they see.
     if user_id:
         movies_cw, series_cw = await _build_continue_watching(db, user_id, hidden_filter)
-        # Insert series first then movies so movies appears at index 0
         if series_cw:
             rails.insert(0, {"id": "continue_watching_series", "title": "Continue Watching", "content_type": "series", "items": series_cw})
         if movies_cw:
             rails.insert(0, {"id": "continue_watching_movies", "title": "Continue Watching", "content_type": "movie", "items": movies_cw})
+
+        rails.extend(await _build_for_you_rails(user_id, rail_limit))
 
     result = {"rails": rails, "genres": genres}
 
@@ -171,6 +180,57 @@ async def _build_continue_watching(
     return movies_cw, series_cw
 
 
+async def _build_for_you_rail(
+    user_id: str,
+    content_type: str,
+    title: str,
+    rail_limit: int,
+) -> Optional[Dict[str, Any]]:
+    """Single per-user "Recommended For You" rail for one content type.
+
+    Best-effort: returns None when the recommender isn't trained, the user is
+    cold-start, or every candidate was hidden/missing after hydration.
+    """
+    # Local import — keeps app.services.library_service free of a hard
+    # dependency on the recommender at import time and avoids any future
+    # circular-import risk if the recommender ever reaches back into library.
+    from app.services import history_recommendation_service
+    from app.services.recommendation_service import RecommenderNotTrained
+
+    try:
+        ids = await history_recommendation_service.for_user(
+            user_id, content_type, n=rail_limit,
+        )
+    except RecommenderNotTrained:
+        return None
+    except Exception:
+        logger.exception("for_you rail (%s) failed for user=%s", content_type, user_id)
+        return None
+    if not ids:
+        return None
+    if content_type == "movie":
+        docs = await get_movies_by_tmdb_ids(ids, include_hidden=False)
+    else:
+        docs = await get_series_by_tmdb_ids(ids, include_hidden=False)
+    by_id = {d["tmdb_id"]: d for d in docs}
+    ordered = [by_id[i] for i in ids if i in by_id]
+    if not ordered:
+        return None
+    rail_id = "for_you_movies" if content_type == "movie" else "for_you_series"
+    return {"id": rail_id, "title": title, "content_type": content_type, "items": ordered}
+
+
+async def _build_for_you_rails(user_id: str, rail_limit: int) -> List[Dict[str, Any]]:
+    """Both per-user rails (movies + series), fetched concurrently. Empty list
+    when neither has content. Used by the home page; per-content-type pages
+    call `_build_for_you_rail` directly."""
+    movie_rail, series_rail = await asyncio.gather(
+        _build_for_you_rail(user_id, "movie", "Movies For You", rail_limit),
+        _build_for_you_rail(user_id, "series", "Shows For You", rail_limit),
+    )
+    return [r for r in (movie_rail, series_rail) if r]
+
+
 async def get_series_rails(rail_limit: int = 12, user_id: Optional[str] = None) -> dict:
     """Build series-specific rails for the Series page.
 
@@ -223,11 +283,15 @@ async def get_series_rails(rail_limit: int = 12, user_id: Optional[str] = None) 
     if recent:
         rails.append({"id": "recent_series", "title": "Recently Added", "content_type": "series", "items": recent})
 
-    # Prepend per-user Continue Watching (series only)
+    # Per-user rails (series-page variant): CW at top, "Shows For You" at bottom.
     if user_id:
         _movies_cw, series_cw = await _build_continue_watching(db, user_id, hidden_filter)
         if series_cw:
             rails.insert(0, {"id": "continue_watching_series", "title": "Continue Watching", "content_type": "series", "items": series_cw})
+
+        foryou = await _build_for_you_rail(user_id, "series", "Shows For You", rail_limit)
+        if foryou:
+            rails.append(foryou)
 
     return _sanitize({"rails": rails})
 
@@ -279,11 +343,15 @@ async def get_movie_rails(rail_limit: int = 12, user_id: Optional[str] = None) -
     if highest_rated:
         rails.append({"id": "highest_rated", "title": "Highest Rated", "content_type": "movie", "items": highest_rated})
 
-    # Prepend per-user Continue Watching (movies only)
+    # Per-user rails (movies-page variant): CW at top, "Movies For You" at bottom.
     if user_id:
         movies_cw, _series_cw = await _build_continue_watching(db, user_id, hidden_filter)
         if movies_cw:
             rails.insert(0, {"id": "continue_watching_movies", "title": "Continue Watching", "content_type": "movie", "items": movies_cw})
+
+        foryou = await _build_for_you_rail(user_id, "movie", "Movies For You", rail_limit)
+        if foryou:
+            rails.append(foryou)
 
     return _sanitize({"rails": rails})
 

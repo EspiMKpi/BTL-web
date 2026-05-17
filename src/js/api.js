@@ -115,6 +115,8 @@ export const commentsApi = {
 export const recommendationsApi = {
     similar: (contentType, tmdbId, limit = 10) =>
         apiFetch(`/api/recommendations/similar/${contentType}/${tmdbId}?limit=${limit}`),
+    forYou: (contentType, limit = 10) =>
+        apiFetch(`/api/recommendations/for-you/${contentType}?limit=${limit}`),
 };
 
 export const adminApi = {
