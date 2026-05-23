@@ -117,6 +117,44 @@
         </div>
     </section>
 
+    <!-- Up Next for You (GRU4Rec sequential — auth users only, hidden when empty) -->
+    <template x-for="rail in upNextRails" :key="rail.id">
+        <section class="movie-section nf-content-section">
+            <div class="section-header">
+                <h2 class="section-title" x-text="rail.title"></h2>
+            </div>
+            <div class="content-rail-wrapper" x-data="scrollRail">
+                <div class="rail-scroll-container">
+                    <button class="rail-arrow rail-arrow-left" :class="{ 'rail-arrow-visible': canScrollLeft }" @click="scrollLeft()" type="button" aria-label="Scroll left">
+                        <span class="rail-arrow-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></span>
+                    </button>
+                    <div class="nf-row-grid" x-ref="scrollContainer" @scroll="checkArrows()">
+                        <template x-for="item in rail.items.slice(0, 12)" :key="item.tmdb_id">
+                            <div class="movie-card"
+                                 role="button" tabindex="0"
+                                 :aria-label="getTitle(item, rail.content_type)"
+                                 :data-tmdb-id="item.tmdb_id"
+                                 :data-content-type="rail.content_type"
+                                 @click="navigateTo(item, rail.content_type)">
+                                <div class="poster-container">
+                                    <img :src="posterUrl(item.poster_path)" :alt="getTitle(item, rail.content_type)" loading="lazy">
+                                    <span class="rating-badge" x-text="(item.vote_average || 0).toFixed(1)"></span>
+                                </div>
+                                <div class="card-info">
+                                    <span class="card-title" x-text="getTitle(item, rail.content_type)"></span>
+                                    <span class="card-status" x-text="getYear(item, rail.content_type) || (rail.content_type === 'series' ? 'Series' : 'Movie')"></span>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                    <button class="rail-arrow rail-arrow-right" :class="{ 'rail-arrow-visible': canScrollRight }" @click="scrollRight()" type="button" aria-label="Scroll right">
+                        <span class="rail-arrow-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+                    </button>
+                </div>
+            </div>
+        </section>
+    </template>
+
     <!-- Trending / Genre Rails -->
     <template x-for="rail in otherRails" :key="rail.id">
         <section class="movie-section nf-content-section">

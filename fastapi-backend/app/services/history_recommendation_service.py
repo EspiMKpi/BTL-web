@@ -1,58 +1,144 @@
 """
-Per-user history-based recommender.
+GRU4Rec sequential recommender — inference layer.
 
-Reads the user's positive watch / favorite signals from MongoDB, treats each
-as a seed, and aggregates the content-based neighbours produced by the
-existing TF-IDF model (see RECOMMENDER_PLAN.md). No new model, no artifacts,
-no caching, no `user_ratings` reads (same hard rule as the content-based
-recommender — see HISTORY_RECOMMENDER_PLAN.md).
+Predicts the next-N items a user is most likely to watch given their last
+MAX_SEQ_LEN positive interactions, sorted oldest → newest. Powers
+GET /api/recommendations/next/{content_type}.
 
-Single entry point:
-    await for_user(user_id, content_type, n=10) -> list[tmdb_id]
+Artifact layout per content_type:
+    data/recommender/gru4rec/{movies|series}/
+        model.pt          torch state_dict
+        item_vocab.json   { "tmdb_to_idx": {<tmdb_id>: <idx>}, "idx_to_tmdb": [<tmdb_id>, ...] }
+        metadata.json     { kind, content_type, embed_dim, hidden_dim, max_seq_len, ... }
 
-Hydration to full Mongo docs is the router's job.
+The first prediction call for each content_type lazy-loads the model + vocab.
+TTLCache (10 min) shields the model from repeated forward passes for the
+same (user_id, content_type, limit) tuple — the user's watch_history doesn't
+change minute-to-minute and torch CPU inference isn't free.
 """
 
 from __future__ import annotations
 
-import math
-from collections import defaultdict
+import json
+import logging
 from datetime import datetime, timezone
-from typing import Iterable
+from pathlib import Path
+
+import torch
+import torch.nn as nn
+from cachetools import TTLCache
 
 from app.database import get_database
-from app.services import recommendation_service
+from app.services.recommendation_service import (
+    RecommenderNotTrained,
+    SUPPORTED_CONTENT_TYPES,
+)
 
-# Tunables ---------------------------------------------------------------------
-# How long the user can be inactive before a positive signal halves in weight.
-RECENCY_HALF_LIFE_DAYS = 60.0
-# Minimum progress_seconds to treat a non-completed watch as a positive signal.
-# 30 minutes — long enough to rule out "opened the page, bounced".
+logger = logging.getLogger(__name__)
+
+ARTIFACT_ROOT = Path(__file__).resolve().parents[2] / "data" / "recommender" / "gru4rec"
+EXPECTED_KIND = "gru4rec_v1"
+SUBDIR_BY_TYPE: dict[str, str] = {"movie": "movies", "series": "series"}
+
+# Same positive signal threshold as the previous history recommender (kept so
+# seed_demo_users.py and training share one definition).
 MIN_PROGRESS_SECONDS = 1800
-# How many content-based neighbours to pull per seed before aggregation.
-NEIGHBOURS_PER_SEED = 20
-# Below this many seeds, return [] and let the home page hide the rail.
-MIN_SEEDS_FOR_RECS = 3
+# Below this many positive interactions, return [] (frontend hides the rail).
+MIN_SEQUENCE_LEN = 3
+
+_STATE: dict[str, dict] = {}
+# Predictions cache: key = (user_id, content_type, limit). 10 min TTL is short
+# enough that a user's freshly-watched item flows through after a coffee break.
+_predict_cache: TTLCache = TTLCache(maxsize=512, ttl=600)
 
 
-def _recency_decay(when: datetime | None, *, half_life_days: float = RECENCY_HALF_LIFE_DAYS) -> float:
-    """Exponential decay in (0, 1]. Returns 1.0 for missing/future dates."""
-    if when is None:
-        return 1.0
-    if when.tzinfo is None:
-        when = when.replace(tzinfo=timezone.utc)
-    days = (datetime.now(timezone.utc) - when).total_seconds() / 86400.0
-    if days <= 0:
-        return 1.0
-    return math.exp(-days * math.log(2) / half_life_days)
+class GRU4RecModel(nn.Module):
+    """Single-layer GRU over item embeddings. Output = logits over the vocab.
+
+    `vocab_size` MUST include the pad slot at index 0 (so the embedding matrix
+    has one extra row). We never predict index 0 — `forward` masks it.
+    """
+
+    def __init__(self, vocab_size: int, embed_dim: int = 64, hidden_dim: int = 128):
+        super().__init__()
+        self.item_emb = nn.Embedding(vocab_size, embed_dim, padding_idx=0)
+        self.gru = nn.GRU(embed_dim, hidden_dim, batch_first=True)
+        self.head = nn.Linear(hidden_dim, vocab_size)
+
+    def forward(self, seq: torch.Tensor) -> torch.Tensor:
+        # seq: (B, T) int64 with 0 = pad
+        emb = self.item_emb(seq)          # (B, T, E)
+        out, _ = self.gru(emb)            # (B, T, H)
+        last = out[:, -1, :]              # (B, H) — final timestep
+        logits = self.head(last)          # (B, V)
+        logits[:, 0] = float("-inf")      # never predict pad
+        return logits
 
 
-async def _build_seeds(db, user_id: str, content_type: str) -> dict[int, float]:
-    """Map tmdb_id -> max signal weight across all positive sources."""
-    seeds: dict[int, float] = {}
+def _validate_content_type(content_type: str) -> None:
+    if content_type not in SUBDIR_BY_TYPE:
+        raise ValueError(
+            f"unsupported content_type {content_type!r}; "
+            f"expected one of {SUPPORTED_CONTENT_TYPES}"
+        )
 
-    # Completed OR watched >= MIN_PROGRESS_SECONDS, collapsed to one row per title.
-    history_cursor = db.watch_history.aggregate([
+
+def _load(content_type: str) -> None:
+    _validate_content_type(content_type)
+    base = ARTIFACT_ROOT / SUBDIR_BY_TYPE[content_type]
+    metadata_path = base / "metadata.json"
+    vocab_path = base / "item_vocab.json"
+    model_path = base / "model.pt"
+    if not all(p.exists() for p in (metadata_path, vocab_path, model_path)):
+        raise RecommenderNotTrained(
+            f"No GRU4Rec artifacts at {base}. Run scripts/train_gru4rec.py."
+        )
+
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    if metadata.get("kind") != EXPECTED_KIND:
+        raise RuntimeError(
+            f"Artifact kind mismatch for {content_type}: "
+            f"expected {EXPECTED_KIND!r}, got {metadata.get('kind')!r}. "
+            "Re-run scripts/train_gru4rec.py."
+        )
+    if metadata.get("content_type") != content_type:
+        raise RuntimeError(
+            f"Artifact content_type mismatch at {base}: "
+            f"expected {content_type!r}, got {metadata.get('content_type')!r}."
+        )
+
+    vocab_raw = json.loads(vocab_path.read_text(encoding="utf-8"))
+    tmdb_to_idx: dict[int, int] = {int(k): int(v) for k, v in vocab_raw["tmdb_to_idx"].items()}
+    idx_to_tmdb: list[int] = [int(x) for x in vocab_raw["idx_to_tmdb"]]
+    vocab_size = len(idx_to_tmdb)  # includes pad at index 0
+
+    model = GRU4RecModel(
+        vocab_size=vocab_size,
+        embed_dim=int(metadata["embed_dim"]),
+        hidden_dim=int(metadata["hidden_dim"]),
+    )
+    state = torch.load(model_path, map_location="cpu", weights_only=True)
+    model.load_state_dict(state)
+    model.eval()
+
+    _STATE[content_type] = {
+        "model": model,
+        "tmdb_to_idx": tmdb_to_idx,
+        "idx_to_tmdb": idx_to_tmdb,
+        "max_seq_len": int(metadata["max_seq_len"]),
+        "metadata": metadata,
+        "loaded_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+async def _fetch_recent_positive_items(
+    user_id: str,
+    content_type: str,
+    limit: int,
+) -> list[int]:
+    """Most recent (<= limit) positive-signal tmdb_ids, oldest -> newest."""
+    db = get_database()
+    cursor = db.watch_history.aggregate([
         {"$match": {
             "user_id": user_id,
             "content_type": content_type,
@@ -61,94 +147,107 @@ async def _build_seeds(db, user_id: str, content_type: str) -> dict[int, float]:
                 {"progress_seconds": {"$gte": MIN_PROGRESS_SECONDS}},
             ],
         }},
+        {"$sort": {"last_watched_at": -1}},
         {"$group": {
             "_id": "$tmdb_id",
-            "last_watched_at": {"$max": "$last_watched_at"},
+            "last_watched_at": {"$first": "$last_watched_at"},
         }},
+        {"$sort": {"last_watched_at": -1}},
+        {"$limit": limit},
     ])
-    async for row in history_cursor:
-        tmdb_id = int(row["_id"])
-        weight = _recency_decay(row.get("last_watched_at"))
-        if weight > seeds.get(tmdb_id, 0.0):
-            seeds[tmdb_id] = weight
-
-    # Favorites — full weight, no decay (the bookmark is an active assertion).
-    fav_cursor = db.watchlist_items.find({
-        "user_id": user_id,
-        "content_type": content_type,
-        "is_favorite": True,
-    }, {"tmdb_id": 1})
-    async for row in fav_cursor:
-        tmdb_id = int(row["tmdb_id"])
-        if 1.0 > seeds.get(tmdb_id, 0.0):
-            seeds[tmdb_id] = 1.0
-
-    return seeds
+    rows = [row async for row in cursor]
+    # We sorted desc to get the most recent N, now flip to oldest -> newest
+    # because GRU4Rec consumes the sequence in chronological order.
+    rows.reverse()
+    return [int(row["_id"]) for row in rows]
 
 
-async def _build_seen_set(db, user_id: str, content_type: str) -> set[int]:
-    """Items the user has already touched — never recommend back."""
-    seen: set[int] = set()
+def _predict(
+    state: dict,
+    seq_idx: list[int],
+    seen_idx: set[int],
+    top_n: int,
+) -> list[int]:
+    """Forward + topk + mask seen items. Returns tmdb_ids (recommender order)."""
+    max_len = state["max_seq_len"]
+    if len(seq_idx) > max_len:
+        seq_idx = seq_idx[-max_len:]
+    # Left-pad with 0 so the GRU sees the sequence ending at the last timestep.
+    padded = [0] * (max_len - len(seq_idx)) + seq_idx
+    seq = torch.tensor([padded], dtype=torch.long)
 
-    history_cursor = db.watch_history.find(
-        {"user_id": user_id, "content_type": content_type},
-        {"tmdb_id": 1},
-    )
-    async for row in history_cursor:
-        seen.add(int(row["tmdb_id"]))
+    with torch.no_grad():
+        logits = state["model"](seq)  # (1, V)
 
-    watchlist_cursor = db.watchlist_items.find(
-        {"user_id": user_id, "content_type": content_type},
-        {"tmdb_id": 1},
-    )
-    async for row in watchlist_cursor:
-        seen.add(int(row["tmdb_id"]))
+    logits = logits.squeeze(0)
+    # Mask out seen items so we don't recommend back what the user already touched.
+    for idx in seen_idx:
+        if 0 <= idx < logits.shape[0]:
+            logits[idx] = float("-inf")
 
-    return seen
+    k = min(top_n, logits.shape[0])
+    top_idx = torch.topk(logits, k).indices.tolist()
+    idx_to_tmdb = state["idx_to_tmdb"]
+    out: list[int] = []
+    for idx in top_idx:
+        # Skip pad (already -inf) and any -inf-masked entries.
+        if idx == 0:
+            continue
+        out.append(int(idx_to_tmdb[idx]))
+    return out[:top_n]
 
 
-def _aggregate_neighbours(
-    content_type: str,
-    seeds: dict[int, float],
-    seen: set[int],
-) -> Iterable[tuple[int, float]]:
-    """For each seed, pull its TF-IDF neighbours and accumulate weighted scores.
+async def next_in_sequence(user_id: str, content_type: str, n: int = 10) -> list[int]:
+    """Return up to *n* tmdb_ids predicted to come next in the user's sequence.
 
-    Score per candidate = sum over seeds of (seed_weight / (rank + 1)).
-    The 1/(rank+1) decay is MRR-style: rank-1 neighbour ~ 10x rank-10's contribution.
+    Cold-start contract: returns [] when the user has fewer than
+    MIN_SEQUENCE_LEN positive interactions known to the trained vocab. The
+    frontend hides the rail in that case.
+
+    Raises `RecommenderNotTrained` if the artifact for *content_type* hasn't
+    been built yet.
     """
-    scores: dict[int, float] = defaultdict(float)
-    for seed_id, seed_weight in seeds.items():
-        neighbours = recommendation_service.similar_to(
-            content_type, seed_id, top_n=NEIGHBOURS_PER_SEED,
-        )
-        for rank, neighbour_id in enumerate(neighbours):
-            if neighbour_id in seen or neighbour_id in seeds:
-                continue
-            scores[neighbour_id] += seed_weight / (rank + 1)
-    return scores.items()
+    _validate_content_type(content_type)
 
+    cache_key = (user_id, content_type, n)
+    cached = _predict_cache.get(cache_key)
+    if cached is not None:
+        return cached
 
-async def for_user(user_id: str, content_type: str, n: int = 10) -> list[int]:
-    """Return up to *n* personalised tmdb_ids for the user.
+    if content_type not in _STATE:
+        _load(content_type)
+    state = _STATE[content_type]
 
-    Returns [] when the user has too few positive signals (cold-start) or when
-    every candidate was already in their seen-set. Raises
-    `recommendation_service.RecommenderNotTrained` if the underlying TF-IDF
-    artifact for *content_type* hasn't been built.
-    """
-    if content_type not in recommendation_service.SUPPORTED_CONTENT_TYPES:
-        raise ValueError(
-            f"unsupported content_type {content_type!r}; "
-            f"expected one of {recommendation_service.SUPPORTED_CONTENT_TYPES}"
-        )
+    # Pull a bit more than max_seq_len so OOV items can be dropped without
+    # leaving us short. Anything beyond max_seq_len gets truncated in _predict.
+    fetch_limit = state["max_seq_len"] * 2
+    recent_ids = await _fetch_recent_positive_items(user_id, content_type, fetch_limit)
 
-    db = get_database()
-    seeds = await _build_seeds(db, user_id, content_type)
-    if len(seeds) < MIN_SEEDS_FOR_RECS:
+    tmdb_to_idx: dict[int, int] = state["tmdb_to_idx"]
+    seq_idx = [tmdb_to_idx[t] for t in recent_ids if t in tmdb_to_idx]
+    if len(seq_idx) < MIN_SEQUENCE_LEN:
+        _predict_cache[cache_key] = []
         return []
 
-    seen = await _build_seen_set(db, user_id, content_type)
-    scored = _aggregate_neighbours(content_type, seeds, seen)
-    ranked = sorted(scored, key=lambda kv: -kv[1])
-    return [int(tmdb_id) for tmdb_id, _ in ranked[:n]]
+    seen_idx: set[int] = set(seq_idx)
+    result = _predict(state, seq_idx, seen_idx, top_n=n)
+    _predict_cache[cache_key] = result
+    return result
+
+
+def reload(content_type: str | None = None) -> None:
+    """Drop cached model state + prediction cache."""
+    _predict_cache.clear()
+    if content_type is None:
+        _STATE.clear()
+        return
+    _validate_content_type(content_type)
+    _STATE.pop(content_type, None)
+
+
+def loaded_state() -> dict[str, dict]:
+    """Diagnostic: which content types are loaded, and their metadata."""
+    return {
+        ct: {"metadata": s["metadata"], "loaded_at": s["loaded_at"]}
+        for ct, s in _STATE.items()
+    }

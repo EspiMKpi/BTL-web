@@ -1,22 +1,23 @@
 """
 Shared test fixtures — mongomock-motor for DB isolation, httpx.AsyncClient for API tests.
+
+Recommender-specific fixtures (FP-Growth + GRU4Rec artifact builders) are in
+this file too so multiple test modules can share them.
 """
 
 import json
 from datetime import datetime, timezone
 
-import joblib
-import numpy as np
 import pytest
+import torch
 from bson import ObjectId
 from httpx import ASGITransport, AsyncClient
 from mongomock_motor import AsyncMongoMockClient
-from scipy import sparse
-from sklearn.feature_extraction.text import TfidfVectorizer
 
 import app.database as db_module
 from app.core.security import create_access_token, hash_password
 from app.main import app
+from app.services import history_recommendation_service as _hr
 from app.services import recommendation_service as _rs
 
 
@@ -76,14 +77,11 @@ def auth_headers(test_user):
     return {"Authorization": f"Bearer {token}"}
 
 
-# ── Recommender artifact fixtures ─────────────────────────────────────────
+# ── FP-Growth artifact fixtures ───────────────────────────────────────────
 
 @pytest.fixture
-def artifact_root(tmp_path, monkeypatch):
-    """Redirect recommender ARTIFACT_ROOT to a fresh tmp dir; clear cached state.
-
-    Use together with the `build_artifacts` fixture to populate the dir.
-    """
+def fpgrowth_artifact_root(tmp_path, monkeypatch):
+    """Redirect FP-Growth ARTIFACT_ROOT to a fresh tmp dir; clear cached state."""
     monkeypatch.setattr(_rs, "ARTIFACT_ROOT", tmp_path)
     _rs._STATE.clear()
     yield tmp_path
@@ -91,31 +89,85 @@ def artifact_root(tmp_path, monkeypatch):
 
 
 @pytest.fixture
-def build_artifacts():
-    """Return a builder callable that writes a TF-IDF artifact set to disk.
+def build_fpgrowth_artifacts():
+    """Builder that writes an FP-Growth artifact set to disk.
 
-    Signature: build(artifact_root, content_type, items, *, kind=None)
-        items: [(tmdb_id, title, soup), ...]
+    Signature: build(artifact_root, content_type, rules, *, kind=None)
+        rules: { antecedent_tmdb_id: [consequent_tmdb_id, ...] }
         kind:  override metadata kind (default = current EXPECTED_KIND).
     """
-    def _build(artifact_root, content_type, items, *, kind=None):
+    def _build(artifact_root, content_type, rules, *, kind=None):
         subdir = artifact_root / _rs.SUBDIR_BY_TYPE[content_type]
         subdir.mkdir(parents=True, exist_ok=True)
-        tmdb_ids = [it[0] for it in items]
-        titles = [it[1] for it in items]
-        soups = [it[2] for it in items]
-        vectorizer = TfidfVectorizer(stop_words="english", dtype=np.float32)
-        matrix = vectorizer.fit_transform(soups)
-        joblib.dump(vectorizer, subdir / "vectorizer.joblib")
-        sparse.save_npz(subdir / "tfidf_matrix.npz", matrix)
-        (subdir / "item_index.json").write_text(
-            json.dumps({"tmdb_ids": tmdb_ids, "titles": titles})
-        )
+        (subdir / "rules.json").write_text(json.dumps(
+            {str(k): list(v) for k, v in rules.items()}
+        ))
         (subdir / "metadata.json").write_text(json.dumps({
             "built_at": datetime.now(timezone.utc).isoformat(),
             "content_type": content_type,
-            "n_items": len(items),
-            "vocab_size": len(vectorizer.vocabulary_),
+            "n_rules": len(rules),
             "kind": kind or _rs.EXPECTED_KIND,
+            "min_support": 0.05,
+            "min_confidence": 0.2,
+        }))
+    return _build
+
+
+# ── GRU4Rec artifact fixtures ─────────────────────────────────────────────
+
+@pytest.fixture
+def gru4rec_artifact_root(tmp_path, monkeypatch):
+    """Redirect GRU4Rec ARTIFACT_ROOT to a fresh tmp dir; clear cached state + prediction cache."""
+    monkeypatch.setattr(_hr, "ARTIFACT_ROOT", tmp_path)
+    _hr._STATE.clear()
+    _hr._predict_cache.clear()
+    yield tmp_path
+    _hr._STATE.clear()
+    _hr._predict_cache.clear()
+
+
+@pytest.fixture
+def build_gru4rec_artifacts():
+    """Builder that writes a (randomly-initialised) GRU4Rec model + vocab.
+
+    Signature: build(artifact_root, content_type, tmdb_ids, *,
+                     embed_dim=16, hidden_dim=32, max_seq_len=10, kind=None)
+        tmdb_ids: ordered list — index 0 is RESERVED for pad, so real items
+                  go to indices 1..len(tmdb_ids). Pass only real tmdb_ids;
+                  the fixture inserts the pad slot for you.
+    """
+    def _build(
+        artifact_root,
+        content_type,
+        tmdb_ids,
+        *,
+        embed_dim=16,
+        hidden_dim=32,
+        max_seq_len=10,
+        kind=None,
+    ):
+        subdir = artifact_root / _hr.SUBDIR_BY_TYPE[content_type]
+        subdir.mkdir(parents=True, exist_ok=True)
+
+        # Pad-aware vocab. idx_to_tmdb[0] = 0 (sentinel, never returned).
+        idx_to_tmdb = [0] + [int(t) for t in tmdb_ids]
+        tmdb_to_idx = {int(t): i + 1 for i, t in enumerate(tmdb_ids)}
+        vocab_size = len(idx_to_tmdb)
+
+        model = _hr.GRU4RecModel(vocab_size=vocab_size, embed_dim=embed_dim, hidden_dim=hidden_dim)
+        torch.save(model.state_dict(), subdir / "model.pt")
+
+        (subdir / "item_vocab.json").write_text(json.dumps({
+            "tmdb_to_idx": {str(k): v for k, v in tmdb_to_idx.items()},
+            "idx_to_tmdb": idx_to_tmdb,
+        }))
+        (subdir / "metadata.json").write_text(json.dumps({
+            "built_at": datetime.now(timezone.utc).isoformat(),
+            "content_type": content_type,
+            "n_items": len(tmdb_ids),
+            "embed_dim": embed_dim,
+            "hidden_dim": hidden_dim,
+            "max_seq_len": max_seq_len,
+            "kind": kind or _hr.EXPECTED_KIND,
         }))
     return _build

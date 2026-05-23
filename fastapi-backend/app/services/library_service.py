@@ -91,11 +91,10 @@ async def get_home_rails(user_id: Optional[str] = None, rail_limit: int = 10) ->
     ]
 
     # Authenticated-only rails:
-    #   - Continue Watching is prepended (still ahead of trending — it's the
-    #     user's interrupted session, strongest re-engagement signal).
-    #   - Recommended For You is APPENDED at the bottom so trending stays at
-    #     the top of the discoverable rails. Avoids a cold-start user landing
-    #     on "Shows For You" as the first thing they see.
+    #   - Continue Watching is prepended (strongest re-engagement signal —
+    #     interrupted session beats trending).
+    #   - "Up Next" (GRU4Rec sequential) is APPENDED at the bottom so trending
+    #     stays at the top. Cold-start users see no Up Next rail at all.
     if user_id:
         movies_cw, series_cw = await _build_continue_watching(db, user_id, hidden_filter)
         if series_cw:
@@ -103,7 +102,7 @@ async def get_home_rails(user_id: Optional[str] = None, rail_limit: int = 10) ->
         if movies_cw:
             rails.insert(0, {"id": "continue_watching_movies", "title": "Continue Watching", "content_type": "movie", "items": movies_cw})
 
-        rails.extend(await _build_for_you_rails(user_id, rail_limit))
+        rails.extend(await _build_next_rails(user_id, rail_limit))
 
     result = {"rails": rails, "genres": genres}
 
@@ -180,31 +179,31 @@ async def _build_continue_watching(
     return movies_cw, series_cw
 
 
-async def _build_for_you_rail(
+async def _build_next_rail(
     user_id: str,
     content_type: str,
     title: str,
     rail_limit: int,
 ) -> Optional[Dict[str, Any]]:
-    """Single per-user "Recommended For You" rail for one content type.
+    """Single per-user "Up Next" rail driven by GRU4Rec sequential predictions.
 
     Best-effort: returns None when the recommender isn't trained, the user is
-    cold-start, or every candidate was hidden/missing after hydration.
+    cold-start (< 3 positive signals known to the trained vocab), or every
+    candidate was hidden/missing after hydration.
     """
-    # Local import — keeps app.services.library_service free of a hard
-    # dependency on the recommender at import time and avoids any future
-    # circular-import risk if the recommender ever reaches back into library.
+    # Local import — keeps library_service free of a hard dependency on
+    # torch at import time, and avoids circular imports.
     from app.services import history_recommendation_service
     from app.services.recommendation_service import RecommenderNotTrained
 
     try:
-        ids = await history_recommendation_service.for_user(
+        ids = await history_recommendation_service.next_in_sequence(
             user_id, content_type, n=rail_limit,
         )
     except RecommenderNotTrained:
         return None
     except Exception:
-        logger.exception("for_you rail (%s) failed for user=%s", content_type, user_id)
+        logger.exception("next-in-sequence rail (%s) failed for user=%s", content_type, user_id)
         return None
     if not ids:
         return None
@@ -216,17 +215,15 @@ async def _build_for_you_rail(
     ordered = [by_id[i] for i in ids if i in by_id]
     if not ordered:
         return None
-    rail_id = "for_you_movies" if content_type == "movie" else "for_you_series"
+    rail_id = "next_movies" if content_type == "movie" else "next_series"
     return {"id": rail_id, "title": title, "content_type": content_type, "items": ordered}
 
 
-async def _build_for_you_rails(user_id: str, rail_limit: int) -> List[Dict[str, Any]]:
-    """Both per-user rails (movies + series), fetched concurrently. Empty list
-    when neither has content. Used by the home page; per-content-type pages
-    call `_build_for_you_rail` directly."""
+async def _build_next_rails(user_id: str, rail_limit: int) -> List[Dict[str, Any]]:
+    """Both per-user "Up Next" rails (movies + series), fetched concurrently."""
     movie_rail, series_rail = await asyncio.gather(
-        _build_for_you_rail(user_id, "movie", "Movies For You", rail_limit),
-        _build_for_you_rail(user_id, "series", "Shows For You", rail_limit),
+        _build_next_rail(user_id, "movie", "Up Next for You", rail_limit),
+        _build_next_rail(user_id, "series", "Up Next in TV", rail_limit),
     )
     return [r for r in (movie_rail, series_rail) if r]
 
@@ -283,15 +280,15 @@ async def get_series_rails(rail_limit: int = 12, user_id: Optional[str] = None) 
     if recent:
         rails.append({"id": "recent_series", "title": "Recently Added", "content_type": "series", "items": recent})
 
-    # Per-user rails (series-page variant): CW at top, "Shows For You" at bottom.
+    # Per-user rails (series-page variant): CW at top, "Up Next" at bottom.
     if user_id:
         _movies_cw, series_cw = await _build_continue_watching(db, user_id, hidden_filter)
         if series_cw:
             rails.insert(0, {"id": "continue_watching_series", "title": "Continue Watching", "content_type": "series", "items": series_cw})
 
-        foryou = await _build_for_you_rail(user_id, "series", "Shows For You", rail_limit)
-        if foryou:
-            rails.append(foryou)
+        upnext = await _build_next_rail(user_id, "series", "Up Next in TV", rail_limit)
+        if upnext:
+            rails.append(upnext)
 
     return _sanitize({"rails": rails})
 
@@ -343,15 +340,15 @@ async def get_movie_rails(rail_limit: int = 12, user_id: Optional[str] = None) -
     if highest_rated:
         rails.append({"id": "highest_rated", "title": "Highest Rated", "content_type": "movie", "items": highest_rated})
 
-    # Per-user rails (movies-page variant): CW at top, "Movies For You" at bottom.
+    # Per-user rails (movies-page variant): CW at top, "Up Next" at bottom.
     if user_id:
         movies_cw, _series_cw = await _build_continue_watching(db, user_id, hidden_filter)
         if movies_cw:
             rails.insert(0, {"id": "continue_watching_movies", "title": "Continue Watching", "content_type": "movie", "items": movies_cw})
 
-        foryou = await _build_for_you_rail(user_id, "movie", "Movies For You", rail_limit)
-        if foryou:
-            rails.append(foryou)
+        upnext = await _build_next_rail(user_id, "movie", "Up Next for You", rail_limit)
+        if upnext:
+            rails.append(upnext)
 
     return _sanitize({"rails": rails})
 

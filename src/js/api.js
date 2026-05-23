@@ -113,10 +113,13 @@ export const commentsApi = {
 };
 
 export const recommendationsApi = {
-    similar: (contentType, tmdbId, limit = 10) =>
-        apiFetch(`/api/recommendations/similar/${contentType}/${tmdbId}?limit=${limit}`),
-    forYou: (contentType, limit = 10) =>
-        apiFetch(`/api/recommendations/for-you/${contentType}?limit=${limit}`),
+    // FP-Growth association rules ("Vì bạn đã xem ...")
+    related: (contentType, tmdbId, limit = 10) =>
+        apiFetch(`/api/recommendations/related/${contentType}/${tmdbId}?limit=${limit}`),
+    // GRU4Rec sequential prediction — served from home rails server-side;
+    // kept here for any future client-side rail.
+    nextInSequence: (contentType, limit = 10) =>
+        apiFetch(`/api/recommendations/next/${contentType}?limit=${limit}`),
 };
 
 export const adminApi = {

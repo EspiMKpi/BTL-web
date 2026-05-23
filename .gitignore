@@ -30,8 +30,20 @@ dist/
 # Log files
 *.log
 
-# Recommender artifacts (rebuilt by scripts/train_recommender.py)
-fastapi-backend/data/
+# Recommender artifacts (rebuilt by scripts/train_fpgrowth.py + train_gru4rec.py)
+fastapi-backend/data/recommender/
+
+# Playwright MCP scratch
+.playwright-mcp/
+
+# Visual scratch screenshots (used during development, not part of source)
+visual-*.jpeg
+visual-*.jpg
+visual-*.png
+
+# Jupyter notebooks (research scratch — not part of runtime)
+*.ipynb
+.ipynb_checkpoints/
 
 #Claude
 *.claude/

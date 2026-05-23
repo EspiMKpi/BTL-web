@@ -74,6 +74,8 @@ Alpine.store('auth', {
         this.token = data.token;
         this.user = data.user;
         localStorage.setItem('token', data.token);
+        Alpine.store('content')?._invalidate();
+        document.dispatchEvent(new CustomEvent('auth:changed', { detail: { state: 'login' } }));
         return data;
     },
 
@@ -85,6 +87,8 @@ Alpine.store('auth', {
         this.token = data.token;
         this.user = data.user;
         localStorage.setItem('token', data.token);
+        Alpine.store('content')?._invalidate();
+        document.dispatchEvent(new CustomEvent('auth:changed', { detail: { state: 'register' } }));
         return data;
     },
 
@@ -92,6 +96,8 @@ Alpine.store('auth', {
         this.token = null;
         this.user = null;
         localStorage.removeItem('token');
+        Alpine.store('content')?._invalidate();
+        document.dispatchEvent(new CustomEvent('auth:changed', { detail: { state: 'logout' } }));
     },
 
     async fetchUser() {
@@ -126,6 +132,17 @@ Alpine.store('content', {
     seriesRails: null,
     _fetchedAt: 0,
     _seriesFetchedAt: 0,
+
+    /** Drop all cached server responses. Called on login/logout — the rails
+     *  depend on auth (Continue Watching, Up Next) so anon-fetched cache
+     *  would hide the per-user rails after sign-in.
+     */
+    _invalidate() {
+        this.homeRails = null;
+        this.seriesRails = null;
+        this._fetchedAt = 0;
+        this._seriesFetchedAt = 0;
+    },
 
     /** Cached home rails (5 min TTL). */
     async getHomeRails() {
@@ -253,6 +270,10 @@ Alpine.data('discoverPage', () => ({
         document.addEventListener('page:switch', (e) => {
             if (e.detail.pageId === 'discover') this.loadHome();
         });
+        document.addEventListener('auth:changed', () => {
+            this.rails = [];
+            if (Alpine.store('nav')?.currentPage === 'discover') this.loadHome();
+        });
         this.loadHome();
     },
 
@@ -361,7 +382,15 @@ Alpine.data('discoverPage', () => ({
     },
     get otherRails() {
         const top = this.top10Rail;
-        return this.rails.filter(r => r !== top).slice(0, 3);
+        // Curated rails (trending / top rated / ...) — exclude the hero rail and
+        // the GRU4Rec "Up Next" rails (those render in their own section below
+        // so they're always visible even when otherRails gets capped).
+        return this.rails
+            .filter(r => r !== top && !r.id.startsWith('next_'))
+            .slice(0, 3);
+    },
+    get upNextRails() {
+        return this.rails.filter(r => r.id.startsWith('next_'));
     },
 
     navigateTo(item, contentType) {
@@ -639,6 +668,10 @@ Alpine.data('moviesPage', () => ({
             this.searchQuery = e.detail.query;
             this.runSearch(e.detail.query);
         });
+        document.addEventListener('auth:changed', () => {
+            this.rails = [];
+            if (Alpine.store('nav')?.currentPage === 'movies') this.loadMovies();
+        });
         this.loadMovies();
     },
 
@@ -789,6 +822,10 @@ Alpine.data('seriesPage', () => ({
     async init() {
         document.addEventListener('page:switch', (e) => {
             if (e.detail.pageId === 'series') this.loadSeries();
+        });
+        document.addEventListener('auth:changed', () => {
+            this.rails = [];
+            if (Alpine.store('nav')?.currentPage === 'series') this.loadSeries();
         });
         this.loadSeries();
     },
@@ -1083,7 +1120,7 @@ Alpine.data('detailPage', () => ({
         if (!tmdbId || (ct !== 'movie' && ct !== 'series')) return;
         this.similarLoading = true;
         try {
-            const items = await recommendationsApi.similar(ct, tmdbId, 12);
+            const items = await recommendationsApi.related(ct, tmdbId, 12);
             // Stale-guard: if user navigated to a different title while this was
             // in flight, drop the result silently.
             if (this.content?.tmdb_id === tmdbId && this.contentType === ct) {
