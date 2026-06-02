@@ -15,7 +15,7 @@ from app.models.schemas import (
     ProfileUpdateRequest,
     UserOut,
 )
-from app.services.library_service import get_profile_stats, get_recent_activity
+from app.services.libraryService import get_profile_stats, get_recent_activity
 
 router = APIRouter(prefix="/api/profile", tags=["profile"])
 
@@ -56,7 +56,7 @@ async def update_profile(
         raise HTTPException(status_code=400, detail="No fields to update")
 
     db = get_database()
-    result = await db.users.find_one_and_update(
+    result = await db.tblUsers.find_one_and_update(
         {"_id": ObjectId(current_user["_id"])},
         {"$set": updates},
         return_document=True,
@@ -79,7 +79,7 @@ async def change_password(
     current_user: dict = Depends(get_current_user),
 ):
     db = get_database()
-    user = await db.users.find_one({"_id": ObjectId(current_user["_id"])})
+    user = await db.tblUsers.find_one({"_id": ObjectId(current_user["_id"])})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -87,7 +87,7 @@ async def change_password(
         raise HTTPException(status_code=400, detail="Current password is incorrect")
 
     new_hashed = hash_password(body.new_password)
-    await db.users.update_one(
+    await db.tblUsers.update_one(
         {"_id": ObjectId(current_user["_id"])},
         {"$set": {"password": new_hashed}},
     )

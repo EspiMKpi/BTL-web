@@ -18,7 +18,7 @@ from app.models.schemas import (
     HideGenreRequest,
     HideMovieRequest,
 )
-from app.services.library_service import clear_home_cache
+from app.services.libraryService import clear_home_cache
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -34,7 +34,7 @@ async def list_users(
     """List all users (paginated)."""
     db = get_database()
     skip = (page - 1) * limit
-    cursor = db.users.find().sort("created_at", -1).skip(skip).limit(limit)
+    cursor = db.tblUsers.find().sort("created_at", -1).skip(skip).limit(limit)
     users = []
     async for doc in cursor:
         doc["_id"] = str(doc["_id"])
@@ -55,7 +55,7 @@ async def ban_user(
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid user ID")
 
-    result = await db.users.find_one_and_update(
+    result = await db.tblUsers.find_one_and_update(
         {"_id": oid},
         {"$set": {"is_banned": body.is_banned, "updated_at": datetime.utcnow()}},
         return_document=True,
@@ -78,7 +78,7 @@ async def list_movies(
     """List all movies with visibility status (paginated)."""
     db = get_database()
     skip = (page - 1) * limit
-    cursor = db.movies.find(
+    cursor = db.tblMovies.find(
         {},
         {"tmdb_id": 1, "title": 1, "poster_path": 1, "is_hidden": 1, "vote_average": 1},
     ).sort("title", 1).skip(skip).limit(limit)
@@ -98,7 +98,7 @@ async def toggle_movie_visibility(
 ):
     """Show or hide a movie from regular users."""
     db = get_database()
-    result = await db.movies.find_one_and_update(
+    result = await db.tblMovies.find_one_and_update(
         {"tmdb_id": tmdb_id},
         {"$set": {"is_hidden": body.is_hidden, "updated_at": datetime.utcnow()}},
         return_document=True,
@@ -117,7 +117,7 @@ async def toggle_movie_visibility(
 async def list_genres(admin: dict = Depends(get_admin_user)):
     """List all genres with visibility status (admin sees hidden ones too)."""
     db = get_database()
-    cursor = db.genres.find().sort("name", 1)
+    cursor = db.tblGenres.find().sort("name", 1)
     genres = []
     async for doc in cursor:
         doc["_id"] = str(doc["_id"])
@@ -134,7 +134,7 @@ async def toggle_genre_visibility(
 ):
     """Show or hide a genre from regular users."""
     db = get_database()
-    result = await db.genres.find_one_and_update(
+    result = await db.tblGenres.find_one_and_update(
         {"genre_id": genre_id},
         {"$set": {"is_hidden": body.is_hidden, "updated_at": datetime.utcnow()}},
         return_document=True,
@@ -160,13 +160,13 @@ async def list_all_comments(
     db = get_database()
     skip = (page - 1) * limit
     query = {"review": {"$nin": [None, ""]}}
-    cursor = db.user_ratings.find(query).sort("created_at", -1).skip(skip).limit(limit)
+    cursor = db.tblUserRatings.find(query).sort("created_at", -1).skip(skip).limit(limit)
     comments = []
     async for doc in cursor:
         doc["_id"] = str(doc["_id"])
         doc["text"] = doc.get("review", "")
         try:
-            user = await db.users.find_one({"_id": ObjectId(doc["user_id"])})
+            user = await db.tblUsers.find_one({"_id": ObjectId(doc["user_id"])})
         except Exception:
             user = None
         if user:
@@ -189,7 +189,7 @@ async def delete_comment(
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid comment ID")
 
-    result = await db.user_ratings.delete_one({"_id": oid})
+    result = await db.tblUserRatings.delete_one({"_id": oid})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Comment not found")
 

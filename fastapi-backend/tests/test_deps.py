@@ -49,7 +49,7 @@ class TestGetCurrentUser:
     async def test_banned_user_rejected(self, client, db):
         """A banned user with a valid JWT should get 403."""
         user_id = ObjectId()
-        await db.users.insert_one({
+        await db.tblUsers.insert_one({
             "_id": user_id,
             "email": "banned@vozflix.com",
             "password": hash_password("Test1234!"),

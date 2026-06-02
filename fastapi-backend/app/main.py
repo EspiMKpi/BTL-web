@@ -18,7 +18,16 @@ from slowapi.util import get_remote_address
 
 from app.core.config import settings
 from app.database import close_mongo_connection, connect_to_mongo
-from app.routers import admin, auth, comments, content, history, profile, ratings, watchlist
+from app.routers import (
+    adminController,
+    authController,
+    commentsController,
+    contentController,
+    historyController,
+    profileController,
+    ratingsController,
+    watchlistController,
+)
 
 # Teach FastAPI's jsonable_encoder how to serialize MongoDB ObjectId.
 # This is the actual fix for the "ObjectId is not iterable" / "vars() argument
@@ -78,14 +87,14 @@ app.add_middleware(
 )
 
 # Mount all routers
-app.include_router(auth.router)
-app.include_router(content.router)
-app.include_router(watchlist.router)
-app.include_router(history.router)
-app.include_router(ratings.router)
-app.include_router(profile.router)
-app.include_router(comments.router)
-app.include_router(admin.router)
+app.include_router(authController.router)
+app.include_router(contentController.router)
+app.include_router(watchlistController.router)
+app.include_router(historyController.router)
+app.include_router(ratingsController.router)
+app.include_router(profileController.router)
+app.include_router(commentsController.router)
+app.include_router(adminController.router)
 
 
 @app.get("/api/test")

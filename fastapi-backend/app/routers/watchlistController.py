@@ -28,7 +28,7 @@ async def get_watchlist(
     if content_type:
         query["content_type"] = content_type
 
-    cursor = db.watchlist_items.find(query).sort("updated_at", -1)
+    cursor = db.tblWatchlistItems.find(query).sort("updated_at", -1)
     items = []
     async for doc in cursor:
         doc["_id"] = str(doc["_id"])
@@ -53,7 +53,7 @@ async def add_to_watchlist(
 
     # Upsert by (user_id, tmdb_id) only — prevents duplicate entries for the
     # same title even if content_type differs (e.g. 'series' vs 'mixed').
-    result = await db.watchlist_items.find_one_and_update(
+    result = await db.tblWatchlistItems.find_one_and_update(
         {"user_id": current_user["_id"], "tmdb_id": body.tmdb_id},
         {
             "$setOnInsert": {
@@ -89,7 +89,7 @@ async def update_watchlist_item(
     updates["updated_at"] = datetime.utcnow()
 
     try:
-        result = await db.watchlist_items.find_one_and_update(
+        result = await db.tblWatchlistItems.find_one_and_update(
             {"_id": ObjectId(item_id), "user_id": current_user["_id"]},
             {"$set": updates},
             return_document=True,
@@ -111,7 +111,7 @@ async def remove_from_watchlist(
 ):
     db = get_database()
     try:
-        result = await db.watchlist_items.find_one_and_delete(
+        result = await db.tblWatchlistItems.find_one_and_delete(
             {"_id": ObjectId(item_id), "user_id": current_user["_id"]}
         )
     except Exception:

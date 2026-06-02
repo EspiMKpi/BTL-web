@@ -4,17 +4,17 @@
  */
 
 const PAGE_FILES = [
-    "landing",
-    "login",
-    "register",
-    "discover",
-    "movies",
-    "series",
-    "detail",
-    "watching",
-    "watchlists",
-    "profile",
-    "admin"
+    "landingPage",
+    "loginPage",
+    "registerPage",
+    "discoverPage",
+    "moviesPage",
+    "seriesPage",
+    "detailPage",
+    "watchingPage",
+    "watchlistsPage",
+    "profilePage",
+    "adminPage"
 ];
 
 export const pages_ready = (async function load_pages() {

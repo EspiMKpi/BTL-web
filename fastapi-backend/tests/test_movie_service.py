@@ -1,12 +1,12 @@
 """
-Tests for movie_service — get_movie_by_id, get_movies_by_ids, search_movies.
+Tests for movieService — get_movie_by_id, get_movies_by_ids, search_movies.
 """
 
 import pytest
 from bson import ObjectId
 from unittest.mock import AsyncMock, patch, MagicMock
 
-from app.services.movie_service import get_movie_by_id, get_movies_by_ids
+from app.services.movieService import get_movie_by_id, get_movies_by_ids
 
 
 # ── get_movie_by_id ───────────────────────────────────────────────────────
@@ -25,7 +25,7 @@ class TestGetMovieById:
             "crew": [],
             "raw_data": {"id": 550},
         }
-        await db.movies.insert_one(doc)
+        await db.tblMovies.insert_one(doc)
 
         result = await get_movie_by_id(550)
         assert result["tmdb_id"] == 550
@@ -83,7 +83,7 @@ class TestGetMovieById:
         mock_response.json.return_value = tmdb_data
         mock_response.raise_for_status = MagicMock()
 
-        with patch("app.services.movie_service.httpx.AsyncClient") as mock_client:
+        with patch("app.services.movieService.httpx.AsyncClient") as mock_client:
             mock_instance = AsyncMock()
             mock_instance.__aenter__ = AsyncMock(return_value=mock_instance)
             mock_instance.__aexit__ = AsyncMock(return_value=False)
@@ -103,17 +103,17 @@ class TestGetMovieById:
         assert isinstance(result["_id"], str)
 
         # Verify it was upserted into MongoDB
-        stored = await db.movies.find_one({"tmdb_id": 550})
+        stored = await db.tblMovies.find_one({"tmdb_id": 550})
         assert stored is not None
         assert stored["title"] == "Fight Club"
 
         # Verify genres were upserted
-        genre = await db.genres.find_one({"genre_id": 18})
+        genre = await db.tblGenres.find_one({"genre_id": 18})
         assert genre is not None
         assert genre["name"] == "Drama"
 
         # Verify the movie_genres junction was reconciled (one row per genre)
-        junction = await db.movie_genres.find({"tmdb_id": 550}).to_list(None)
+        junction = await db.tblMovieGenres.find({"tmdb_id": 550}).to_list(None)
         assert {j["genre_id"] for j in junction} == {18, 53}
 
 
@@ -122,7 +122,7 @@ class TestGetMovieById:
 class TestGetMoviesByIds:
     async def test_multiple_movies(self, db):
         for i in range(3):
-            await db.movies.insert_one({
+            await db.tblMovies.insert_one({
                 "_id": ObjectId(),
                 "tmdb_id": 1000 + i,
                 "title": f"Movie {i}",
@@ -134,7 +134,7 @@ class TestGetMoviesByIds:
             assert isinstance(doc["_id"], str)
 
     async def test_partial_match(self, db):
-        await db.movies.insert_one({"_id": ObjectId(), "tmdb_id": 1000, "title": "Movie 0"})
+        await db.tblMovies.insert_one({"_id": ObjectId(), "tmdb_id": 1000, "title": "Movie 0"})
 
         result = await get_movies_by_ids([1000, 9999])
         assert len(result) == 1

@@ -10,7 +10,7 @@ from bson import ObjectId
 
 async def _seed_junction(db, junction, doc):
     """Mirror a content doc's embedded genres[] into its genre junction collection,
-    matching what movie_service / series_service do on upsert."""
+    matching what movieService / seriesService do on upsert."""
     for g in doc.get("genres") or []:
         await db[junction].insert_one({"tmdb_id": doc["tmdb_id"], "genre_id": g["genre_id"]})
 
@@ -35,8 +35,8 @@ async def _seed_movies(db, count=3):
             "crew": [],
             "raw_data": {"id": 1000 + i},
         }
-        await db.movies.insert_one(doc)
-        await _seed_junction(db, "movie_genres", doc)
+        await db.tblMovies.insert_one(doc)
+        await _seed_junction(db, "tblMovieGenres", doc)
         docs.append(doc)
     return docs
 
@@ -62,8 +62,8 @@ async def _seed_series(db, count=3):
             "seasons": [{"season_number": 1, "name": "Season 1", "episodes": [], "episode_count": 0}],
             "raw_data": {"id": 2000 + i},
         }
-        await db.series.insert_one(doc)
-        await _seed_junction(db, "series_genres", doc)
+        await db.tblSeries.insert_one(doc)
+        await _seed_junction(db, "tblSeriesGenres", doc)
         docs.append(doc)
     return docs
 
@@ -76,7 +76,7 @@ async def _seed_genres(db):
         {"_id": ObjectId(), "genre_id": 35, "name": "Comedy"},
     ]
     for g in genres:
-        await db.genres.insert_one(g)
+        await db.tblGenres.insert_one(g)
     return genres
 
 
@@ -93,7 +93,7 @@ class TestHomeRails:
         assert len(body["rails"]) >= 6  # at least 6 default rails
 
     async def test_home_with_data(self, client, db):
-        from app.services.library_service import _home_cache
+        from app.services.libraryService import _home_cache
         _home_cache.clear()
         await _seed_movies(db, 3)
         await _seed_series(db, 3)
@@ -121,7 +121,7 @@ class TestHomeRails:
     async def test_home_authenticated_with_continue_watching(self, client, db, test_user, auth_headers):
         await _seed_movies(db, 2)
         # Seed watch history
-        await db.watch_history.insert_one({
+        await db.tblWatchHistory.insert_one({
             "_id": ObjectId(),
             "user_id": test_user["_id"],
             "content_type": "movie",

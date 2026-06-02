@@ -37,7 +37,7 @@ async def get_ratings(
         {"$match": {"tmdb_id": tmdb_id, **({"content_type": content_type} if content_type else {})}},
         {"$group": {"_id": None, "avg_rating": {"$avg": "$rating"}, "total_ratings": {"$sum": 1}}},
     ]
-    agg = await db.user_ratings.aggregate(stats_pipeline).to_list(1)
+    agg = await db.tblUserRatings.aggregate(stats_pipeline).to_list(1)
     stats = (
         {"average": round(agg[0]["avg_rating"] * 10) / 10, "count": agg[0]["total_ratings"]}
         if agg and agg[0].get("avg_rating") is not None
@@ -50,7 +50,7 @@ async def get_ratings(
         {"$group": {"_id": {"$floor": "$rating"}, "count": {"$sum": 1}}},
         {"$sort": {"_id": 1}},
     ]
-    dist_raw = await db.user_ratings.aggregate(dist_pipeline).to_list(10)
+    dist_raw = await db.tblUserRatings.aggregate(dist_pipeline).to_list(10)
     distribution = {str(i): 0 for i in range(1, 11)}
     for d in dist_raw:
         bucket = int(d["_id"])
@@ -59,13 +59,13 @@ async def get_ratings(
 
     # Paginated ratings/reviews with user info
     skip = (page - 1) * limit
-    cursor = db.user_ratings.find(query).sort("created_at", -1).skip(skip).limit(limit)
+    cursor = db.tblUserRatings.find(query).sort("created_at", -1).skip(skip).limit(limit)
     ratings = []
     async for doc in cursor:
         doc["_id"] = str(doc["_id"])
         # Enrich with username
         try:
-            user = await db.users.find_one({"_id": ObjectId(doc["user_id"])})
+            user = await db.tblUsers.find_one({"_id": ObjectId(doc["user_id"])})
             doc["username"] = user.get("username", "Anonymous") if user else "Anonymous"
             doc["avatar_url"] = user.get("avatar_url") if user else None
         except Exception:
@@ -86,7 +86,7 @@ async def get_my_ratings(
     if content_type:
         query["content_type"] = content_type
 
-    cursor = db.user_ratings.find(query).sort("created_at", -1)
+    cursor = db.tblUserRatings.find(query).sort("created_at", -1)
     items = []
     async for doc in cursor:
         doc["_id"] = str(doc["_id"])
@@ -106,7 +106,7 @@ async def create_rating(
 
     db = get_database()
     now = datetime.utcnow()
-    result = await db.user_ratings.find_one_and_update(
+    result = await db.tblUserRatings.find_one_and_update(
         {"user_id": current_user["_id"], "content_type": body.content_type, "tmdb_id": body.tmdb_id},
         {
             "$set": {"rating": body.rating, "review": body.review, "updated_at": now},
@@ -134,7 +134,7 @@ async def delete_rating(
         raise HTTPException(status_code=400, detail="content_type and tmdb_id are required")
 
     db = get_database()
-    await db.user_ratings.find_one_and_delete(
+    await db.tblUserRatings.find_one_and_delete(
         {"user_id": current_user["_id"], "content_type": body.content_type, "tmdb_id": body.tmdb_id}
     )
     return {"message": "Rating removed"}

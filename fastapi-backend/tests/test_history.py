@@ -16,7 +16,7 @@ class TestContinueWatching:
 
     async def test_continue_watching_with_data(self, client, auth_headers, db, test_user):
         # Seed watch history
-        await db.watch_history.insert_one({
+        await db.tblWatchHistory.insert_one({
             "_id": ObjectId(),
             "user_id": test_user["_id"],
             "content_type": "movie",
@@ -26,7 +26,7 @@ class TestContinueWatching:
             "last_watched_at": "2025-01-15T10:00:00Z",
             "created_at": "2025-01-10T10:00:00Z",
         })
-        await db.watch_history.insert_one({
+        await db.tblWatchHistory.insert_one({
             "_id": ObjectId(),
             "user_id": test_user["_id"],
             "content_type": "series",
@@ -48,7 +48,7 @@ class TestContinueWatching:
         assert items[1]["tmdb_id"] == 550
 
     async def test_continue_watching_excludes_completed(self, client, auth_headers, db, test_user):
-        await db.watch_history.insert_one({
+        await db.tblWatchHistory.insert_one({
             "_id": ObjectId(),
             "user_id": test_user["_id"],
             "content_type": "movie",
@@ -62,7 +62,7 @@ class TestContinueWatching:
         assert resp.json() == []
 
     async def test_continue_watching_excludes_zero_progress(self, client, auth_headers, db, test_user):
-        await db.watch_history.insert_one({
+        await db.tblWatchHistory.insert_one({
             "_id": ObjectId(),
             "user_id": test_user["_id"],
             "content_type": "movie",
@@ -77,7 +77,7 @@ class TestContinueWatching:
 
     async def test_continue_watching_limit(self, client, auth_headers, db, test_user):
         for i in range(5):
-            await db.watch_history.insert_one({
+            await db.tblWatchHistory.insert_one({
                 "_id": ObjectId(),
                 "user_id": test_user["_id"],
                 "content_type": "movie",
@@ -105,7 +105,7 @@ class TestGetHistory:
 
     async def test_history_with_data(self, client, auth_headers, db, test_user):
         for i in range(3):
-            await db.watch_history.insert_one({
+            await db.tblWatchHistory.insert_one({
                 "_id": ObjectId(),
                 "user_id": test_user["_id"],
                 "content_type": "movie",
@@ -124,7 +124,7 @@ class TestGetHistory:
         assert items[0]["tmdb_id"] == 1002
 
     async def test_history_filter_by_content_type(self, client, auth_headers, db, test_user):
-        await db.watch_history.insert_one({
+        await db.tblWatchHistory.insert_one({
             "_id": ObjectId(),
             "user_id": test_user["_id"],
             "content_type": "movie",
@@ -133,7 +133,7 @@ class TestGetHistory:
             "completed": False,
             "last_watched_at": "2025-01-15T10:00:00Z",
         })
-        await db.watch_history.insert_one({
+        await db.tblWatchHistory.insert_one({
             "_id": ObjectId(),
             "user_id": test_user["_id"],
             "content_type": "series",
@@ -151,7 +151,7 @@ class TestGetHistory:
 
     async def test_history_pagination(self, client, auth_headers, db, test_user):
         for i in range(5):
-            await db.watch_history.insert_one({
+            await db.tblWatchHistory.insert_one({
                 "_id": ObjectId(),
                 "user_id": test_user["_id"],
                 "content_type": "movie",

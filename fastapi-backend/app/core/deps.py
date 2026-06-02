@@ -20,7 +20,7 @@ _bearer_scheme = HTTPBearer(auto_error=False)
 async def _resolve_user(payload: dict) -> dict:
     """Look up the user document in MongoDB from a decoded JWT payload."""
     db = get_database()
-    user = await db.users.find_one({"_id": ObjectId(payload["user_id"])})
+    user = await db.tblUsers.find_one({"_id": ObjectId(payload["user_id"])})
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

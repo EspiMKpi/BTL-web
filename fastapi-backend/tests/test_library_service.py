@@ -1,12 +1,12 @@
 """
-Tests for library_service — get_home_rails, get_content_by_genre, get_profile_stats, get_recent_activity.
+Tests for libraryService — get_home_rails, get_content_by_genre, get_profile_stats, get_recent_activity.
 These test the service layer directly (not through HTTP).
 """
 
 import pytest
 from bson import ObjectId
 
-from app.services.library_service import (
+from app.services.libraryService import (
     get_home_rails,
     get_content_by_genre,
     get_profile_stats,
@@ -64,7 +64,7 @@ class TestGetHomeRails:
     async def test_with_movies_and_series(self, db):
         # Seed data
         for i in range(3):
-            await db.movies.insert_one({
+            await db.tblMovies.insert_one({
                 "_id": ObjectId(),
                 "tmdb_id": 1000 + i,
                 "title": f"Movie {i}",
@@ -75,7 +75,7 @@ class TestGetHomeRails:
                 "genres": [],
                 "raw_data": {},
             })
-            await db.series.insert_one({
+            await db.tblSeries.insert_one({
                 "_id": ObjectId(),
                 "tmdb_id": 2000 + i,
                 "name": f"Series {i}",
@@ -97,7 +97,7 @@ class TestGetHomeRails:
     async def test_continue_watching_authenticated(self, db):
         """Authenticated user with watch history gets continue_watching rail."""
         user_id = str(ObjectId())
-        await db.movies.insert_one({
+        await db.tblMovies.insert_one({
             "_id": ObjectId(),
             "tmdb_id": 550,
             "title": "Fight Club",
@@ -107,7 +107,7 @@ class TestGetHomeRails:
             "genres": [],
             "raw_data": {},
         })
-        await db.watch_history.insert_one({
+        await db.tblWatchHistory.insert_one({
             "_id": ObjectId(),
             "user_id": user_id,
             "content_type": "movie",
@@ -135,7 +135,7 @@ class TestGetContentByGenre:
 
     async def test_genre_with_data(self, db):
         for i in range(3):
-            await db.movies.insert_one({
+            await db.tblMovies.insert_one({
                 "_id": ObjectId(),
                 "tmdb_id": 1000 + i,
                 "title": f"Movie {i}",
@@ -143,7 +143,7 @@ class TestGetContentByGenre:
                 "popularity": 100 - i,
                 "raw_data": {},
             })
-            await db.series.insert_one({
+            await db.tblSeries.insert_one({
                 "_id": ObjectId(),
                 "tmdb_id": 2000 + i,
                 "name": f"Series {i}",
@@ -151,8 +151,8 @@ class TestGetContentByGenre:
                 "popularity": 90 - i,
                 "raw_data": {},
             })
-            await db.movie_genres.insert_one({"tmdb_id": 1000 + i, "genre_id": 28})
-            await db.series_genres.insert_one({"tmdb_id": 2000 + i, "genre_id": 28})
+            await db.tblMovieGenres.insert_one({"tmdb_id": 1000 + i, "genre_id": 28})
+            await db.tblSeriesGenres.insert_one({"tmdb_id": 2000 + i, "genre_id": 28})
 
         result = await get_content_by_genre(28)
         assert len(result["movies"]) == 3
@@ -162,7 +162,7 @@ class TestGetContentByGenre:
 
     async def test_genre_pagination(self, db):
         for i in range(5):
-            await db.movies.insert_one({
+            await db.tblMovies.insert_one({
                 "_id": ObjectId(),
                 "tmdb_id": 1000 + i,
                 "title": f"Movie {i}",
@@ -170,7 +170,7 @@ class TestGetContentByGenre:
                 "popularity": 100 - i,
                 "raw_data": {},
             })
-            await db.movie_genres.insert_one({"tmdb_id": 1000 + i, "genre_id": 28})
+            await db.tblMovieGenres.insert_one({"tmdb_id": 1000 + i, "genre_id": 28})
 
         result = await get_content_by_genre(28, page=1, limit=2)
         assert len(result["movies"]) == 2
@@ -196,13 +196,13 @@ class TestGetProfileStats:
 
     async def test_stats_with_data(self, db):
         user_id = "user123"
-        await db.watchlist_items.insert_one({"_id": ObjectId(), "user_id": user_id, "status": "watching"})
-        await db.watchlist_items.insert_one({"_id": ObjectId(), "user_id": user_id, "status": "completed"})
-        await db.watchlist_items.insert_one({"_id": ObjectId(), "user_id": user_id, "status": "completed"})
-        await db.user_ratings.insert_one({"_id": ObjectId(), "user_id": user_id, "rating": 8.0})
-        await db.user_ratings.insert_one({"_id": ObjectId(), "user_id": user_id, "rating": 6.0})
-        await db.watch_history.insert_one({"_id": ObjectId(), "user_id": user_id})
-        await db.watch_history.insert_one({"_id": ObjectId(), "user_id": user_id})
+        await db.tblWatchlistItems.insert_one({"_id": ObjectId(), "user_id": user_id, "status": "watching"})
+        await db.tblWatchlistItems.insert_one({"_id": ObjectId(), "user_id": user_id, "status": "completed"})
+        await db.tblWatchlistItems.insert_one({"_id": ObjectId(), "user_id": user_id, "status": "completed"})
+        await db.tblUserRatings.insert_one({"_id": ObjectId(), "user_id": user_id, "rating": 8.0})
+        await db.tblUserRatings.insert_one({"_id": ObjectId(), "user_id": user_id, "rating": 6.0})
+        await db.tblWatchHistory.insert_one({"_id": ObjectId(), "user_id": user_id})
+        await db.tblWatchHistory.insert_one({"_id": ObjectId(), "user_id": user_id})
 
         stats = await get_profile_stats(user_id)
         assert stats["watchlist_count"] == 3
@@ -224,14 +224,14 @@ class TestGetRecentActivity:
 
     async def test_activity_with_data(self, db):
         user_id = "user123"
-        await db.watch_history.insert_one({
+        await db.tblWatchHistory.insert_one({
             "_id": ObjectId(),
             "user_id": user_id,
             "content_type": "movie",
             "tmdb_id": 550,
             "last_watched_at": "2025-01-15T10:00:00Z",
         })
-        await db.user_ratings.insert_one({
+        await db.tblUserRatings.insert_one({
             "_id": ObjectId(),
             "user_id": user_id,
             "content_type": "movie",
@@ -239,7 +239,7 @@ class TestGetRecentActivity:
             "rating": 8.0,
             "created_at": "2025-01-15T10:00:00Z",
         })
-        await db.watchlist_items.insert_one({
+        await db.tblWatchlistItems.insert_one({
             "_id": ObjectId(),
             "user_id": user_id,
             "content_type": "movie",

@@ -23,20 +23,20 @@ async def connect_to_mongo() -> None:
     # twice in a user's watchlist, regardless of content_type.
     # Drop old index if it exists (migrating from the old 3-field index).
     try:
-        await db.watchlist_items.drop_index("user_id_1_content_type_1_tmdb_id_1")
+        await db.tblWatchlistItems.drop_index("user_id_1_content_type_1_tmdb_id_1")
     except Exception:
         pass  # index may not exist on fresh DB
-    await db.watchlist_items.create_index(
+    await db.tblWatchlistItems.create_index(
         [("user_id", 1), ("tmdb_id", 1)],
         unique=True,
         name="unique_user_tmdb",
     )
 
-    # Genre junction collections (movie_genres / series_genres) materialise the
+    # Genre junction collections (tblMovieGenres / tblSeriesGenres) materialise the
     # n-n relationship between content and genres. Unique (tmdb_id, genre_id)
     # makes the reconcile-on-upsert idempotent; the genre_id index serves the
     # genre -> content browse direction.
-    for junction in ("movie_genres", "series_genres"):
+    for junction in ("tblMovieGenres", "tblSeriesGenres"):
         await db[junction].create_index(
             [("tmdb_id", 1), ("genre_id", 1)],
             unique=True,

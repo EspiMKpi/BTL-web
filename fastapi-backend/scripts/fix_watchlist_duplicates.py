@@ -62,17 +62,17 @@ async def main():
     db = client[settings.DB_NAME]
 
     print("=== Cleaning duplicate watchlist_items ===")
-    removed_wl = await clean_collection(db, "watchlist_items", "watchlist")
+    removed_wl = await clean_collection(db, "tblWatchlistItems", "watchlist")
     print(f"  Total watchlist items removed: {removed_wl}")
 
     print("\n=== Cleaning duplicate watch_history ===")
-    removed_hist = await clean_collection(db, "watch_history", "history")
+    removed_hist = await clean_collection(db, "tblWatchHistory", "history")
     print(f"  Total history items removed: {removed_hist}")
 
     print(f"\nGrand total removed: {removed_wl + removed_hist}")
 
     # Verify no more dupes
-    for coll_name in ["watchlist_items", "watch_history"]:
+    for coll_name in ["tblWatchlistItems", "tblWatchHistory"]:
         pipeline = [
             {"$group": {"_id": {"user_id": "$user_id", "tmdb_id": "$tmdb_id"}, "count": {"$sum": 1}}},
             {"$match": {"count": {"$gt": 1}}},

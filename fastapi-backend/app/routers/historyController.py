@@ -44,7 +44,7 @@ async def continue_watching(
         {"$limit": limit},
     ]
     items = []
-    async for doc in db.watch_history.aggregate(pipeline):
+    async for doc in db.tblWatchHistory.aggregate(pipeline):
         doc["_id"] = str(doc["_id"])
         items.append(doc)
     return items
@@ -63,7 +63,7 @@ async def get_history(
         query["content_type"] = content_type
 
     skip = (page - 1) * limit
-    cursor = db.watch_history.find(query).sort("last_watched_at", -1).skip(skip).limit(limit)
+    cursor = db.tblWatchHistory.find(query).sort("last_watched_at", -1).skip(skip).limit(limit)
     items = []
     async for doc in cursor:
         doc["_id"] = str(doc["_id"])
@@ -93,7 +93,7 @@ async def _persist_progress(user_id: str, body: ProgressUpdateRequest) -> None:
     try:
         db = get_database()
         now = datetime.utcnow()
-        await db.watch_history.find_one_and_update(
+        await db.tblWatchHistory.find_one_and_update(
             {
                 "user_id": user_id,
                 "content_type": body.content_type,
@@ -133,7 +133,7 @@ async def _persist_progress(user_id: str, body: ProgressUpdateRequest) -> None:
         if body.completed:
             watchlist_set["status"] = "completed"
 
-        await db.watchlist_items.find_one_and_update(
+        await db.tblWatchlistItems.find_one_and_update(
             {
                 "user_id": user_id,
                 "content_type": body.content_type,

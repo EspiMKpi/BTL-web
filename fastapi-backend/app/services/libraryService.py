@@ -28,7 +28,7 @@ def clear_home_cache() -> None:
 async def get_hidden_genre_ids() -> List[int]:
     """Genre IDs currently flagged is_hidden=True."""
     db = get_database()
-    cursor = db.genres.find({"is_hidden": True}, {"genre_id": 1})
+    cursor = db.tblGenres.find({"is_hidden": True}, {"genre_id": 1})
     return [doc["genre_id"] async for doc in cursor]
 
 
@@ -56,13 +56,13 @@ async def get_home_rails(user_id: Optional[str] = None, rail_limit: int = 10) ->
 
     # Fetch all rails concurrently — exclude hidden content (per-doc + hidden-genre cascade)
     hidden_filter = await public_content_filter()
-    trending_movies = await db.movies.find(hidden_filter).sort("popularity", -1).limit(rail_limit).to_list(rail_limit)
-    trending_series = await db.series.find(hidden_filter).sort("popularity", -1).limit(rail_limit).to_list(rail_limit)
-    top_rated_movies = await db.movies.find({"vote_count": {"$gte": 50}, **hidden_filter}).sort("vote_average", -1).limit(rail_limit).to_list(rail_limit)
-    top_rated_series = await db.series.find({"vote_count": {"$gte": 50}, **hidden_filter}).sort("vote_average", -1).limit(rail_limit).to_list(rail_limit)
-    new_release_movies = await db.movies.find(hidden_filter).sort("release_date", -1).limit(rail_limit).to_list(rail_limit)
-    recent_series = await db.series.find(hidden_filter).sort("first_air_date", -1).limit(rail_limit).to_list(rail_limit)
-    genres = await db.genres.find({"is_hidden": {"$ne": True}}).sort("name", 1).to_list(100)
+    trending_movies = await db.tblMovies.find(hidden_filter).sort("popularity", -1).limit(rail_limit).to_list(rail_limit)
+    trending_series = await db.tblSeries.find(hidden_filter).sort("popularity", -1).limit(rail_limit).to_list(rail_limit)
+    top_rated_movies = await db.tblMovies.find({"vote_count": {"$gte": 50}, **hidden_filter}).sort("vote_average", -1).limit(rail_limit).to_list(rail_limit)
+    top_rated_series = await db.tblSeries.find({"vote_count": {"$gte": 50}, **hidden_filter}).sort("vote_average", -1).limit(rail_limit).to_list(rail_limit)
+    new_release_movies = await db.tblMovies.find(hidden_filter).sort("release_date", -1).limit(rail_limit).to_list(rail_limit)
+    recent_series = await db.tblSeries.find(hidden_filter).sort("first_air_date", -1).limit(rail_limit).to_list(rail_limit)
+    genres = await db.tblGenres.find({"is_hidden": {"$ne": True}}).sort("name", 1).to_list(100)
 
     # Sanitize all documents (convert ObjectId, datetime, etc.)
     for doc_list in (trending_movies, trending_series, top_rated_movies, top_rated_series, new_release_movies, recent_series):
@@ -130,15 +130,15 @@ async def _build_continue_watching(
         {"$sort": {"last_watched_at": -1}},
         {"$limit": 20},
     ]
-    continue_items = await db.watch_history.aggregate(cw_pipeline).to_list(20)
+    continue_items = await db.tblWatchHistory.aggregate(cw_pipeline).to_list(20)
     if not continue_items:
         return [], []
 
     movie_ids = [h["tmdb_id"] for h in continue_items if h["content_type"] == "movie"]
     series_ids = [h["tmdb_id"] for h in continue_items if h["content_type"] == "series"]
 
-    movies = await db.movies.find({"tmdb_id": {"$in": movie_ids}, **hidden_filter}).to_list(50) if movie_ids else []
-    series_list = await db.series.find({"tmdb_id": {"$in": series_ids}, **hidden_filter}).to_list(50) if series_ids else []
+    movies = await db.tblMovies.find({"tmdb_id": {"$in": movie_ids}, **hidden_filter}).to_list(50) if movie_ids else []
+    series_list = await db.tblSeries.find({"tmdb_id": {"$in": series_ids}, **hidden_filter}).to_list(50) if series_ids else []
 
     content_map: Dict[str, dict] = {}
     for m in movies:
@@ -186,13 +186,13 @@ async def get_series_rails(rail_limit: int = 12, user_id: Optional[str] = None) 
 
     # --- Curated rails (fetch concurrently) ---
     currently_airing, completed_gems, mini_series, most_episodes, trending, top_rated, recent = await asyncio.gather(
-        db.series.find({"status": "Returning Series", **hidden_filter}).sort("popularity", -1).limit(rail_limit).to_list(rail_limit),
-        db.series.find({"status": "Ended", "vote_count": {"$gte": 20}, **hidden_filter}).sort("vote_average", -1).limit(rail_limit).to_list(rail_limit),
-        db.series.find({"number_of_seasons": 1, **hidden_filter}).sort("popularity", -1).limit(rail_limit).to_list(rail_limit),
-        db.series.find({"number_of_episodes": {"$gte": 10}, **hidden_filter}).sort("number_of_episodes", -1).limit(rail_limit).to_list(rail_limit),
-        db.series.find(hidden_filter).sort("popularity", -1).limit(rail_limit).to_list(rail_limit),
-        db.series.find({"vote_count": {"$gte": 50}, **hidden_filter}).sort("vote_average", -1).limit(rail_limit).to_list(rail_limit),
-        db.series.find(hidden_filter).sort("first_air_date", -1).limit(rail_limit).to_list(rail_limit),
+        db.tblSeries.find({"status": "Returning Series", **hidden_filter}).sort("popularity", -1).limit(rail_limit).to_list(rail_limit),
+        db.tblSeries.find({"status": "Ended", "vote_count": {"$gte": 20}, **hidden_filter}).sort("vote_average", -1).limit(rail_limit).to_list(rail_limit),
+        db.tblSeries.find({"number_of_seasons": 1, **hidden_filter}).sort("popularity", -1).limit(rail_limit).to_list(rail_limit),
+        db.tblSeries.find({"number_of_episodes": {"$gte": 10}, **hidden_filter}).sort("number_of_episodes", -1).limit(rail_limit).to_list(rail_limit),
+        db.tblSeries.find(hidden_filter).sort("popularity", -1).limit(rail_limit).to_list(rail_limit),
+        db.tblSeries.find({"vote_count": {"$gte": 50}, **hidden_filter}).sort("vote_average", -1).limit(rail_limit).to_list(rail_limit),
+        db.tblSeries.find(hidden_filter).sort("first_air_date", -1).limit(rail_limit).to_list(rail_limit),
     )
 
     # Sanitize all
@@ -248,11 +248,11 @@ async def get_movie_rails(rail_limit: int = 12, user_id: Optional[str] = None) -
 
     # --- Curated rails (fetch concurrently) ---
     trending, top_rated, new_releases, classics, highest_rated = await asyncio.gather(
-        db.movies.find(hidden_filter).sort("popularity", -1).limit(rail_limit).to_list(rail_limit),
-        db.movies.find({"vote_count": {"$gte": 50}, **hidden_filter}).sort("vote_average", -1).limit(rail_limit).to_list(rail_limit),
-        db.movies.find(hidden_filter).sort("release_date", -1).limit(rail_limit).to_list(rail_limit),
-        db.movies.find({"release_date": {"$lt": "2000"}, "vote_count": {"$gte": 30}, "vote_average": {"$gte": 7.0}, **hidden_filter}).sort("vote_average", -1).limit(rail_limit).to_list(rail_limit),
-        db.movies.find({"vote_count": {"$gte": 10}, **hidden_filter}).sort("vote_average", -1).limit(rail_limit).to_list(rail_limit),
+        db.tblMovies.find(hidden_filter).sort("popularity", -1).limit(rail_limit).to_list(rail_limit),
+        db.tblMovies.find({"vote_count": {"$gte": 50}, **hidden_filter}).sort("vote_average", -1).limit(rail_limit).to_list(rail_limit),
+        db.tblMovies.find(hidden_filter).sort("release_date", -1).limit(rail_limit).to_list(rail_limit),
+        db.tblMovies.find({"release_date": {"$lt": "2000"}, "vote_count": {"$gte": 30}, "vote_average": {"$gte": 7.0}, **hidden_filter}).sort("vote_average", -1).limit(rail_limit).to_list(rail_limit),
+        db.tblMovies.find({"vote_count": {"$gte": 10}, **hidden_filter}).sort("vote_average", -1).limit(rail_limit).to_list(rail_limit),
     )
 
     # Sanitize all
@@ -310,16 +310,16 @@ async def get_content_by_genre(genre_id: int, page: int = 1, limit: int = 20) ->
 
     # Exclude items tagged with any *other* hidden genre too (cross-tag cascade).
     other_hidden = [g for g in await get_hidden_genre_ids() if g != genre_id]
-    movie_ids = await _genre_tagged_tmdb_ids("movie_genres", genre_id, other_hidden)
-    series_ids = await _genre_tagged_tmdb_ids("series_genres", genre_id, other_hidden)
+    movie_ids = await _genre_tagged_tmdb_ids("tblMovieGenres", genre_id, other_hidden)
+    series_ids = await _genre_tagged_tmdb_ids("tblSeriesGenres", genre_id, other_hidden)
 
     movie_filter: Dict[str, Any] = {"tmdb_id": {"$in": movie_ids}, "is_hidden": {"$ne": True}}
     series_filter: Dict[str, Any] = {"tmdb_id": {"$in": series_ids}, "is_hidden": {"$ne": True}}
 
-    movies = await db.movies.find(movie_filter).sort("popularity", -1).skip(skip).limit(limit).to_list(limit)
-    series_list = await db.series.find(series_filter).sort("popularity", -1).skip(skip).limit(limit).to_list(limit)
-    movie_total = await db.movies.count_documents(movie_filter)
-    series_total = await db.series.count_documents(series_filter)
+    movies = await db.tblMovies.find(movie_filter).sort("popularity", -1).skip(skip).limit(limit).to_list(limit)
+    series_list = await db.tblSeries.find(series_filter).sort("popularity", -1).skip(skip).limit(limit).to_list(limit)
+    movie_total = await db.tblMovies.count_documents(movie_filter)
+    series_total = await db.tblSeries.count_documents(series_filter)
 
     movies = [_sanitize(d) for d in movies]
     series_list = [_sanitize(d) for d in series_list]
@@ -342,17 +342,17 @@ async def get_profile_stats(user_id: str) -> dict:
     """Profile statistics for an authenticated user."""
     db = get_database()
 
-    watchlist_count = await db.watchlist_items.count_documents({"user_id": user_id})
-    completed_count = await db.watchlist_items.count_documents({"user_id": user_id, "status": "completed"})
-    watching_count = await db.watchlist_items.count_documents({"user_id": user_id, "status": "watching"})
-    ratings_count = await db.user_ratings.count_documents({"user_id": user_id})
-    history_count = await db.watch_history.count_documents({"user_id": user_id})
+    watchlist_count = await db.tblWatchlistItems.count_documents({"user_id": user_id})
+    completed_count = await db.tblWatchlistItems.count_documents({"user_id": user_id, "status": "completed"})
+    watching_count = await db.tblWatchlistItems.count_documents({"user_id": user_id, "status": "watching"})
+    ratings_count = await db.tblUserRatings.count_documents({"user_id": user_id})
+    history_count = await db.tblWatchHistory.count_documents({"user_id": user_id})
 
     avg_pipeline = [
         {"$match": {"user_id": user_id}},
         {"$group": {"_id": None, "avg": {"$avg": "$rating"}}},
     ]
-    avg_result = await db.user_ratings.aggregate(avg_pipeline).to_list(1)
+    avg_result = await db.tblUserRatings.aggregate(avg_pipeline).to_list(1)
     avg_value = avg_result[0]["avg"] if avg_result and avg_result[0].get("avg") is not None else 0
     average_rating = round(avg_value * 10) / 10
 
@@ -370,9 +370,9 @@ async def get_recent_activity(user_id: str, limit: int = 20) -> dict:
     """Recent activity feed for profile page."""
     db = get_database()
 
-    recent_history = await db.watch_history.find({"user_id": user_id}).sort("last_watched_at", -1).limit(limit).to_list(limit)
-    recent_ratings = await db.user_ratings.find({"user_id": user_id}).sort("created_at", -1).limit(limit).to_list(limit)
-    recent_watchlist = await db.watchlist_items.find({"user_id": user_id}).sort("updated_at", -1).limit(limit).to_list(limit)
+    recent_history = await db.tblWatchHistory.find({"user_id": user_id}).sort("last_watched_at", -1).limit(limit).to_list(limit)
+    recent_ratings = await db.tblUserRatings.find({"user_id": user_id}).sort("created_at", -1).limit(limit).to_list(limit)
+    recent_watchlist = await db.tblWatchlistItems.find({"user_id": user_id}).sort("updated_at", -1).limit(limit).to_list(limit)
 
     recent_history = [_sanitize(d) for d in recent_history]
     recent_ratings = [_sanitize(d) for d in recent_ratings]

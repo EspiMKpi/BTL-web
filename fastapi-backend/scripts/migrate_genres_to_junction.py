@@ -69,17 +69,17 @@ async def main() -> None:
     db = get_database()
 
     print("Backfilling movie_genres from movies.genres[] ...")
-    m_pairs, m_unset = await backfill(db, "movies", "movie_genres")
+    m_pairs, m_unset = await backfill(db, "tblMovies", "tblMovieGenres")
     print(f"  movie_genres: {m_pairs} pairs upserted"
           + (f", {m_unset} movies unset" if UNSET_EMBEDDED else ""))
 
     print("Backfilling series_genres from series.genres[] ...")
-    s_pairs, s_unset = await backfill(db, "series", "series_genres")
+    s_pairs, s_unset = await backfill(db, "tblSeries", "tblSeriesGenres")
     print(f"  series_genres: {s_pairs} pairs upserted"
           + (f", {s_unset} series unset" if UNSET_EMBEDDED else ""))
 
-    m_total = await db.movie_genres.count_documents({})
-    s_total = await db.series_genres.count_documents({})
+    m_total = await db.tblMovieGenres.count_documents({})
+    s_total = await db.tblSeriesGenres.count_documents({})
     print(f"\nDone. movie_genres={m_total} docs, series_genres={s_total} docs.")
 
 

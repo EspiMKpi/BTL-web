@@ -31,7 +31,7 @@ async def get_comments(
         query["content_type"] = content_type
 
     skip = (page - 1) * limit
-    cursor = db.comments.find(query).sort("created_at", -1).skip(skip).limit(limit)
+    cursor = db.tblComments.find(query).sort("created_at", -1).skip(skip).limit(limit)
     comments = []
     async for doc in cursor:
         doc["_id"] = str(doc["_id"])
@@ -54,7 +54,7 @@ async def create_comment(
         "text": body.text,
         "created_at": datetime.utcnow(),
     }
-    result = await db.comments.insert_one(comment_doc)
+    result = await db.tblComments.insert_one(comment_doc)
     comment_doc["_id"] = str(result.inserted_id)
     return comment_doc
 
@@ -71,7 +71,7 @@ async def delete_comment(
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid comment ID")
 
-    comment = await db.comments.find_one({"_id": oid})
+    comment = await db.tblComments.find_one({"_id": oid})
     if not comment:
         raise HTTPException(status_code=404, detail="Comment not found")
 
@@ -80,5 +80,5 @@ async def delete_comment(
     if not is_owner and not is_admin:
         raise HTTPException(status_code=403, detail="Not authorized to delete this comment")
 
-    await db.comments.delete_one({"_id": oid})
+    await db.tblComments.delete_one({"_id": oid})
     return {"message": "Comment deleted", "comment_id": comment_id}

@@ -25,12 +25,12 @@ async def create_admin():
     db = get_database()
 
     # Check if admin already exists
-    existing = await db.users.find_one({"email": email})
+    existing = await db.tblUsers.find_one({"email": email})
     if existing:
         print(f"Admin user already exists: {email}")
         # Update to admin role if not already
         if existing.get("role") != "admin":
-            await db.users.update_one(
+            await db.tblUsers.update_one(
                 {"_id": existing["_id"]},
                 {"$set": {"role": "admin", "updated_at": datetime.utcnow()}}
             )
@@ -50,7 +50,7 @@ async def create_admin():
             "created_at": datetime.utcnow(),
             "updated_at": datetime.utcnow(),
         }
-        result = await db.users.insert_one(user_doc)
+        result = await db.tblUsers.insert_one(user_doc)
         print(f"Created admin user: {email}")
         print(f"User ID: {result.inserted_id}")
 

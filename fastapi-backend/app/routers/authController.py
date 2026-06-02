@@ -30,7 +30,7 @@ async def register(request: Request, body: RegisterRequest):
         raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
 
     db = get_database()
-    existing = await db.users.find_one({"email": body.email.lower()})
+    existing = await db.tblUsers.find_one({"email": body.email.lower()})
     if existing:
         raise HTTPException(status_code=409, detail="Email already registered")
 
@@ -45,7 +45,7 @@ async def register(request: Request, body: RegisterRequest):
         "created_at": datetime.utcnow(),
         "updated_at": datetime.utcnow(),
     }
-    result = await db.users.insert_one(user_doc)
+    result = await db.tblUsers.insert_one(user_doc)
     user_id = str(result.inserted_id)
 
     token = create_access_token(user_id, body.email)
@@ -62,7 +62,7 @@ async def login(request: Request, body: LoginRequest):
         raise HTTPException(status_code=400, detail="Email and password are required")
 
     db = get_database()
-    user = await db.users.find_one({"email": body.email.lower()})
+    user = await db.tblUsers.find_one({"email": body.email.lower()})
     if not user:
         raise HTTPException(status_code=401, detail="Invalid email or password")
 

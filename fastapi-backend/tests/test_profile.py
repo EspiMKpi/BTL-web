@@ -89,21 +89,21 @@ class TestProfileStats:
 
     async def test_stats_with_data(self, client, auth_headers, test_user, db):
         # Add watchlist items
-        await db.watchlist_items.insert_one({
+        await db.tblWatchlistItems.insert_one({
             "_id": ObjectId(),
             "user_id": test_user["_id"],
             "content_type": "movie",
             "tmdb_id": 550,
             "status": "watching",
         })
-        await db.watchlist_items.insert_one({
+        await db.tblWatchlistItems.insert_one({
             "_id": ObjectId(),
             "user_id": test_user["_id"],
             "content_type": "movie",
             "tmdb_id": 680,
             "status": "completed",
         })
-        await db.watchlist_items.insert_one({
+        await db.tblWatchlistItems.insert_one({
             "_id": ObjectId(),
             "user_id": test_user["_id"],
             "content_type": "series",
@@ -112,14 +112,14 @@ class TestProfileStats:
         })
 
         # Add ratings
-        await db.user_ratings.insert_one({
+        await db.tblUserRatings.insert_one({
             "_id": ObjectId(),
             "user_id": test_user["_id"],
             "content_type": "movie",
             "tmdb_id": 550,
             "rating": 8.0,
         })
-        await db.user_ratings.insert_one({
+        await db.tblUserRatings.insert_one({
             "_id": ObjectId(),
             "user_id": test_user["_id"],
             "content_type": "movie",
@@ -128,7 +128,7 @@ class TestProfileStats:
         })
 
         # Add history
-        await db.watch_history.insert_one({
+        await db.tblWatchHistory.insert_one({
             "_id": ObjectId(),
             "user_id": test_user["_id"],
             "content_type": "movie",
@@ -163,7 +163,7 @@ class TestRecentActivity:
         assert body["recent_watchlist"] == []
 
     async def test_recent_activity_with_data(self, client, auth_headers, test_user, db):
-        await db.watch_history.insert_one({
+        await db.tblWatchHistory.insert_one({
             "_id": ObjectId(),
             "user_id": test_user["_id"],
             "content_type": "movie",
@@ -171,7 +171,7 @@ class TestRecentActivity:
             "progress_seconds": 1200,
             "last_watched_at": "2025-01-15T10:00:00Z",
         })
-        await db.user_ratings.insert_one({
+        await db.tblUserRatings.insert_one({
             "_id": ObjectId(),
             "user_id": test_user["_id"],
             "content_type": "movie",
@@ -179,7 +179,7 @@ class TestRecentActivity:
             "rating": 8.5,
             "created_at": "2025-01-15T10:00:00Z",
         })
-        await db.watchlist_items.insert_one({
+        await db.tblWatchlistItems.insert_one({
             "_id": ObjectId(),
             "user_id": test_user["_id"],
             "content_type": "movie",
@@ -197,7 +197,7 @@ class TestRecentActivity:
 
     async def test_recent_activity_limit(self, client, auth_headers, test_user, db):
         for i in range(5):
-            await db.watch_history.insert_one({
+            await db.tblWatchHistory.insert_one({
                 "_id": ObjectId(),
                 "user_id": test_user["_id"],
                 "content_type": "movie",

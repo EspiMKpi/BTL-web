@@ -30,7 +30,7 @@ def escape_mongo_regex(value: str) -> str:
 
 
 # ─── Document-type detection helpers ──────────────────────────────────
-# Used by movie_service, series_service, library_service, and content router
+# Used by movieService, seriesService, libraryService, and content router
 # to reject documents that ended up in the wrong MongoDB collection.
 
 def is_movie_doc(doc: dict) -> bool:

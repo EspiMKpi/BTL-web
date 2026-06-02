@@ -56,7 +56,7 @@ async def test_user(db):
         "created_at": "2025-01-01T00:00:00Z",
         "updated_at": "2025-01-01T00:00:00Z",
     }
-    await db.users.insert_one(user_doc)
+    await db.tblUsers.insert_one(user_doc)
     user_doc["_id"] = str(user_doc["_id"])
     return user_doc
 

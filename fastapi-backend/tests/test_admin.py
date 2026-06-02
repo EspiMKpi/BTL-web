@@ -6,7 +6,7 @@ import pytest
 from bson import ObjectId
 
 from app.core.security import create_access_token
-from app.services.library_service import clear_home_cache
+from app.services.libraryService import clear_home_cache
 
 
 @pytest.fixture(autouse=True)
@@ -28,7 +28,7 @@ async def admin_user(db):
         "role": "admin",
         "is_active": True,
     }
-    await db.users.insert_one(user_doc)
+    await db.tblUsers.insert_one(user_doc)
     user_doc["_id"] = str(user_doc["_id"])
     return user_doc
 
@@ -47,7 +47,7 @@ async def seeded_genres(db):
         {"_id": ObjectId(), "genre_id": 35, "name": "Comedy"},  # no is_hidden = visible
         {"_id": ObjectId(), "genre_id": 27, "name": "Horror", "is_hidden": True},
     ]
-    await db.genres.insert_many(docs)
+    await db.tblGenres.insert_many(docs)
     return docs
 
 
@@ -91,7 +91,7 @@ class TestToggleGenreVisibility:
         )
         assert resp.status_code == 200
         assert resp.json()["is_hidden"] is True
-        doc = await db.genres.find_one({"genre_id": 28})
+        doc = await db.tblGenres.find_one({"genre_id": 28})
         assert doc["is_hidden"] is True
 
     async def test_admin_can_unhide_genre(
@@ -104,7 +104,7 @@ class TestToggleGenreVisibility:
         )
         assert resp.status_code == 200
         assert resp.json()["is_hidden"] is False
-        doc = await db.genres.find_one({"genre_id": 27})
+        doc = await db.tblGenres.find_one({"genre_id": 27})
         assert doc["is_hidden"] is False
 
     async def test_unknown_genre_returns_404(
@@ -197,11 +197,11 @@ async def seeded_movies_with_genres(db, seeded_genres):
             "raw_data": {"id": 1003},
         },
     ]
-    await db.movies.insert_many(docs)
+    await db.tblMovies.insert_many(docs)
     # Mirror embedded genres[] into the junction (browse resolves genre membership there).
     for doc in docs:
         for g in doc["genres"]:
-            await db.movie_genres.insert_one({"tmdb_id": doc["tmdb_id"], "genre_id": g["genre_id"]})
+            await db.tblMovieGenres.insert_one({"tmdb_id": doc["tmdb_id"], "genre_id": g["genre_id"]})
     return docs
 
 
@@ -260,10 +260,10 @@ class TestCacheInvalidation:
         self, client, admin_headers, db
     ):
         # Seed a genre + movie
-        await db.genres.insert_one(
+        await db.tblGenres.insert_one(
             {"_id": ObjectId(), "genre_id": 99, "name": "Test", "is_hidden": False}
         )
-        await db.movies.insert_one({
+        await db.tblMovies.insert_one({
             "_id": ObjectId(),
             "tmdb_id": 5001,
             "title": "Test Movie",

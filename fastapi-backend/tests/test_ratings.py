@@ -19,7 +19,7 @@ class TestGetRatings:
 
     async def test_get_ratings_with_data(self, client, db, test_user):
         # Seed ratings
-        await db.user_ratings.insert_one({
+        await db.tblUserRatings.insert_one({
             "_id": ObjectId(),
             "user_id": test_user["_id"],
             "content_type": "movie",
@@ -28,7 +28,7 @@ class TestGetRatings:
             "review": "Great movie!",
             "created_at": "2025-01-15T10:00:00Z",
         })
-        await db.user_ratings.insert_one({
+        await db.tblUserRatings.insert_one({
             "_id": ObjectId(),
             "user_id": str(ObjectId()),
             "content_type": "movie",
@@ -45,7 +45,7 @@ class TestGetRatings:
         assert body["stats"]["average"] == 7.8  # (8.5 + 7.0) / 2 = 7.75 → rounded to 7.8
 
     async def test_get_ratings_filter_by_content_type(self, client, db, test_user):
-        await db.user_ratings.insert_one({
+        await db.tblUserRatings.insert_one({
             "_id": ObjectId(),
             "user_id": test_user["_id"],
             "content_type": "movie",
@@ -53,7 +53,7 @@ class TestGetRatings:
             "rating": 8.0,
             "created_at": "2025-01-15T10:00:00Z",
         })
-        await db.user_ratings.insert_one({
+        await db.tblUserRatings.insert_one({
             "_id": ObjectId(),
             "user_id": test_user["_id"],
             "content_type": "series",
@@ -82,7 +82,7 @@ class TestGetMyRatings:
         assert resp.json() == []
 
     async def test_my_ratings_with_data(self, client, auth_headers, db, test_user):
-        await db.user_ratings.insert_one({
+        await db.tblUserRatings.insert_one({
             "_id": ObjectId(),
             "user_id": test_user["_id"],
             "content_type": "movie",
@@ -91,7 +91,7 @@ class TestGetMyRatings:
             "review": "Great!",
             "created_at": "2025-01-15T10:00:00Z",
         })
-        await db.user_ratings.insert_one({
+        await db.tblUserRatings.insert_one({
             "_id": ObjectId(),
             "user_id": test_user["_id"],
             "content_type": "series",
@@ -106,7 +106,7 @@ class TestGetMyRatings:
         assert len(items) == 2
 
     async def test_my_ratings_filter(self, client, auth_headers, db, test_user):
-        await db.user_ratings.insert_one({
+        await db.tblUserRatings.insert_one({
             "_id": ObjectId(),
             "user_id": test_user["_id"],
             "content_type": "movie",
@@ -114,7 +114,7 @@ class TestGetMyRatings:
             "rating": 8.5,
             "created_at": "2025-01-15T10:00:00Z",
         })
-        await db.user_ratings.insert_one({
+        await db.tblUserRatings.insert_one({
             "_id": ObjectId(),
             "user_id": test_user["_id"],
             "content_type": "series",

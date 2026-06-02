@@ -16,8 +16,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.core.config import settings
 from app.database import connect_to_mongo
-from app.services.movie_service import get_movie_by_id
-from app.services.series_service import get_series_by_id
+from app.services.movieService import get_movie_by_id
+from app.services.seriesService import get_series_by_id
 
 TMDB_BASE = "https://api.themoviedb.org/3"
 PAGES = 5

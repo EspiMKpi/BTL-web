@@ -22,7 +22,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 async def main():
     client = AsyncIOMotorClient(settings.MONGODB_URI)
     db = client[settings.DB_NAME]
-    collection = db["watchlist_items"]
+    collection = db["tblWatchlistItems"]
 
     print("=" * 60)
     print("Watchlist Duplicate Checker")

@@ -241,7 +241,7 @@ class TestWatchlistIsolation:
         # Create another user
         from app.core.security import hash_password, create_access_token
         other_user_id = str(ObjectId())
-        await db.users.insert_one({
+        await db.tblUsers.insert_one({
             "_id": ObjectId(other_user_id),
             "email": "other@vozflix.com",
             "password": hash_password("Other1234!"),

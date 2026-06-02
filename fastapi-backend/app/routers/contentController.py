@@ -12,7 +12,7 @@ from pydantic import BaseModel
 
 from app.core.deps import get_optional_current_user
 from app.database import get_database
-from app.services.library_service import (
+from app.services.libraryService import (
     get_content_by_genre,
     get_hidden_genre_ids,
     get_home_rails,
@@ -20,8 +20,8 @@ from app.services.library_service import (
     get_series_rails,
     public_content_filter,
 )
-from app.services.movie_service import get_movie_by_id
-from app.services.series_service import get_series_by_id
+from app.services.movieService import get_movie_by_id
+from app.services.seriesService import get_series_by_id
 from app.utils import escape_mongo_regex, is_movie_doc, is_series_doc, sanitize
 
 
@@ -60,7 +60,7 @@ async def movie_rails(
 @router.get("/genres")
 async def list_genres():
     db = get_database()
-    cursor = db.genres.find({"is_hidden": {"$ne": True}}).sort("name", 1)
+    cursor = db.tblGenres.find({"is_hidden": {"$ne": True}}).sort("name", 1)
     genres = []
     async for doc in cursor:
         genres.append(sanitize(doc))
@@ -74,7 +74,7 @@ async def browse_genre(
     limit: int = Query(20, ge=1, le=100),
 ):
     db = get_database()
-    genre = await db.genres.find_one({"genre_id": genre_id})
+    genre = await db.tblGenres.find_one({"genre_id": genre_id})
     if genre and genre.get("is_hidden"):
         raise HTTPException(status_code=404, detail="Genre not found")
     return await get_content_by_genre(genre_id, page, limit)
@@ -92,11 +92,11 @@ async def search_content(
     public_filter = await public_content_filter()
 
     # Search both movies and series
-    movie_cursor = db.movies.find(
+    movie_cursor = db.tblMovies.find(
         {"title": {"$regex": escaped, "$options": "i"}, **public_filter},
         {"tmdb_id": 1, "title": 1, "name": 1, "poster_path": 1, "backdrop_path": 1, "vote_average": 1, "release_date": 1, "first_air_date": 1, "overview": 1, "seasons": 1, "number_of_seasons": 1},
     ).skip(skip).limit(limit)
-    series_cursor = db.series.find(
+    series_cursor = db.tblSeries.find(
         {"name": {"$regex": escaped, "$options": "i"}, **public_filter},
         {"tmdb_id": 1, "name": 1, "title": 1, "poster_path": 1, "backdrop_path": 1, "vote_average": 1, "first_air_date": 1, "release_date": 1, "overview": 1},
     ).skip(skip).limit(limit)
@@ -163,10 +163,10 @@ async def content_batch(body: BatchRequest):
     }
 
     movies: dict[int, dict] = {}
-    async for doc in db.movies.find({"tmdb_id": {"$in": ids}}, projection):
+    async for doc in db.tblMovies.find({"tmdb_id": {"$in": ids}}, projection):
         movies[doc["tmdb_id"]] = sanitize(doc)
     series: dict[int, dict] = {}
-    async for doc in db.series.find({"tmdb_id": {"$in": ids}}, projection):
+    async for doc in db.tblSeries.find({"tmdb_id": {"$in": ids}}, projection):
         series[doc["tmdb_id"]] = sanitize(doc)
 
     results = []
@@ -198,9 +198,9 @@ async def content_stats():
     """Return global content counts from the database."""
     db = get_database()
     movie_count, series_count, genre_count = await asyncio.gather(
-        db.movies.count_documents({}),
-        db.series.count_documents({}),
-        db.genres.count_documents({}),
+        db.tblMovies.count_documents({}),
+        db.tblSeries.count_documents({}),
+        db.tblGenres.count_documents({}),
     )
     return {
         "movie_count": movie_count,

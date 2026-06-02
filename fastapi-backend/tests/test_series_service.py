@@ -1,12 +1,12 @@
 """
-Tests for series_service — get_series_by_id, get_series_by_ids.
+Tests for seriesService — get_series_by_id, get_series_by_ids.
 """
 
 import pytest
 from bson import ObjectId
 from unittest.mock import AsyncMock, patch, MagicMock
 
-from app.services.series_service import get_series_by_id, get_series_by_ids
+from app.services.seriesService import get_series_by_id, get_series_by_ids
 
 
 # ── get_series_by_id ──────────────────────────────────────────────────────
@@ -26,7 +26,7 @@ class TestGetSeriesById:
             "seasons": [{"season_number": 1, "name": "Season 1", "episodes": []}],
             "raw_data": {"id": 1399},
         }
-        await db.series.insert_one(doc)
+        await db.tblSeries.insert_one(doc)
 
         result = await get_series_by_id(1399)
         assert result["tmdb_id"] == 1399
@@ -142,7 +142,7 @@ class TestGetSeriesById:
                 return mock_season_resp
             return mock_main_resp
 
-        with patch("app.services.series_service.httpx.AsyncClient") as mock_client:
+        with patch("app.services.seriesService.httpx.AsyncClient") as mock_client:
             mock_instance = AsyncMock()
             mock_instance.__aenter__ = AsyncMock(return_value=mock_instance)
             mock_instance.__aexit__ = AsyncMock(return_value=False)
@@ -168,12 +168,12 @@ class TestGetSeriesById:
         assert isinstance(result["_id"], str)
 
         # Verify upserted into MongoDB
-        stored = await db.series.find_one({"tmdb_id": 1399})
+        stored = await db.tblSeries.find_one({"tmdb_id": 1399})
         assert stored is not None
         assert stored["name"] == "Game of Thrones"
 
         # Verify the series_genres junction was reconciled (one row per genre)
-        junction = await db.series_genres.find({"tmdb_id": 1399}).to_list(None)
+        junction = await db.tblSeriesGenres.find({"tmdb_id": 1399}).to_list(None)
         assert {j["genre_id"] for j in junction} == {10765, 18}
 
 
@@ -182,7 +182,7 @@ class TestGetSeriesById:
 class TestGetSeriesByIds:
     async def test_multiple_series(self, db):
         for i in range(3):
-            await db.series.insert_one({
+            await db.tblSeries.insert_one({
                 "_id": ObjectId(),
                 "tmdb_id": 2000 + i,
                 "name": f"Series {i}",
@@ -194,7 +194,7 @@ class TestGetSeriesByIds:
             assert isinstance(doc["_id"], str)
 
     async def test_partial_match(self, db):
-        await db.series.insert_one({"_id": ObjectId(), "tmdb_id": 2000, "name": "Series 0"})
+        await db.tblSeries.insert_one({"_id": ObjectId(), "tmdb_id": 2000, "name": "Series 0"})
 
         result = await get_series_by_ids([2000, 9999])
         assert len(result) == 1

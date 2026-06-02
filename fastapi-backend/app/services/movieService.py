@@ -17,7 +17,7 @@ async def get_movie_by_id(tmdb_id: int) -> dict:
     """Fetch a movie by TMDB ID. Checks MongoDB first, then falls back to TMDB API."""
     db = get_database()
 
-    existing = await db.movies.find_one({"tmdb_id": tmdb_id})
+    existing = await db.tblMovies.find_one({"tmdb_id": tmdb_id})
     if existing and existing.get("raw_data") and existing.get("title"):
         # Guard: reject series documents that ended up in the movies collection
         if not is_movie_doc(existing):
@@ -37,7 +37,7 @@ async def get_movie_by_id(tmdb_id: int) -> dict:
 
     # Upsert genres
     for genre in data.get("genres", []):
-        await db.genres.update_one(
+        await db.tblGenres.update_one(
             {"genre_id": genre["id"]},
             {"$set": {"name": genre["name"]}},
             upsert=True,
@@ -46,9 +46,9 @@ async def get_movie_by_id(tmdb_id: int) -> dict:
     # Reconcile the movie_genres junction (canonical n-n store). Derived from the
     # same data["genres"] used for the embedded array below, so the two never drift.
     genre_ids = [g["id"] for g in data.get("genres", [])]
-    await db.movie_genres.delete_many({"tmdb_id": data["id"]})
+    await db.tblMovieGenres.delete_many({"tmdb_id": data["id"]})
     if genre_ids:
-        await db.movie_genres.insert_many(
+        await db.tblMovieGenres.insert_many(
             [{"tmdb_id": data["id"], "genre_id": gid} for gid in genre_ids],
             ordered=False,
         )
@@ -105,7 +105,7 @@ async def get_movie_by_id(tmdb_id: int) -> dict:
         "updated_at": datetime.utcnow(),
     }
 
-    result = await db.movies.find_one_and_update(
+    result = await db.tblMovies.find_one_and_update(
         {"tmdb_id": data["id"]},
         {
             "$set": movie_doc,
@@ -119,7 +119,7 @@ async def get_movie_by_id(tmdb_id: int) -> dict:
 
 async def get_movies_by_ids(tmdb_ids: List[int]) -> List[dict]:
     db = get_database()
-    cursor = db.movies.find({"tmdb_id": {"$in": tmdb_ids}})
+    cursor = db.tblMovies.find({"tmdb_id": {"$in": tmdb_ids}})
     docs = []
     async for doc in cursor:
         docs.append(_sanitize(doc))
