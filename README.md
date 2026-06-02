@@ -121,6 +121,21 @@ cd fastapi-backend
 # uvicorn app.main:app --host 0.0.0.0 --port 8000                   # Linux/macOS
 ```
 
+### Database Migrations
+
+MongoDB collections use a `tbl` prefix (e.g. `tblMovies`, `tblWatchHistory`). If you have an **existing** database that predates this convention, rename its collections once:
+
+```bash
+cd fastapi-backend
+.venv\Scripts\python scripts/rename_collections_to_tbl.py   # idempotent & safe to re-run
+```
+
+- **Shared database (one Atlas cluster):** run it **once** for the whole team — afterwards everyone just pulls the renamed code. Re-running is a no-op.
+- **Per-developer databases:** each developer runs it once against their own DB after pulling.
+- **Fresh DB / re-seed:** not needed — `seed_tmdb.py` and on-demand TMDB fetches create the `tbl*` collections directly.
+
+> The renamed application code and the renamed collections must match in any given environment: code on the new names against a DB still on the old names shows empty content (and vice versa).
+
 ## 📡 API Endpoints
 
 ### Authentication
@@ -215,17 +230,18 @@ BTL-web/
 │       └── tailwind.css         # Tailwind entry
 │
 ├── public/
-│   └── pages/                   # HTML page fragments (served raw)
-│       ├── discover.html
-│       ├── movies.html
-│       ├── series.html
-│       ├── detail.html
-│       ├── watching.html
-│       ├── watchlists.html
-│       ├── profile.html
-│       ├── admin.html           # Admin panel (movies / comments / users / genres)
-│       ├── login.html
-│       └── register.html
+│   └── pages/                   # HTML page fragments (served raw; *Page.html)
+│       ├── landingPage.html
+│       ├── discoverPage.html
+│       ├── moviesPage.html
+│       ├── seriesPage.html
+│       ├── detailPage.html
+│       ├── watchingPage.html
+│       ├── watchlistsPage.html
+│       ├── profilePage.html
+│       ├── adminPage.html       # Admin panel (movies / comments / users / genres)
+│       ├── loginPage.html
+│       └── registerPage.html
 │
 └── fastapi-backend/             # Python/FastAPI backend
     ├── .env                     # Environment variables
@@ -234,7 +250,9 @@ BTL-web/
     ├── run.sh / run.bat         # Startup scripts
     ├── scripts/
     │   ├── seed_tmdb.py         # One-time seed of popular movies + TV from TMDB
-    │   └── create_admin.py      # Create / promote the admin user
+    │   ├── create_admin.py      # Create / promote the admin user
+    │   ├── migrate_genres_to_junction.py   # Backfill genre junction collections
+    │   └── rename_collections_to_tbl.py    # One-off: rename collections to tbl* (see Database Migrations)
     ├── tests/
     │   ├── conftest.py          # Shared fixtures (mongomock, httpx)
     │   ├── test_auth.py         # Auth endpoint tests
@@ -259,25 +277,26 @@ BTL-web/
         │   └── deps.py          # get_current_user / get_admin_user dependencies
         ├── models/
         │   └── schemas.py       # Pydantic request/response models
-        ├── routers/
-        │   ├── auth.py          # Register, login, me (rate-limited)
-        │   ├── content.py       # Home rails, genres, browse, search, details
-        │   ├── movies.py        # Legacy movie route
-        │   ├── watchlist.py     # Watchlist CRUD
-        │   ├── history.py       # Watch history & progress (background tasks)
-        │   ├── ratings.py       # User ratings
-        │   ├── comments.py      # Comments CRUD
-        │   ├── admin.py         # Admin: users, movies, genres, comments
-        │   └── profile.py       # Profile & stats
-        └── services/
-            ├── movie_service.py     # Movie fetch (MongoDB → TMDB → upsert)
-            ├── series_service.py    # Series fetch with season/episode data
-            └── library_service.py   # Home rails (cached), genre browse, profile stats
+        ├── routers/             # HTTP layer (*Controller.py)
+        │   ├── authController.py        # Register, login, me (rate-limited)
+        │   ├── contentController.py     # Home rails, genres, browse, search, details
+        │   ├── watchlistController.py   # Watchlist CRUD
+        │   ├── historyController.py     # Watch history & progress (background tasks)
+        │   ├── ratingsController.py     # User ratings
+        │   ├── commentsController.py    # Comments CRUD
+        │   ├── adminController.py       # Admin: users, movies, genres, comments
+        │   └── profileController.py     # Profile & stats
+        └── services/            # Data logic (*Service.py)
+            ├── movieService.py      # Movie fetch (MongoDB → TMDB → upsert)
+            ├── seriesService.py     # Series fetch with season/episode data
+            └── libraryService.py    # Home rails (cached), genre browse, profile stats
 ```
 
 ## 🗄️ Database Schema
 
-The MongoDB database uses an **embedded document model** for content and **reference model** for user activity:
+The MongoDB database uses an **embedded document model** for content and **reference model** for user activity.
+
+> **Collection names** carry a `tbl` prefix (camelCase): `tblMovies`, `tblSeries`, `tblGenres`, `tblUsers`, `tblUserRatings`, `tblWatchHistory`, `tblWatchlistItems`, `tblComments`, plus the genre junction collections `tblMovieGenres` / `tblSeriesGenres`. The entity names in the diagram below are conceptual.
 
 ```
 ┌─────────────┐     ┌──────────────────┐     ┌─────────────┐
@@ -346,7 +365,7 @@ cd fastapi-backend
 # Open htmlcov/index.html in browser
 ```
 
-**151 tests** across 14 test files (minimum 60% coverage enforced in `pyproject.toml`).
+**156 passing tests** (+2 skipped) across 14 test files (minimum 60% coverage enforced in `pyproject.toml`; currently ~79%).
 
 | Test File | What it Covers |
 |-----------|---------------|
@@ -402,7 +421,7 @@ async def seed():
     await connect_to_mongo()
     db = get_database()
     # Genres will be populated when movies are first fetched
-    count = await db.genres.count_documents({})
+    count = await db.tblGenres.count_documents({})
     print(f'Genres in DB: {count}')
     await close_mongo_connection()
 asyncio.run(seed())
@@ -463,7 +482,11 @@ During development, Vite proxies all `/api/*` requests to the FastAPI backend on
 
 | Scope | Convention | Example |
 |-------|-----------|---------|
-| Backend TS variables/functions | `snake_case` | `get_movie_by_id`, `movies_collection` |
+| Backend Python variables/functions | `snake_case` | `get_movie_by_id`, `hidden_filter` |
+| Backend router files | camelCase + `Controller` | `adminController.py` |
+| Backend service files | camelCase + `Service` | `movieService.py` |
+| MongoDB collections | `tbl` + PascalCase | `tblMovies`, `tblUserRatings` |
+| Frontend page fragments | camelCase + `Page` | `discoverPage.html` |
 | Frontend JS | `camelCase` | `switchPage`, `fetchUser` |
 | CSS classes | `kebab-case` | `movie-card`, `nav-links` |
 
