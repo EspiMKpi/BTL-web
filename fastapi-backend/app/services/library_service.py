@@ -288,30 +288,38 @@ async def get_movie_rails(rail_limit: int = 12, user_id: Optional[str] = None) -
     return _sanitize({"rails": rails})
 
 
+async def _genre_tagged_tmdb_ids(junction: str, genre_id: int, other_hidden: List[int]) -> List[int]:
+    """tmdb_ids tagged with `genre_id` in the junction, minus any also tagged with a
+    hidden genre (cross-tag cascade). Uses find()+set for mongomock compatibility."""
+    db = get_database()
+    tagged = {d["tmdb_id"] async for d in db[junction].find({"genre_id": genre_id}, {"tmdb_id": 1, "_id": 0})}
+    if other_hidden and tagged:
+        excluded = {
+            d["tmdb_id"]
+            async for d in db[junction].find({"genre_id": {"$in": other_hidden}}, {"tmdb_id": 1, "_id": 0})
+        }
+        tagged -= excluded
+    return list(tagged)
+
+
 async def get_content_by_genre(genre_id: int, page: int = 1, limit: int = 20) -> dict:
-    """Genre-filtered browse page data."""
+    """Genre-filtered browse page data. Membership is resolved through the
+    movie_genres / series_genres junction collections (the canonical n-n store)."""
     db = get_database()
     skip = (page - 1) * limit
 
     # Exclude items tagged with any *other* hidden genre too (cross-tag cascade).
     other_hidden = [g for g in await get_hidden_genre_ids() if g != genre_id]
-    genre_filter: Dict[str, Any] = {
-        "genres.genre_id": genre_id,
-        "is_hidden": {"$ne": True},
-    }
-    if other_hidden:
-        genre_filter = {
-            "$and": [
-                {"genres.genre_id": genre_id},
-                {"genres.genre_id": {"$nin": other_hidden}},
-                {"is_hidden": {"$ne": True}},
-            ]
-        }
+    movie_ids = await _genre_tagged_tmdb_ids("movie_genres", genre_id, other_hidden)
+    series_ids = await _genre_tagged_tmdb_ids("series_genres", genre_id, other_hidden)
 
-    movies = await db.movies.find(genre_filter).sort("popularity", -1).skip(skip).limit(limit).to_list(limit)
-    series_list = await db.series.find(genre_filter).sort("popularity", -1).skip(skip).limit(limit).to_list(limit)
-    movie_total = await db.movies.count_documents(genre_filter)
-    series_total = await db.series.count_documents(genre_filter)
+    movie_filter: Dict[str, Any] = {"tmdb_id": {"$in": movie_ids}, "is_hidden": {"$ne": True}}
+    series_filter: Dict[str, Any] = {"tmdb_id": {"$in": series_ids}, "is_hidden": {"$ne": True}}
+
+    movies = await db.movies.find(movie_filter).sort("popularity", -1).skip(skip).limit(limit).to_list(limit)
+    series_list = await db.series.find(series_filter).sort("popularity", -1).skip(skip).limit(limit).to_list(limit)
+    movie_total = await db.movies.count_documents(movie_filter)
+    series_total = await db.series.count_documents(series_filter)
 
     movies = [_sanitize(d) for d in movies]
     series_list = [_sanitize(d) for d in series_list]

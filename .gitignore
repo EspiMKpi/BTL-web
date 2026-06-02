@@ -49,3 +49,63 @@ ADMIN_FEATURES_CHANGES.md
 IMPLEMENTATION.md
 README_CHANGES.md
 plan.txt
+
+# ===== Machine Learning =====
+# Trained model weights / serialized artifacts
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.onnx
+*.pb
+*.tflite
+*.h5
+*.hdf5
+*.pkl
+*.pickle
+*.joblib
+*.sav
+*.model
+*.weights
+*.bin
+*.pmml
+
+# NumPy / tensor dumps
+*.npy
+*.npz
+
+# Recommender / generated model + data artifacts
+fastapi-backend/data/
+
+# Jupyter notebooks & checkpoints
+*.ipynb
+.ipynb_checkpoints/
+
+# Datasets
+*.csv
+*.tsv
+*.parquet
+*.feather
+
+# Experiment tracking / ML run outputs
+mlruns/
+wandb/
+checkpoints/
+runs/
+.cache/
+
+# ===== Playwright =====
+.playwright-mcp/
+playwright-report/
+playwright/.cache/
+test-results/
+blob-report/
+.last-run.json
+
+# CNPM documentation skill / generated output folder
+cnpm/.claude/
+cnpm/docs/
+.claude/skills/cnpm/
+
+# Generated coursework / UP documentation
+docs/

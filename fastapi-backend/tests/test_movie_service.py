@@ -112,6 +112,10 @@ class TestGetMovieById:
         assert genre is not None
         assert genre["name"] == "Drama"
 
+        # Verify the movie_genres junction was reconciled (one row per genre)
+        junction = await db.movie_genres.find({"tmdb_id": 550}).to_list(None)
+        assert {j["genre_id"] for j in junction} == {18, 53}
+
 
 # ── get_movies_by_ids ─────────────────────────────────────────────────────
 

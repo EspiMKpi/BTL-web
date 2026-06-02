@@ -32,6 +32,18 @@ async def connect_to_mongo() -> None:
         name="unique_user_tmdb",
     )
 
+    # Genre junction collections (movie_genres / series_genres) materialise the
+    # n-n relationship between content and genres. Unique (tmdb_id, genre_id)
+    # makes the reconcile-on-upsert idempotent; the genre_id index serves the
+    # genre -> content browse direction.
+    for junction in ("movie_genres", "series_genres"):
+        await db[junction].create_index(
+            [("tmdb_id", 1), ("genre_id", 1)],
+            unique=True,
+            name="uniq_tmdb_genre",
+        )
+        await db[junction].create_index([("genre_id", 1)], name="by_genre")
+
 
 async def close_mongo_connection() -> None:
     """Call at shutdown."""

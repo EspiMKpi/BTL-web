@@ -8,6 +8,13 @@ from bson import ObjectId
 
 # ── Helpers ───────────────────────────────────────────────────────────────
 
+async def _seed_junction(db, junction, doc):
+    """Mirror a content doc's embedded genres[] into its genre junction collection,
+    matching what movie_service / series_service do on upsert."""
+    for g in doc.get("genres") or []:
+        await db[junction].insert_one({"tmdb_id": doc["tmdb_id"], "genre_id": g["genre_id"]})
+
+
 async def _seed_movies(db, count=3):
     """Insert sample movies into the mock DB."""
     docs = []
@@ -29,6 +36,7 @@ async def _seed_movies(db, count=3):
             "raw_data": {"id": 1000 + i},
         }
         await db.movies.insert_one(doc)
+        await _seed_junction(db, "movie_genres", doc)
         docs.append(doc)
     return docs
 
@@ -55,6 +63,7 @@ async def _seed_series(db, count=3):
             "raw_data": {"id": 2000 + i},
         }
         await db.series.insert_one(doc)
+        await _seed_junction(db, "series_genres", doc)
         docs.append(doc)
     return docs
 

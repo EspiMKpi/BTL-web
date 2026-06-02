@@ -43,6 +43,16 @@ async def get_movie_by_id(tmdb_id: int) -> dict:
             upsert=True,
         )
 
+    # Reconcile the movie_genres junction (canonical n-n store). Derived from the
+    # same data["genres"] used for the embedded array below, so the two never drift.
+    genre_ids = [g["id"] for g in data.get("genres", [])]
+    await db.movie_genres.delete_many({"tmdb_id": data["id"]})
+    if genre_ids:
+        await db.movie_genres.insert_many(
+            [{"tmdb_id": data["id"], "genre_id": gid} for gid in genre_ids],
+            ordered=False,
+        )
+
     credits = data.get("credits", {})
     cast = [
         {

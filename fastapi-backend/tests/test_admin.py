@@ -198,6 +198,10 @@ async def seeded_movies_with_genres(db, seeded_genres):
         },
     ]
     await db.movies.insert_many(docs)
+    # Mirror embedded genres[] into the junction (browse resolves genre membership there).
+    for doc in docs:
+        for g in doc["genres"]:
+            await db.movie_genres.insert_one({"tmdb_id": doc["tmdb_id"], "genre_id": g["genre_id"]})
     return docs
 
 

@@ -450,6 +450,7 @@ Alpine.data('landingPage', () => ({
 
     goToLogin() { switchPage('login'); },
     goToRegister() { switchPage('register'); },
+    goToDiscover() { switchPage('discover'); },
 
     posterUrl(path) { return _posterUrl(path, 'w342'); },
     getTitle(item) { return _getTitle(item); },
@@ -1136,6 +1137,7 @@ Alpine.data('detailPage', () => ({
 
     /** Open the player, resuming the last-watched episode for series when known. */
     watchNow() {
+        if (!Alpine.store('auth').isLoggedIn) { switchPage('login'); return; }
         const contentId = this.content?.tmdb_id;
         if (!contentId) return;
         if (this.contentType !== 'series') {
@@ -2084,7 +2086,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         targetPage = fromHash.pageId;
         targetParams = fromHash.params;
         // Gate auth-only / auth-form pages by login state.
-        if (!isLoggedIn && ['watchlists', 'profile', 'admin'].includes(targetPage)) {
+        if (!isLoggedIn && ['watchlists', 'profile', 'admin', 'watching'].includes(targetPage)) {
             targetPage = 'landing';
             targetParams = {};
         } else if (isLoggedIn && ['landing', 'login', 'register'].includes(targetPage)) {
@@ -2108,7 +2110,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.addEventListener('auth:expired', () => {
         Alpine.store('auth').logout();
-        switchPage('login', {}, { force: true });
+        switchPage('landing', {}, { force: true });
     });
 
     const navLinks = document.querySelectorAll('.nav-link');

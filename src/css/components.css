@@ -226,6 +226,45 @@
     border-color: rgba(255, 255, 255, 0.2);
 }
 
+/* Guest auth actions (navbar, logged-out state) */
+.nav-auth {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.nav-auth-btn {
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 8px 18px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: var(--transition-fast);
+    background: transparent;
+    color: var(--text-primary);
+    border: 1.5px solid rgba(255, 255, 255, 0.22);
+}
+
+.nav-auth-btn:hover {
+    border-color: rgba(255, 255, 255, 0.45);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.nav-auth-btn.primary {
+    background: var(--accent-gold);
+    color: #0a0a0a;
+    border-color: var(--accent-gold);
+    font-weight: 700;
+}
+
+.nav-auth-btn.primary:hover {
+    background: var(--accent-red-hover);
+    border-color: var(--accent-red-hover);
+    box-shadow: 0 0 18px var(--accent-glow);
+    transform: translateY(-1px);
+}
+
 /* Profile Dropdown */
 .profile-dropdown {
     position: absolute;

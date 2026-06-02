@@ -13,6 +13,8 @@ let suppressHashChange = false;
 const SIMPLE_PAGES = ['landing', 'login', 'register', 'discover', 'movies', 'series', 'watchlists', 'profile', 'admin'];
 /** Pages that carry a content target in the hash. */
 const CONTENT_PAGES = ['detail', 'watching'];
+/** Account-only pages: guests are redirected to login when targeting these. */
+const AUTH_PAGES = ['watchlists', 'profile', 'admin', 'watching'];
 
 const PAGE_LABELS = {
     discover: 'Discover', movies: 'Movies', series: 'Series',
@@ -76,6 +78,14 @@ export function initRouter() {
 
 export async function switchPage(pageId, params = {}, opts = {}) {
     if (isTransitioning && !opts.force) return;
+
+    // Auth guard: bounce guests away from account-only pages (watchlists,
+    // profile, admin, watching) to the login screen. Covers nav clicks,
+    // episode cards, "Watch Now", and deep-links in one place.
+    if (AUTH_PAGES.includes(pageId) && !window.Alpine?.store('auth')?.isLoggedIn) {
+        pageId = 'login';
+        params = {};
+    }
 
     const pages = document.querySelectorAll('.page-content');
     const currentPage = document.querySelector('.page-content.active');

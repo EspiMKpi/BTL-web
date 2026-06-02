@@ -151,6 +151,8 @@ class TestGetContentByGenre:
                 "popularity": 90 - i,
                 "raw_data": {},
             })
+            await db.movie_genres.insert_one({"tmdb_id": 1000 + i, "genre_id": 28})
+            await db.series_genres.insert_one({"tmdb_id": 2000 + i, "genre_id": 28})
 
         result = await get_content_by_genre(28)
         assert len(result["movies"]) == 3
@@ -168,6 +170,7 @@ class TestGetContentByGenre:
                 "popularity": 100 - i,
                 "raw_data": {},
             })
+            await db.movie_genres.insert_one({"tmdb_id": 1000 + i, "genre_id": 28})
 
         result = await get_content_by_genre(28, page=1, limit=2)
         assert len(result["movies"]) == 2

@@ -172,6 +172,10 @@ class TestGetSeriesById:
         assert stored is not None
         assert stored["name"] == "Game of Thrones"
 
+        # Verify the series_genres junction was reconciled (one row per genre)
+        junction = await db.series_genres.find({"tmdb_id": 1399}).to_list(None)
+        assert {j["genre_id"] for j in junction} == {10765, 18}
+
 
 # ── get_series_by_ids ─────────────────────────────────────────────────────
 

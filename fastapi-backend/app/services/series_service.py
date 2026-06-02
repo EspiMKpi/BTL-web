@@ -43,6 +43,16 @@ async def get_series_by_id(tmdb_id: int) -> dict:
             upsert=True,
         )
 
+    # Reconcile the series_genres junction (canonical n-n store). Derived from the
+    # same data["genres"] used for the embedded array below, so the two never drift.
+    genre_ids = [g["id"] for g in data.get("genres", [])]
+    await db.series_genres.delete_many({"tmdb_id": data["id"]})
+    if genre_ids:
+        await db.series_genres.insert_many(
+            [{"tmdb_id": data["id"], "genre_id": gid} for gid in genre_ids],
+            ordered=False,
+        )
+
     # Fetch season details with episodes (limit to first 10 seasons)
     seasons_to_fetch = (data.get("seasons") or [])[:10]
     enriched_seasons: list[dict] = []
